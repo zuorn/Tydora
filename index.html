@@ -1,0 +1,40 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+  <head>
+    <!-- 提前设置主题，避免页面闪烁 -->
+    <script>
+      (function() {
+        try {
+          var theme = localStorage.getItem('zmd-theme');
+          if (!theme || ['catppuccin-mocha','white','mint','mint-dark'].indexOf(theme) === -1) {
+            theme = 'mint';
+          }
+          document.documentElement.dataset.theme = theme;
+        } catch(e) {}
+      })();
+    </script>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>zmd - Markdown Editor</title>
+    <!-- 代码高亮主题（data-highlight-theme 用于运行时切换） -->
+    <link data-highlight-theme rel="stylesheet" href="/vditor/dist/js/highlight.js/styles/atom-one-dark.min.css" />
+  </head>
+  <body>
+    <div id="root"></div>
+    <script>
+      window.__ZMD_ERRORS__ = [];
+      window.onerror = function(msg, src, line, col, err) {
+        var info = String(msg) + ' @ ' + String(src) + ':' + line;
+        window.__ZMD_ERRORS__.push(info);
+        var el = document.getElementById('zmd-error');
+        if (el) {
+          el.innerHTML += '<div>' + info + '</div>';
+          el.style.display = 'block';
+        }
+        console.error('[zmd]', msg, err);
+      };
+    </script>
+    <div id="zmd-error" style="display:none;position:fixed;top:0;left:0;right:0;background:#e06c75;color:#fff;padding:12px;z-index:99999;font-family:monospace;font-size:12px;max-height:200px;overflow:auto;white-space:pre-wrap;"></div>
+    <script type="module" src="/src/main.tsx"></script>
+  </body>
+</html>

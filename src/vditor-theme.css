@@ -1,0 +1,798 @@
+/* ========== Vditor 暗色主题 ========== */
+
+/* ── 全局 ── */
+.vditor {
+  --vditor-bg: #1e1e2e;
+  --vditor-bg-secondary: #181825;
+  --vditor-border: #45475a;
+  --vditor-text: #cdd6f4;
+  --vditor-text-secondary: #a6adc8;
+  --vditor-accent: #89b4fa;
+
+  border-radius: 0 !important;
+  border: none !important;
+}
+
+/* ── WYSIWYG 编辑区域 ── */
+.vditor-wysiwyg {
+  background: #1e1e2e !important;
+  color: #cdd6f4 !important;
+}
+
+.vditor-wysiwyg .vditor-reset {
+  background: #1e1e2e !important;
+  color: #cdd6f4 !important;
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  font-size: 15px;
+  line-height: 1.75;
+  /* 动态水平 padding：与 SV 模式保持一致（最大内容宽度 ~880px） */
+  padding-top: 24px !important;
+  padding-bottom: 24px !important;
+  padding-left: max(32px, calc((100% - 800px) / 2)) !important;
+  padding-right: max(32px, calc((100% - 800px) / 2)) !important;
+}
+
+/* WYSIWYG 中各种块元素的颜色 */
+.vditor-wysiwyg .vditor-reset h1,
+.vditor-wysiwyg .vditor-reset h2,
+.vditor-wysiwyg .vditor-reset h3,
+.vditor-wysiwyg .vditor-reset h4,
+.vditor-wysiwyg .vditor-reset h5,
+.vditor-wysiwyg .vditor-reset h6 {
+  color: #cdd6f4 !important;
+}
+
+.vditor-wysiwyg .vditor-reset p,
+.vditor-wysiwyg .vditor-reset div,
+.vditor-wysiwyg .vditor-reset span {
+  color: #cdd6f4 !important;
+}
+
+.vditor-wysiwyg .vditor-reset code:not(.hljs) {
+  background: #313244 !important;
+  color: #89b4fa !important;
+  font-family: "Cascadia Code", "JetBrains Mono", monospace;
+  padding: 2px 6px;
+  border-radius: 4px;
+}
+
+.vditor-wysiwyg .vditor-reset pre {
+  background: #181825 !important;
+  border: 1px solid #45475a !important;
+  border-radius: 8px;
+  padding: 16px 20px;
+}
+
+.vditor-wysiwyg .vditor-reset pre code {
+  background: transparent !important;
+  padding: 0;
+}
+
+/* 代码块右上角复制按钮 */
+.vditor-copy {
+  position: absolute;
+  top: 0;
+  right: 0;
+  z-index: 2;
+}
+.vditor-copy span {
+  top: 8px !important;
+  right: 12px !important;
+}
+.vditor-reset pre:hover .vditor-copy {
+  display: block;
+}
+
+.vditor-wysiwyg .vditor-reset blockquote {
+  border-left: 4px solid #89b4fa !important;
+  background: rgba(137, 180, 250, 0.05) !important;
+  color: #a6adc8 !important;
+  border-radius: 0 6px 6px 0;
+  padding: 8px 16px;
+}
+
+.vditor-wysiwyg .vditor-reset a {
+  color: #89b4fa !important;
+}
+
+.vditor-wysiwyg .vditor-reset table {
+  border-collapse: collapse;
+}
+
+.vditor-wysiwyg .vditor-reset th,
+.vditor-wysiwyg .vditor-reset td {
+  color: #cdd6f4 !important;
+  border: 1px solid #45475a !important;
+  padding: 8px 14px;
+}
+
+.vditor-wysiwyg .vditor-reset th {
+  background: #313244 !important;
+  font-weight: 600;
+}
+
+.vditor-wysiwyg .vditor-reset tr:nth-child(even) td {
+  background: rgba(49, 50, 68, 0.3);
+}
+
+.vditor-wysiwyg .vditor-reset hr {
+  border: none;
+  border-top: 1px solid #45475a;
+}
+
+.vditor-wysiwyg .vditor-reset img {
+  border-radius: 8px;
+  max-width: 100%;
+}
+
+.vditor-wysiwyg .vditor-reset ul,
+.vditor-wysiwyg .vditor-reset ol {
+  color: #cdd6f4 !important;
+}
+
+.vditor-wysiwyg .vditor-reset li {
+  color: #cdd6f4 !important;
+}
+
+.vditor-wysiwyg .vditor-reset strong {
+  color: #cdd6f4 !important;
+  font-weight: 700;
+}
+
+.vditor-wysiwyg .vditor-reset em {
+  color: #cdd6f4 !important;
+  font-style: italic;
+}
+
+.vditor-wysiwyg .vditor-reset del {
+  color: #a6adc8 !important;
+}
+
+/* WYSIWYG 预览渲染块（代码块等） */
+.vditor-wysiwyg__preview {
+  color: #cdd6f4 !important;
+}
+
+/* ── SV 源码模式 ── */
+.vditor-sv {
+  background: #1e1e2e !important;
+  counter-reset: sv-line;
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif !important;
+  font-size: 15px !important;
+  line-height: 1.75 !important;
+  /* 动态水平 padding：宽屏时居中（最大内容宽度 ~880px），窄屏时保留最小边距 */
+  padding-top: 24px !important;
+  padding-bottom: 24px !important;
+  padding-left: max(32px, calc((100% - 800px) / 2)) !important;
+  padding-right: max(32px, calc((100% - 800px) / 2)) !important;
+  color: #cdd6f4 !important;
+}
+
+/* ── 工具栏 ── 我们使用自己的顶部栏，隐藏 Vditor 自带的空工具栏 */
+.vditor-toolbar {
+  display: none !important;
+}
+
+/* ── 提示面板 ── */
+.vditor-hint {
+  background: #181825 !important;
+  border: 1px solid #45475a !important;
+  color: #cdd6f4 !important;
+}
+
+.vditor-hint__item:hover,
+.vditor-hint__item--selected {
+  background: rgba(137, 180, 250, 0.12) !important;
+  color: #89b4fa !important;
+}
+
+/* ── Popover 面板 ── */
+.vditor-panel {
+  background: #181825 !important;
+  border: 1px solid #45475a !important;
+  color: #cdd6f4 !important;
+}
+
+.vditor-panel input,
+.vditor-panel select {
+  background: #1e1e2e !important;
+  border: 1px solid #45475a !important;
+  color: #cdd6f4 !important;
+  padding: 4px 8px;
+  border-radius: 4px;
+}
+
+/* ── 预览区（SV 模式如果不禁用预览时） ── */
+.vditor-preview {
+  background: #1e1e2e !important;
+  color: #cdd6f4 !important;
+}
+
+/* ── 滚动条 ── */
+.vditor ::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+.vditor ::-webkit-scrollbar-track {
+  background: transparent;
+}
+.vditor ::-webkit-scrollbar-thumb {
+  background: #45475a;
+  border-radius: 4px;
+}
+.vditor ::-webkit-scrollbar-thumb:hover {
+  background: #a6adc8;
+}
+
+/* ── WYSIWYG 代码块预览 ── */
+/* 代码高亮：暗色背景 */
+.vditor-wysiwyg__preview:has(.hljs) {
+  background: #181825 !important;
+  border-radius: 8px;
+  padding: 0 !important;
+  overflow: hidden;
+}
+
+.vditor-wysiwyg__preview .hljs {
+  background: #181825 !important;
+  padding: 16px 20px !important;
+  border-radius: 8px;
+}
+
+/* ── 图表渲染（SVG/Canvas）：浅色背景才能看清 ── */
+/* Flowchart、abcjs、Graphviz、PlantUML 等渲染为 SVG，
+   通常是黑线黑字，必须放在浅色背景上 */
+.vditor-wysiwyg__preview:has(svg) {
+  background: #f5f5f5 !important;
+  border-radius: 8px;
+  padding: 16px !important;
+  min-width: 100px;
+}
+
+.vditor-wysiwyg__preview:has(svg) svg {
+  background: #ffffff !important;
+  border-radius: 4px;
+  max-width: 100%;
+  height: auto;
+}
+
+/* ECharts 暗色渲染已自行处理颜色，不加浅色背景 */
+.vditor-wysiwyg__preview:has(.echarts) {
+  background: transparent !important;
+  padding: 16px !important;
+}
+
+/* Mermaid 暗色模式下需要特殊处理 */
+.vditor-wysiwyg__preview:has(.mermaid) {
+  background: transparent !important;
+  padding: 16px !important;
+  text-align: center;
+}
+.vditor-wysiwyg__preview:has(.mermaid) svg {
+  max-width: 100%;
+  height: auto;
+}
+
+/* ── 代码块 / 行内代码 字体放大 ── */
+/* Vditor 默认 font-size: 85% 导致代码太小 */
+.vditor-reset pre > code {
+  font-size: 0.95em !important;
+}
+.vditor-reset code:not(.hljs):not(.highlight-chroma) {
+  font-size: 0.95em !important;
+}
+
+/* =============================================================
+   ========== Vditor 白色主题 ==========
+   ============================================================= */
+
+[data-theme="white"] .vditor {
+  --vditor-bg: #ffffff;
+  --vditor-bg-secondary: #f5f7fa;
+  --vditor-border: #d1d9e6;
+  --vditor-text: #1e293b;
+  --vditor-text-secondary: #64748b;
+  --vditor-accent: #2563eb;
+}
+
+/* ── WYSIWYG 编辑区域 ── */
+[data-theme="white"] .vditor-wysiwyg {
+  background: #ffffff !important;
+  color: #1e293b !important;
+}
+
+[data-theme="white"] .vditor-wysiwyg .vditor-reset {
+  background: #ffffff !important;
+  color: #1e293b !important;
+  /* 动态水平 padding：与 SV 模式保持一致（最大内容宽度 ~880px） */
+  padding-top: 24px !important;
+  padding-bottom: 24px !important;
+  padding-left: max(32px, calc((100% - 800px) / 2)) !important;
+  padding-right: max(32px, calc((100% - 800px) / 2)) !important;
+}
+
+[data-theme="white"] .vditor-wysiwyg .vditor-reset h1,
+[data-theme="white"] .vditor-wysiwyg .vditor-reset h2,
+[data-theme="white"] .vditor-wysiwyg .vditor-reset h3,
+[data-theme="white"] .vditor-wysiwyg .vditor-reset h4,
+[data-theme="white"] .vditor-wysiwyg .vditor-reset h5,
+[data-theme="white"] .vditor-wysiwyg .vditor-reset h6 {
+  color: #1e293b !important;
+}
+
+[data-theme="white"] .vditor-wysiwyg .vditor-reset p,
+[data-theme="white"] .vditor-wysiwyg .vditor-reset div,
+[data-theme="white"] .vditor-wysiwyg .vditor-reset span {
+  color: #1e293b !important;
+}
+
+[data-theme="white"] .vditor-wysiwyg .vditor-reset code:not(.hljs) {
+  background: #f1f5f9 !important;
+  color: #2563eb !important;
+}
+
+[data-theme="white"] .vditor-wysiwyg .vditor-reset pre {
+  background: #f8fafc !important;
+  border: 1px solid #d1d9e6 !important;
+}
+
+[data-theme="white"] .vditor-wysiwyg .vditor-reset pre code {
+  /* let highlight.js handle colors */
+}
+
+[data-theme="white"] .vditor-wysiwyg .vditor-reset blockquote {
+  border-left: 4px solid #2563eb !important;
+  background: rgba(37, 99, 235, 0.04) !important;
+  color: #64748b !important;
+}
+
+[data-theme="white"] .vditor-wysiwyg .vditor-reset a {
+  color: #2563eb !important;
+}
+
+[data-theme="white"] .vditor-wysiwyg .vditor-reset th,
+[data-theme="white"] .vditor-wysiwyg .vditor-reset td {
+  color: #1e293b !important;
+  border: 1px solid #d1d9e6 !important;
+}
+
+[data-theme="white"] .vditor-wysiwyg .vditor-reset th {
+  background: #f1f5f9 !important;
+}
+
+[data-theme="white"] .vditor-wysiwyg .vditor-reset tr:nth-child(even) td {
+  background: rgba(241, 245, 249, 0.5);
+}
+
+[data-theme="white"] .vditor-wysiwyg .vditor-reset hr {
+  border-top: 1px solid #d1d9e6;
+}
+
+[data-theme="white"] .vditor-wysiwyg .vditor-reset ul,
+[data-theme="white"] .vditor-wysiwyg .vditor-reset ol,
+[data-theme="white"] .vditor-wysiwyg .vditor-reset li,
+[data-theme="white"] .vditor-wysiwyg .vditor-reset strong,
+[data-theme="white"] .vditor-wysiwyg .vditor-reset em {
+  color: #1e293b !important;
+}
+
+[data-theme="white"] .vditor-wysiwyg .vditor-reset del {
+  color: #94a3b8 !important;
+}
+
+[data-theme="white"] .vditor-wysiwyg__preview {
+  color: #1e293b !important;
+}
+
+/* ── SV 源码模式 ── */
+[data-theme="white"] .vditor-sv {
+  background: #ffffff !important;
+  color: #1e293b !important;
+  /* 动态水平 padding：宽屏时居中（最大内容宽度 ~880px），窄屏时保留最小边距 */
+  padding-top: 24px !important;
+  padding-bottom: 24px !important;
+  padding-left: max(32px, calc((100% - 800px) / 2)) !important;
+  padding-right: max(32px, calc((100% - 800px) / 2)) !important;
+}
+
+/* ── 工具栏 ── */
+[data-theme="white"] .vditor-toolbar {
+  display: none !important;
+}
+
+/* ── 提示面板 ── */
+[data-theme="white"] .vditor-hint {
+  background: #ffffff !important;
+  border: 1px solid #d1d9e6 !important;
+  color: #1e293b !important;
+}
+
+[data-theme="white"] .vditor-hint__item:hover,
+[data-theme="white"] .vditor-hint__item--selected {
+  background: rgba(37, 99, 235, 0.08) !important;
+  color: #2563eb !important;
+}
+
+/* ── Popover 面板 ── */
+[data-theme="white"] .vditor-panel {
+  background: #ffffff !important;
+  border: 1px solid #d1d9e6 !important;
+  color: #1e293b !important;
+}
+
+[data-theme="white"] .vditor-panel input,
+[data-theme="white"] .vditor-panel select {
+  background: #ffffff !important;
+  border: 1px solid #d1d9e6 !important;
+  color: #1e293b !important;
+}
+
+/* ── 预览区 ── */
+[data-theme="white"] .vditor-preview {
+  background: #ffffff !important;
+  color: #1e293b !important;
+}
+
+/* ── 滚动条 ── */
+[data-theme="white"] .vditor ::-webkit-scrollbar-thumb {
+  background: #d1d9e6;
+}
+
+[data-theme="white"] .vditor ::-webkit-scrollbar-thumb:hover {
+  background: #94a3b8;
+}
+
+/* ── 代码高亮预览 ── */
+[data-theme="white"] .vditor-wysiwyg__preview:has(.hljs) {
+  background: #f8fafc !important;
+}
+
+[data-theme="white"] .vditor-wysiwyg__preview .hljs {
+  background: #f8fafc !important;
+}
+
+/* SVG/图表在白色主题下用透明背景即可 */
+[data-theme="white"] .vditor-wysiwyg__preview:has(svg) {
+  background: #ffffff !important;
+}
+
+[data-theme="white"] .vditor-wysiwyg__preview:has(svg) svg {
+  background: #ffffff !important;
+  max-width: 100%;
+  height: auto;
+}
+
+/* 白色主题 Mermaid 内 SVG */
+[data-theme="white"] .vditor-wysiwyg__preview:has(.mermaid) svg {
+  max-width: 100%;
+  height: auto;
+}
+
+/* =============================================================
+   ========== Mint 主题（浅色） ==========
+   ============================================================= */
+
+[data-theme="mint"] .vditor {
+  --vditor-bg: #f5faf7;
+  --vditor-bg-secondary: #ecf6f2;
+  --vditor-border: #d9ede5;
+  --vditor-text: #1e293b;
+  --vditor-text-secondary: #6B6B6B;
+  --vditor-accent: #4eb289;
+}
+
+[data-theme="mint"] .vditor-wysiwyg {
+  background: #ffffff !important;
+  color: #1e293b !important;
+}
+
+[data-theme="mint"] .vditor-wysiwyg .vditor-reset {
+  background: #ffffff !important;
+  color: #1e293b !important;
+}
+
+[data-theme="mint"] .vditor-wysiwyg .vditor-reset h1,
+[data-theme="mint"] .vditor-wysiwyg .vditor-reset h2,
+[data-theme="mint"] .vditor-wysiwyg .vditor-reset h3,
+[data-theme="mint"] .vditor-wysiwyg .vditor-reset h4,
+[data-theme="mint"] .vditor-wysiwyg .vditor-reset h5,
+[data-theme="mint"] .vditor-wysiwyg .vditor-reset h6,
+[data-theme="mint"] .vditor-wysiwyg .vditor-reset p,
+[data-theme="mint"] .vditor-wysiwyg .vditor-reset div,
+[data-theme="mint"] .vditor-wysiwyg .vditor-reset span,
+[data-theme="mint"] .vditor-wysiwyg .vditor-reset ul,
+[data-theme="mint"] .vditor-wysiwyg .vditor-reset ol,
+[data-theme="mint"] .vditor-wysiwyg .vditor-reset li,
+[data-theme="mint"] .vditor-wysiwyg .vditor-reset strong,
+[data-theme="mint"] .vditor-wysiwyg .vditor-reset em {
+  color: #1e293b !important;
+}
+
+[data-theme="mint"] .vditor-wysiwyg .vditor-reset del {
+  color: #94a3b8 !important;
+}
+
+[data-theme="mint"] .vditor-wysiwyg .vditor-reset code:not(.hljs) {
+  background: #f8fcfa !important;
+  color: #4eb289 !important;
+}
+
+[data-theme="mint"] .vditor-wysiwyg .vditor-reset pre {
+  background: #f5faf7 !important;
+  border: 1px solid #d9ede5 !important;
+}
+
+[data-theme="mint"] .vditor-wysiwyg .vditor-reset pre code {
+  background: transparent !important;
+}
+
+[data-theme="mint"] .vditor-wysiwyg .vditor-reset blockquote {
+  border-left: 4px solid #4eb289 !important;
+  background: rgba(78, 178, 137, 0.06) !important;
+  color: #6B6B6B !important;
+}
+
+[data-theme="mint"] .vditor-wysiwyg .vditor-reset a {
+  color: #4eb289 !important;
+}
+
+[data-theme="mint"] .vditor-wysiwyg .vditor-reset th,
+[data-theme="mint"] .vditor-wysiwyg .vditor-reset td {
+  color: #1e293b !important;
+  border: 1px solid #d9ede5 !important;
+}
+
+[data-theme="mint"] .vditor-wysiwyg .vditor-reset th {
+  background: #d9ede5 !important;
+}
+
+[data-theme="mint"] .vditor-wysiwyg .vditor-reset tr:nth-child(even) td {
+  background: rgba(217, 237, 229, 0.4);
+}
+
+[data-theme="mint"] .vditor-wysiwyg .vditor-reset hr {
+  border-top: 1px solid #d9ede5;
+}
+
+[data-theme="mint"] .vditor-wysiwyg__preview {
+  color: #1e293b !important;
+}
+
+/* ── SV 源码模式 ── */
+[data-theme="mint"] .vditor-sv {
+  background: #ffffff !important;
+  color: #1e293b !important;
+}
+
+[data-theme="mint"] .vditor-sv span[data-type="newline"] {
+  color: #6B6B6B;
+}
+
+/* ── 提示面板 ── */
+[data-theme="mint"] .vditor-hint {
+  background: #ffffff !important;
+  border: 1px solid #d9ede5 !important;
+  color: #1e293b !important;
+}
+
+[data-theme="mint"] .vditor-hint__item:hover,
+[data-theme="mint"] .vditor-hint__item--selected {
+  background: rgba(78, 178, 137, 0.1) !important;
+  color: #4eb289 !important;
+}
+
+/* ── Popover 面板 ── */
+[data-theme="mint"] .vditor-panel {
+  background: #ffffff !important;
+  border: 1px solid #d9ede5 !important;
+  color: #1e293b !important;
+}
+
+[data-theme="mint"] .vditor-panel input,
+[data-theme="mint"] .vditor-panel select {
+  background: #ffffff !important;
+  border: 1px solid #d9ede5 !important;
+  color: #1e293b !important;
+}
+
+/* ── 预览区 ── */
+[data-theme="mint"] .vditor-preview {
+  background: #ffffff !important;
+  color: #1e293b !important;
+}
+
+/* ── 滚动条 ── */
+[data-theme="mint"] .vditor ::-webkit-scrollbar-thumb {
+  background: #d9ede5;
+}
+
+[data-theme="mint"] .vditor ::-webkit-scrollbar-thumb:hover {
+  background: #4eb289;
+}
+
+/* ── 代码高亮预览 ── */
+[data-theme="mint"] .vditor-wysiwyg__preview:has(.hljs) {
+  background: #f5faf7 !important;
+}
+
+[data-theme="mint"] .vditor-wysiwyg__preview .hljs {
+  background: #f5faf7 !important;
+}
+
+[data-theme="mint"] .vditor-wysiwyg__preview:has(svg) {
+  background: #ffffff !important;
+}
+
+[data-theme="mint"] .vditor-wysiwyg__preview:has(svg) svg {
+  background: #ffffff !important;
+  max-width: 100%;
+  height: auto;
+}
+
+[data-theme="mint"] .vditor-wysiwyg__preview:has(.mermaid) svg {
+  max-width: 100%;
+  height: auto;
+}
+
+/* =============================================================
+   ========== Mint Dark 主题（深色） ==========
+   ============================================================= */
+
+[data-theme="mint-dark"] .vditor {
+  --vditor-bg: #272729;
+  --vditor-bg-secondary: #232325;
+  --vditor-border: #39393a;
+  --vditor-text: #cccccc;
+  --vditor-text-secondary: #818286;
+  --vditor-accent: #4eb289;
+}
+
+[data-theme="mint-dark"] .vditor-wysiwyg {
+  background: #272729 !important;
+  color: #cccccc !important;
+}
+
+[data-theme="mint-dark"] .vditor-wysiwyg .vditor-reset {
+  background: #272729 !important;
+  color: #cccccc !important;
+}
+
+[data-theme="mint-dark"] .vditor-wysiwyg .vditor-reset h1,
+[data-theme="mint-dark"] .vditor-wysiwyg .vditor-reset h2,
+[data-theme="mint-dark"] .vditor-wysiwyg .vditor-reset h3,
+[data-theme="mint-dark"] .vditor-wysiwyg .vditor-reset h4,
+[data-theme="mint-dark"] .vditor-wysiwyg .vditor-reset h5,
+[data-theme="mint-dark"] .vditor-wysiwyg .vditor-reset h6,
+[data-theme="mint-dark"] .vditor-wysiwyg .vditor-reset p,
+[data-theme="mint-dark"] .vditor-wysiwyg .vditor-reset div,
+[data-theme="mint-dark"] .vditor-wysiwyg .vditor-reset span,
+[data-theme="mint-dark"] .vditor-wysiwyg .vditor-reset ul,
+[data-theme="mint-dark"] .vditor-wysiwyg .vditor-reset ol,
+[data-theme="mint-dark"] .vditor-wysiwyg .vditor-reset li,
+[data-theme="mint-dark"] .vditor-wysiwyg .vditor-reset strong,
+[data-theme="mint-dark"] .vditor-wysiwyg .vditor-reset em {
+  color: #cccccc !important;
+}
+
+[data-theme="mint-dark"] .vditor-wysiwyg .vditor-reset del {
+  color: #818286 !important;
+}
+
+[data-theme="mint-dark"] .vditor-wysiwyg .vditor-reset code:not(.hljs) {
+  background: #0F111A !important;
+  color: #4eb289 !important;
+}
+
+[data-theme="mint-dark"] .vditor-wysiwyg .vditor-reset pre {
+  background: #0F111A !important;
+  border: 1px solid #39393a !important;
+}
+
+[data-theme="mint-dark"] .vditor-wysiwyg .vditor-reset pre code {
+  background: transparent !important;
+}
+
+[data-theme="mint-dark"] .vditor-wysiwyg .vditor-reset blockquote {
+  border-left: 4px solid #4eb289 !important;
+  background: rgba(78, 178, 137, 0.06) !important;
+  color: #919191 !important;
+}
+
+[data-theme="mint-dark"] .vditor-wysiwyg .vditor-reset a {
+  color: #4eb289 !important;
+}
+
+[data-theme="mint-dark"] .vditor-wysiwyg .vditor-reset th,
+[data-theme="mint-dark"] .vditor-wysiwyg .vditor-reset td {
+  color: #cccccc !important;
+  border: 1px solid #39393a !important;
+}
+
+[data-theme="mint-dark"] .vditor-wysiwyg .vditor-reset th {
+  background: #232325 !important;
+  color: #4eb289 !important;
+}
+
+[data-theme="mint-dark"] .vditor-wysiwyg .vditor-reset tr:nth-child(even) td {
+  background: rgba(39, 39, 41, 0.4);
+}
+
+[data-theme="mint-dark"] .vditor-wysiwyg .vditor-reset hr {
+  border-top: 1px solid #39393a;
+}
+
+[data-theme="mint-dark"] .vditor-wysiwyg__preview {
+  color: #cccccc !important;
+}
+
+/* ── SV 源码模式 ── */
+[data-theme="mint-dark"] .vditor-sv {
+  background: #272729 !important;
+  color: #cccccc !important;
+}
+
+/* ── 提示面板 ── */
+[data-theme="mint-dark"] .vditor-hint {
+  background: #232325 !important;
+  border: 1px solid #39393a !important;
+  color: #cccccc !important;
+}
+
+[data-theme="mint-dark"] .vditor-hint__item:hover,
+[data-theme="mint-dark"] .vditor-hint__item--selected {
+  background: rgba(78, 178, 137, 0.15) !important;
+  color: #4eb289 !important;
+}
+
+/* ── Popover 面板 ── */
+[data-theme="mint-dark"] .vditor-panel {
+  background: #232325 !important;
+  border: 1px solid #39393a !important;
+  color: #cccccc !important;
+}
+
+[data-theme="mint-dark"] .vditor-panel input,
+[data-theme="mint-dark"] .vditor-panel select {
+  background: #272729 !important;
+  border: 1px solid #39393a !important;
+  color: #cccccc !important;
+}
+
+/* ── 预览区 ── */
+[data-theme="mint-dark"] .vditor-preview {
+  background: #272729 !important;
+  color: #cccccc !important;
+}
+
+/* ── 滚动条 ── */
+[data-theme="mint-dark"] .vditor ::-webkit-scrollbar-thumb {
+  background: #39393a;
+}
+
+[data-theme="mint-dark"] .vditor ::-webkit-scrollbar-thumb:hover {
+  background: #4eb289;
+}
+
+/* ── 代码高亮预览 ── */
+[data-theme="mint-dark"] .vditor-wysiwyg__preview:has(.hljs) {
+  background: #0F111A !important;
+}
+
+[data-theme="mint-dark"] .vditor-wysiwyg__preview .hljs {
+  background: #0F111A !important;
+}
+
+[data-theme="mint-dark"] .vditor-wysiwyg__preview:has(svg) {
+  background: #ffffff !important;
+}
+
+[data-theme="mint-dark"] .vditor-wysiwyg__preview:has(svg) svg {
+  background: #ffffff !important;
+  max-width: 100%;
+  height: auto;
+}
+
+[data-theme="mint-dark"] .vditor-wysiwyg__preview:has(.mermaid) svg {
+  max-width: 100%;
+  height: auto;
+}

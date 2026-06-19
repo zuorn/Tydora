@@ -1,0 +1,52 @@
+/* ========== VditorEditor 容器 ========== */
+
+.vditor-editor-wrapper {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  min-height: 0;
+  position: relative;
+}
+
+.vditor-editor-container {
+  flex: 1;
+  min-height: 0;
+  min-width: 0;
+}
+
+/* 确保 .vditor 填满容器 */
+.vditor-editor-container > .vditor {
+  height: 100% !important;
+  border: none !important;
+  border-radius: 0 !important;
+  display: flex !important;
+  flex-direction: column !important;
+}
+
+/* 加载状态 */
+.vditor-editor-loading {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  color: var(--text-secondary);
+  font-size: 14px;
+  z-index: 1;
+  pointer-events: none;
+}
+
+/* 错误状态 */
+.vditor-editor-error {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  text-align: center;
+  color: var(--danger, #f38ba8);
+  z-index: 1;
+}
+
+.vditor-editor-error p {
+  margin: 4px 0;
+}

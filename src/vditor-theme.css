@@ -282,6 +282,58 @@
   font-size: 0.95em !important;
 }
 
+/* ── 任务列表 Checkbox 美化 ── */
+.vditor-wysiwyg .vditor-reset li input[type="checkbox"],
+.vditor-reset li input[type="checkbox"] {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 18px;
+  height: 18px;
+  min-width: 18px;
+  min-height: 18px;
+  border: 2px solid #4eb289;
+  border-radius: 50%;
+  background: transparent;
+  cursor: pointer;
+  position: relative;
+  top: 3px;
+  margin-right: 8px;
+  transition: all 0.2s ease;
+  vertical-align: top;
+}
+
+.vditor-wysiwyg .vditor-reset li input[type="checkbox"]:checked,
+.vditor-reset li input[type="checkbox"]:checked {
+  background: #4eb289;
+  border-color: #4eb289;
+}
+
+.vditor-wysiwyg .vditor-reset li input[type="checkbox"]:checked::after,
+.vditor-reset li input[type="checkbox"]:checked::after {
+  content: "";
+  position: absolute;
+  left: 5px;
+  top: 1px;
+  width: 4px;
+  height: 9px;
+  border: solid #ffffff;
+  border-width: 0 2px 2px 0;
+  transform: rotate(45deg);
+}
+
+.vditor-wysiwyg .vditor-reset li input[type="checkbox"]:hover,
+.vditor-reset li input[type="checkbox"]:hover {
+  border-color: #3d9e76;
+  box-shadow: 0 0 0 3px rgba(78, 178, 137, 0.15);
+}
+
+.vditor-wysiwyg .vditor-reset li input[type="checkbox"]:checked:hover,
+.vditor-reset li input[type="checkbox"]:checked:hover {
+  background: #3d9e76;
+  border-color: #3d9e76;
+  box-shadow: 0 0 0 3px rgba(78, 178, 137, 0.15);
+}
+
 /* =============================================================
    ========== Vditor 白色主题 ==========
    ============================================================= */

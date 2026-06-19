@@ -50,3 +50,160 @@
 .vditor-editor-error p {
   margin: 4px 0;
 }
+
+/* ========== 右键菜单 ========== */
+
+.vditor-context-menu {
+  position: fixed;
+  background: var(--bg-secondary);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 6px;
+  min-width: 200px;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
+  z-index: 1000;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.vditor-context-menu .context-menu-row {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  padding: 4px;
+}
+
+.vditor-context-menu .context-menu-item {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  padding: 0;
+  background: transparent;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  color: var(--text-primary);
+  cursor: pointer;
+  transition: all 0.15s ease;
+  font-size: 14px;
+}
+
+.vditor-context-menu .context-menu-item:hover {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: var(--bg-primary);
+}
+
+.vditor-context-menu .context-menu-icon {
+  width: 16px;
+  height: 16px;
+  fill: currentColor;
+  flex-shrink: 0;
+}
+
+.vditor-context-menu .context-menu-icon-delete {
+  width: 20px;
+  height: 20px;
+}
+
+.vditor-context-menu .context-menu-icon-quote {
+  transform: rotate(180deg);
+  transform-origin: center center;
+}
+
+.vditor-context-menu .context-menu-arrow {
+  font-size: 12px;
+  opacity: 0.5;
+  color: inherit;
+  margin-left: 2px;
+}
+
+.vditor-context-menu .context-menu-item-text {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  width: 100%;
+}
+
+.vditor-context-menu .context-menu-item-text .context-menu-arrow {
+  margin-left: auto;
+}
+
+.vditor-context-menu .context-menu-item.disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+.vditor-context-menu .context-menu-item.disabled:hover {
+  background: transparent;
+  border-color: var(--border);
+  color: var(--text-primary);
+}
+
+/* 子菜单样式 */
+.vditor-context-menu .context-menu-submenu-wrapper {
+  position: relative;
+}
+
+.vditor-context-menu .context-menu-submenu-wrapper .context-menu-item {
+  position: relative;
+}
+
+.vditor-context-menu .context-menu-submenu {
+  display: none;
+  position: absolute;
+  top: 0;
+  left: calc(100% + 4px);
+  background: var(--bg-secondary);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 4px;
+  min-width: 180px;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
+  z-index: 1001;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.vditor-context-menu .context-menu-submenu-wrapper:hover > .context-menu-submenu {
+  display: flex;
+}
+
+.vditor-context-menu .context-menu-subitem {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 7px 12px;
+  background: transparent;
+  border: none;
+  border-radius: 4px;
+  color: var(--text-primary);
+  font-size: 13px;
+  cursor: pointer;
+  transition: background 0.15s ease;
+  width: 100%;
+  text-align: left;
+}
+
+.vditor-context-menu .context-menu-subitem:hover {
+  background: var(--accent);
+  color: var(--bg-primary);
+}
+
+.vditor-context-menu .context-menu-shortcut {
+  font-size: 12px;
+  opacity: 0.5;
+  margin-left: 16px;
+  font-family: monospace;
+  color: var(--text-secondary);
+}
+
+/* 分隔线 */
+.vditor-context-menu .context-menu-divider {
+  height: 1px;
+  background: var(--border);
+  margin: 4px 0;
+}

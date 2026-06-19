@@ -1,9 +1,10 @@
 import { useState, useCallback, useRef, useEffect, Component } from "react";
-import { getCurrentWindow } from "@tauri-apps/api/window";
+import { getCurrentWindow, availableMonitors, type Monitor } from "@tauri-apps/api/window";
 import { LogicalSize, LogicalPosition } from "@tauri-apps/api/dpi";
 import VditorEditor, { VditorEditorHandle, MODE_LABELS, EditorMode } from "./VditorEditor";
 import Sidebar, { VaultInfo } from "./Sidebar";
 import { useTheme } from "./themes";
+import { ConfirmDialog } from "./ConfirmDialog";
 import "./App.css";
 import "./vditor-theme.css";
 
@@ -44,7 +45,7 @@ const WINDOW_STATE_KEY = "zmd-window-state";
 
 function App() {
   const { theme } = useTheme();
-  const initialContent = "# 欢迎使用 zmd ✨\n\n开始编写你的 Markdown...\n";
+  const initialContent = "# 欢迎使用 Tydora ✨\n\n开始编写你的 Markdown...\n";
   const [content, setContent] = useState(initialContent);
   const [fileName, setFileName] = useState<string | null>(null);
   const [modified, setModified] = useState(false);
@@ -77,6 +78,8 @@ function App() {
     }
   });
   const [treeRefreshKey] = useState(0);
+  const [saveConfirmOpen, setSaveConfirmOpen] = useState(false);
+  const [pendingFilePath, setPendingFilePath] = useState<string | null>(null);
 
   // Persist vaults
   useEffect(() => {
@@ -135,9 +138,9 @@ function App() {
         };
 
         // 验证保存的位置是否仍在可见显示器上
-        const monitors = await win.availableMonitors();
+        const monitors = await availableMonitors();
         if (monitors && monitors.length > 0) {
-          const posValid = monitors.some((m) => {
+          const posValid = monitors.some((m: Monitor) => {
             const { x: mx, y: my } = m.position;
             const { width: mw, height: mh } = m.size;
             // 至少窗口标题栏在显示器范围内（x 允许部分超出）
@@ -259,28 +262,19 @@ function App() {
 
   // ── File tree callbacks ──
 
-  const handleSelectFile = useCallback(async (path: string) => {
-    // 如果当前文件已修改，先保存
+  const handleSelectFile = useCallback((path: string) => {
     if (modified && fileName) {
-      const { ask } = await import("@tauri-apps/plugin-dialog");
-      const saveFirst = await ask(`文件 "${fileName.split(/[/\\]/).pop()}" 尚未保存，是否先保存？`, {
-        title: "保存文件",
-        kind: "warning",
-      });
-      if (saveFirst) {
-        try {
-          const { writeTextFile } = await import("@tauri-apps/plugin-fs");
-          await writeTextFile(fileName, content);
-        } catch (e) {
-          console.error("自动保存失败:", e);
-        }
-      }
+      setPendingFilePath(path);
+      setSaveConfirmOpen(true);
+    } else {
+      openFile(path);
     }
+  }, [modified, fileName]);
 
+  const openFile = useCallback(async (path: string) => {
     try {
       const { readTextFile } = await import("@tauri-apps/plugin-fs");
       const text = await readTextFile(path);
-      // 先更新 ref 作为"已保存基线"，再 setContent 触发编辑器重置
       savedContentRef.current = text;
       setContent(text);
       setFileName(path);
@@ -288,7 +282,31 @@ function App() {
     } catch (e) {
       console.error("打开文件失败:", e);
     }
-  }, [content, fileName, modified]);
+  }, []);
+
+  const handleSaveConfirm = useCallback(async () => {
+    setSaveConfirmOpen(false);
+    if (fileName && content) {
+      try {
+        const { writeTextFile } = await import("@tauri-apps/plugin-fs");
+        await writeTextFile(fileName, content);
+      } catch (e) {
+        console.error("自动保存失败:", e);
+      }
+    }
+    if (pendingFilePath) {
+      openFile(pendingFilePath);
+      setPendingFilePath(null);
+    }
+  }, [fileName, content, pendingFilePath, openFile]);
+
+  const handleSaveCancel = useCallback(() => {
+    setSaveConfirmOpen(false);
+    if (pendingFilePath) {
+      openFile(pendingFilePath);
+      setPendingFilePath(null);
+    }
+  }, [pendingFilePath, openFile]);
 
   const handleSidebarToggle = useCallback(() => {
     setSidebarOpen((prev) => !prev);
@@ -356,7 +374,7 @@ function App() {
   const editorHandleRef = useRef<VditorEditorHandle>(null);
   // 用于跟踪已加载文件的内容原文，避免把"打开新文件"误判为修改
   const savedContentRef = useRef<string>(initialContent);
-  const title = fileName ? fileName.split(/[/\\]/).pop() || "untitled.md" : "";
+  const title = fileName ? fileName.split(/[/\\]/).pop() || "untitled.md" : "Tydora";
 
   return (
     <div className="app">
@@ -387,13 +405,11 @@ function App() {
               <button className="sidebar-toggle-btn" onClick={handleSidebarToggle} title={sidebarOpen ? "折叠侧栏" : "展开侧栏"}>
                 {sidebarOpen ? "◀" : "▶"}
               </button>
-              {fileName && (
-                <span className="editor-file-name" title={fileName}>
-                  <span className="editor-file-icon">📄</span>
-                  {title}
-                  {modified && <span className="editor-modified-dot">●</span>}
-                </span>
-              )}
+              <span className="editor-file-name" title={fileName || "Tydora"}>
+                {fileName && <span className="editor-file-icon">📄</span>}
+                {title}
+                {modified && <span className="editor-modified-dot">●</span>}
+              </span>
             </div>
             <div className="window-controls">
               <button className="window-control-btn" onClick={handleMinimize} title="最小化">
@@ -436,6 +452,17 @@ function App() {
           </div>
         </main>
       </div>
+
+      <ConfirmDialog
+        isOpen={saveConfirmOpen}
+        title="保存文件"
+        message={`文件 "${fileName?.split(/[/\\]/).pop() || ""}" 尚未保存，是否先保存？`}
+        type="warning"
+        confirmText="保存"
+        cancelText="不保存"
+        onConfirm={handleSaveConfirm}
+        onCancel={handleSaveCancel}
+      />
     </div>
   );
 }

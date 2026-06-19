@@ -1,7 +1,8 @@
-import { useState, useEffect, useCallback, useRef } from "react";
+import { useState, useEffect, useCallback, useRef, useLayoutEffect } from "react";
 import { readDir, writeTextFile, mkdir, remove, rename } from "@tauri-apps/plugin-fs";
-import { open, confirm } from "@tauri-apps/plugin-dialog";
+import { open } from "@tauri-apps/plugin-dialog";
 import { useTheme } from "./themes";
+import { ConfirmDialog } from "./ConfirmDialog";
 import "./Sidebar.css";
 
 // ── Types ────────────────────────────────────────────────────────────
@@ -123,21 +124,41 @@ function ContextMenu({
     };
   }, [onClose]);
 
-  const adjustedX = Math.min(x, window.innerWidth - 220);
-  const adjustedY = Math.min(y, window.innerHeight - items.length * 32 - 8);
+  useLayoutEffect(() => {
+    if (!menuRef.current) return;
+
+    const menu = menuRef.current;
+    menu.style.left = `${x}px`;
+    menu.style.top = `${y}px`;
+
+    const rect = menu.getBoundingClientRect();
+    const GAP = 4;
+
+    let left = x;
+    let top = y;
+
+    if (left + rect.width > window.innerWidth - GAP) {
+      left = x - rect.width;
+    }
+    if (top + rect.height > window.innerHeight - GAP) {
+      top = y - rect.height;
+    }
+    if (left < GAP) left = GAP;
+    if (top < GAP) top = GAP;
+
+    menu.style.left = `${left}px`;
+    menu.style.top = `${top}px`;
+  }, [x, y]);
 
   return (
-    <div
-      ref={menuRef}
-      className="context-menu"
-      style={{ left: adjustedX, top: adjustedY }}
-    >
+    <div ref={menuRef} className="context-menu">
       {items.map((item, i) => (
         <div key={i}>
           {item.separator && <div className="context-menu-divider" />}
           <div
             className={`context-menu-item${item.danger ? " danger" : ""}${item.disabled ? " disabled" : ""}`}
-            onClick={() => {
+            onClick={(e) => {
+              e.stopPropagation();
               if (!item.disabled) {
                 item.onClick();
                 onClose();
@@ -238,6 +259,7 @@ function TreeNodeComp({
   onFinishEdit: (path: string, newName: string) => void;
 }) {
   const [ctxMenu, setCtxMenu] = useState<{ x: number; y: number } | null>(null);
+  const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false);
   const nodeRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
   const isEditing = editingPath === node.path;
@@ -289,11 +311,12 @@ function TreeNodeComp({
     onStartEdit(node.path);
   }, [node, onStartEdit]);
 
-  const handleDelete = useCallback(async () => {
-    const msg = node.isDirectory
-      ? `确定要删除文件夹 "${node.name}" 及其所有内容吗？`
-      : `确定要删除文件 "${node.name}" 吗？`;
-    if (!(await confirm(msg))) return;
+  const handleDelete = useCallback(() => {
+    setDeleteConfirmOpen(true);
+  }, []);
+
+  const handleDeleteConfirm = useCallback(async () => {
+    setDeleteConfirmOpen(false);
     try { await remove(node.path, { recursive: true }); onReload(); }
     catch (err) { console.error("删除失败:", err); }
   }, [node, onReload]);
@@ -410,6 +433,17 @@ function TreeNodeComp({
           onClose={() => setCtxMenu(null)}
         />
       )}
+
+      <ConfirmDialog
+        isOpen={deleteConfirmOpen}
+        title="删除确认"
+        message={node.isDirectory
+          ? `确定要删除文件夹 "${node.name}" 及其所有内容吗？`
+          : `确定要删除文件 "${node.name}" 吗？`}
+        type="danger"
+        onConfirm={handleDeleteConfirm}
+        onCancel={() => setDeleteConfirmOpen(false)}
+      />
     </div>
   );
 }
@@ -720,6 +754,8 @@ function VaultSwitcher({
 }) {
   const [menuOpen, setMenuOpen] = useState(false);
   const [settingsOpen, setSettingsOpen] = useState(false);
+  const [removeConfirmOpen, setRemoveConfirmOpen] = useState(false);
+  const [removingVaultIndex, setRemovingVaultIndex] = useState<number>(-1);
   const menuRef = useRef<HTMLDivElement>(null);
   const settingsRef = useRef<HTMLDivElement>(null);
   const activeVault = activeIndex >= 0 ? vaults[activeIndex] : null;
@@ -808,7 +844,8 @@ function VaultSwitcher({
                   title="移除此仓库"
                   onClick={(e) => {
                     e.stopPropagation();
-                    onRemove(i);
+                    setRemovingVaultIndex(i);
+                    setRemoveConfirmOpen(true);
                   }}
                 >
                   ✕
@@ -851,6 +888,18 @@ function VaultSwitcher({
           </div>
         </div>
       )}
+
+      <ConfirmDialog
+        isOpen={removeConfirmOpen}
+        title="移除仓库"
+        message={`确定要移除仓库 "${vaults[removingVaultIndex]?.name || ""}" 吗？\n此操作不会删除本地文件。`}
+        type="warning"
+        onConfirm={() => {
+          onRemove(removingVaultIndex);
+          setRemoveConfirmOpen(false);
+        }}
+        onCancel={() => setRemoveConfirmOpen(false)}
+      />
     </div>
   );
 }

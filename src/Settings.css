@@ -350,7 +350,24 @@
 .settings-shortcuts-list {
   display: flex;
   flex-direction: column;
+  gap: 16px;
+}
+
+.settings-shortcut-group {
+  display: flex;
+  flex-direction: column;
   gap: 4px;
+}
+
+.settings-shortcut-group-title {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text-secondary);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  margin-bottom: 8px;
+  padding-bottom: 6px;
+  border-bottom: 1px solid var(--border);
 }
 
 .settings-shortcut-item {

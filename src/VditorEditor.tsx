@@ -15,6 +15,9 @@ export interface VditorEditorHandle {
   getValue: () => string;
   setValue: (value: string) => void;
   resize: () => void;
+  highlightSearch: (query: string) => void;
+  clearHighlight: () => void;
+  executeCommand: (name: string) => void;
 }
 
 export const MODE_LABELS: Record<EditorMode, string> = {
@@ -54,6 +57,88 @@ const CUSTOM_ICONS: Record<string, string> = {
   delete: "M6 19c0 1.1.9 2 2 2h8c1.1 0 2-.9 2-2V7H6v12zM19 4h-3.5l-1-1h-5l-1 1H5v2h14V4z",
   quote: "M14.017 21v-7.391c0-5.704 3.731-9.57 8.983-10.609l.995 2.151c-2.432.917-3.995 3.638-3.995 5.849h4v10h-9.983zm-14.017 0v-7.391c0-5.704 3.748-9.57 9-10.609l.996 2.151c-2.433.917-3.996 3.638-3.996 5.849h3.983v10h-9.983z",
 };
+
+// ── Search highlight helpers ──
+
+const HIGHLIGHT_CLASS = "search-highlight";
+
+function clearHighlightMarks() {
+  document.querySelectorAll(`.${HIGHLIGHT_CLASS}`).forEach((el) => {
+    const parent = el.parentNode;
+    if (parent) {
+      parent.replaceChild(document.createTextNode(el.textContent || ""), el);
+      parent.normalize();
+    }
+  });
+}
+
+function highlightInElement(el: HTMLElement, query: string) {
+  if (!query) return;
+
+  // Skip elements that shouldn't be highlighted
+  const skipTags = new Set(["PRE", "CODE", "SCRIPT", "STYLE", "TEXTAREA"]);
+  const skipClasses = new Set(["vditor-ir__marker", "vditor-toolbar", "vditor-menu"]);
+
+  const walker = document.createTreeWalker(el, NodeFilter.SHOW_TEXT, {
+    acceptNode: (node: Text) => {
+      const parent = node.parentElement;
+      if (!parent) return NodeFilter.FILTER_REJECT;
+      if (skipTags.has(parent.tagName)) return NodeFilter.FILTER_REJECT;
+      if (parent.closest("pre, code, .vditor-ir__marker")) return NodeFilter.FILTER_REJECT;
+      for (const cls of skipClasses) {
+        if (parent.classList?.contains(cls)) return NodeFilter.FILTER_REJECT;
+      }
+      // Only process nodes with actual text content
+      if (!node.textContent || node.textContent.trim().length === 0) return NodeFilter.FILTER_REJECT;
+      return NodeFilter.FILTER_ACCEPT;
+    }
+  });
+
+  const textNodes: Text[] = [];
+  let node: Text | null;
+  while ((node = walker.nextNode() as Text | null)) {
+    textNodes.push(node);
+  }
+
+  const lowerQuery = query.toLowerCase();
+  for (const textNode of textNodes) {
+    const text = textNode.textContent || "";
+    const lowerText = text.toLowerCase();
+
+    // Find all occurrences in this text node
+    const indices: number[] = [];
+    let pos = 0;
+    while (pos < lowerText.length) {
+      const idx = lowerText.indexOf(lowerQuery, pos);
+      if (idx < 0) break;
+      indices.push(idx);
+      pos = idx + 1;
+    }
+
+    if (indices.length === 0) continue;
+
+    // Build fragment with highlights
+    const fragment = document.createDocumentFragment();
+    let lastIdx = 0;
+
+    for (const idx of indices) {
+      if (idx > lastIdx) {
+        fragment.appendChild(document.createTextNode(text.slice(lastIdx, idx)));
+      }
+      const mark = document.createElement("mark");
+      mark.className = HIGHLIGHT_CLASS;
+      mark.textContent = text.slice(idx, idx + query.length);
+      fragment.appendChild(mark);
+      lastIdx = idx + query.length;
+    }
+
+    if (lastIdx < text.length) {
+      fragment.appendChild(document.createTextNode(text.slice(lastIdx)));
+    }
+
+    textNode.parentNode?.replaceChild(fragment, textNode);
+  }
+}
 
 const HEADING_SUBMENU: SubMenuItem[] = [
   { name: "heading-1", label: "一级标题", shortcut: "Ctrl+1" },
@@ -351,6 +436,7 @@ const VditorEditor = forwardRef<VditorEditorHandle, VditorEditorProps>(
     onChangeRef.current = onChange;
 
     const isFileSwitchRef = useRef(false);
+    const pendingHighlightRef = useRef<string | null>(null);
 
     useImperativeHandle(ref, () => ({
       getValue: () => vditorRef.current?.getValue() ?? "",
@@ -366,6 +452,39 @@ const VditorEditor = forwardRef<VditorEditorHandle, VditorEditorProps>(
       resize: () => {
         // 触发窗口 resize 事件让 Vditor 内部重新计算布局
         window.dispatchEvent(new Event("resize"));
+      },
+      highlightSearch: (query: string) => {
+        clearHighlightMarks();
+        if (!query) { pendingHighlightRef.current = null; return; }
+        pendingHighlightRef.current = query;
+        const editorEl = elRef.current;
+        if (!editorEl) return;
+        const resetEl = editorEl.querySelector(".vditor-reset") as HTMLElement | null;
+        if (!resetEl) return;
+        // Try immediately, and retry after delays in case Vditor hasn't finished rendering
+        const tryHighlight = () => {
+          const q = pendingHighlightRef.current;
+          if (!q) return;
+          const el = elRef.current;
+          if (!el) return;
+          const reset = el.querySelector(".vditor-reset") as HTMLElement | null;
+          if (!reset) return;
+          // Check if there's actual text content to highlight
+          if (reset.textContent && reset.textContent.includes(q)) {
+            clearHighlightMarks();
+            highlightInElement(reset, q);
+            pendingHighlightRef.current = null;
+          }
+        };
+        tryHighlight();
+        setTimeout(tryHighlight, 200);
+        setTimeout(tryHighlight, 500);
+      },
+      clearHighlight: () => {
+        clearHighlightMarks();
+      },
+      executeCommand: (name: string) => {
+        executeCommand(name);
       },
     }));
 

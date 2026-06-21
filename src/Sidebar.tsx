@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback, useRef, useLayoutEffect } from "react";
-import { readDir, writeTextFile, mkdir, remove, rename } from "@tauri-apps/plugin-fs";
+import { readDir, readTextFile, writeTextFile, mkdir, remove, rename } from "@tauri-apps/plugin-fs";
 import { open } from "@tauri-apps/plugin-dialog";
 import { invoke } from "@tauri-apps/api/core";
 import { ConfirmDialog } from "./ConfirmDialog";
@@ -26,11 +26,12 @@ interface SidebarProps {
   activeVaultIndex: number;
   currentFilePath: string | null;
   content: string;
-  onSelectFile: (path: string) => void;
+  onSelectFile: (path: string, line?: number, query?: string) => void;
   onSelectHeading: (level: number, text: string, line: number) => void;
   onNewVault: (path: string, name: string) => void;
   onSwitchVault: (index: number) => void;
   onRemoveVault: (index: number) => void;
+  onNewWindow: (filePath: string) => void;
   collapsed: boolean;
   refreshKey: number;
   width: number;
@@ -90,6 +91,115 @@ function parentPath(path: string): string {
   const sep = pathSep();
   const idx = path.lastIndexOf(sep);
   return idx > 0 ? path.substring(0, idx) : path;
+}
+
+// ── Search ──────────────────────────────────────────────────────────
+
+interface SearchMatch {
+  line: number;
+  content: string;
+}
+
+interface SearchResult {
+  path: string;
+  fileName: string;
+  matches: SearchMatch[];
+}
+
+const SEARCHABLE_EXTS = new Set([
+  "md", "markdown", "txt", "json", "js", "ts", "tsx", "jsx",
+  "html", "css", "scss", "less", "xml", "yaml", "yml",
+  "py", "rs", "go", "java", "c", "cpp", "h", "hpp",
+  "sh", "bash", "zsh", "bat", "ps1",
+  "toml", "ini", "cfg", "conf", "log",
+  "vue", "svelte", "astro",
+]);
+
+const MAX_RESULTS = 50;
+const MAX_FILE_SIZE = 1024 * 1024;
+const CONCURRENCY = 12;
+
+// ── File list cache ──
+interface FileEntry { path: string; name: string; }
+const fileCache = new Map<string, FileEntry[]>();
+
+async function getFileList(dirPath: string): Promise<FileEntry[]> {
+  const cached = fileCache.get(dirPath);
+  if (cached) return cached;
+  const files: FileEntry[] = [];
+  async function walk(dir: string) {
+    let entries;
+    try { entries = await readDir(dir); } catch { return; }
+    const tasks: Promise<void>[] = [];
+    for (const entry of entries) {
+      if (entry.name.startsWith(".")) continue;
+      const full = joinPath(dir, entry.name);
+      if (entry.isDirectory) {
+        tasks.push(walk(full));
+      } else if (entry.isFile) {
+        const ext = entry.name.split(".").pop()?.toLowerCase() || "";
+        if (SEARCHABLE_EXTS.has(ext)) {
+          files.push({ path: full, name: entry.name });
+        }
+      }
+    }
+    await Promise.all(tasks);
+  }
+  await walk(dirPath);
+  fileCache.set(dirPath, files);
+  return files;
+}
+
+function invalidateFileCache(dirPath: string) {
+  fileCache.delete(dirPath);
+}
+
+async function searchFile(filePath: string, lowerQuery: string): Promise<SearchMatch[] | null> {
+  try {
+    const content = await readTextFile(filePath);
+    if (content.length > MAX_FILE_SIZE) return null;
+    const lines = content.split("\n");
+    const matches: SearchMatch[] = [];
+    for (let i = 0; i < lines.length; i++) {
+      if (lines[i].toLowerCase().includes(lowerQuery)) {
+        matches.push({ line: i + 1, content: lines[i].trim() });
+        if (matches.length >= 3) break;
+      }
+    }
+    return matches.length > 0 ? matches : null;
+  } catch {
+    return null;
+  }
+}
+
+async function searchVaultIncremental(
+  vaultPath: string,
+  query: string,
+  onBatch: (results: SearchResult[]) => void,
+  signal: { cancelled: boolean },
+): Promise<SearchResult[]> {
+  const lowerQuery = query.toLowerCase();
+  const files = await getFileList(vaultPath);
+  const results: SearchResult[] = [];
+
+  for (let i = 0; i < files.length; i += CONCURRENCY) {
+    if (signal.cancelled || results.length >= MAX_RESULTS) break;
+    const batch = files.slice(i, i + CONCURRENCY);
+    const batchMatches = await Promise.all(
+      batch.map((f) => searchFile(f.path, lowerQuery)),
+    );
+    let changed = false;
+    for (let j = 0; j < batch.length; j++) {
+      const matches = batchMatches[j];
+      if (matches) {
+        results.push({ path: batch[j].path, fileName: batch[j].name, matches });
+        changed = true;
+      }
+    }
+    if (changed) onBatch([...results]);
+  }
+
+  return results;
 }
 
 // ── ContextMenu Component ────────────────────────────────────────────
@@ -229,6 +339,133 @@ function showDevAlert() {
   alert("此功能开发中");
 }
 
+function showToast(message: string) {
+  const existing = document.querySelector(".sidebar-toast");
+  if (existing) existing.remove();
+  const toast = document.createElement("div");
+  toast.className = "sidebar-toast";
+  toast.textContent = message;
+  document.body.appendChild(toast);
+  requestAnimationFrame(() => toast.classList.add("visible"));
+  setTimeout(() => {
+    toast.classList.remove("visible");
+    setTimeout(() => toast.remove(), 200);
+  }, 2000);
+}
+
+// ── SearchBox Component ─────────────────────────────────────────────
+
+function SearchBox({
+  vaultPath,
+  onSelectFile,
+  onClose,
+  renderContent,
+}: {
+  vaultPath: string;
+  onSelectFile: (path: string, line?: number, query?: string) => void;
+  onClose: () => void;
+  renderContent?: React.ReactNode;
+}) {
+  const [query, setQuery] = useState("");
+  const [results, setResults] = useState<SearchResult[]>([]);
+  const [searching, setSearching] = useState(false);
+  const inputRef = useRef<HTMLInputElement>(null);
+  const signalRef = useRef({ cancelled: false });
+
+  useEffect(() => {
+    inputRef.current?.focus();
+  }, []);
+
+  useEffect(() => {
+    if (!query.trim()) {
+      setResults([]);
+      return;
+    }
+    signalRef.current.cancelled = true;
+    const signal = { cancelled: false };
+    signalRef.current = signal;
+    const timer = setTimeout(async () => {
+      setSearching(true);
+      setResults([]);
+      await searchVaultIncremental(vaultPath, query.trim(), (batch) => {
+        if (!signal.cancelled) setResults(batch);
+      }, signal);
+      if (!signal.cancelled) setSearching(false);
+    }, 150);
+    return () => { clearTimeout(timer); signalRef.current.cancelled = true; };
+  }, [query, vaultPath]);
+
+  const highlight = (text: string, q: string) => {
+    if (!q) return text;
+    const idx = text.toLowerCase().indexOf(q.toLowerCase());
+    if (idx < 0) return text;
+    return (
+      <>
+        {text.slice(0, idx)}
+        <mark>{text.slice(idx, idx + q.length)}</mark>
+        {text.slice(idx + q.length)}
+      </>
+    );
+  };
+
+  return (
+    <div className="sidebar-search-tab">
+      <div className="sidebar-search-bar">
+        <input
+          ref={inputRef}
+          className="sidebar-search-input"
+          type="text"
+          placeholder="搜索文件内容..."
+          value={query}
+          onChange={(e) => setQuery(e.target.value)}
+          onKeyDown={(e) => {
+            if (e.key === "Escape") {
+              setQuery("");
+              onClose();
+            }
+          }}
+        />
+        {query && (
+          <button
+            className="sidebar-search-clear"
+            onClick={() => setQuery("")}
+            title="清除"
+          >
+            ✕
+          </button>
+        )}
+      </div>
+      {query.trim() ? (
+        <div className="sidebar-search-results">
+          {searching && <div className="sidebar-search-status">搜索中...</div>}
+          {!searching && results.length === 0 && (
+            <div className="sidebar-search-status">未找到匹配结果</div>
+          )}
+          {!searching && results.map((r) => (
+            <div key={r.path} className="sidebar-search-result">
+              <div className="sidebar-search-result-name">📄 {r.fileName}</div>
+              {r.matches.map((m, i) => (
+                <div
+                  key={i}
+                  className="sidebar-search-result-line"
+                  onClick={() => onSelectFile(r.path, m.line, query.trim())}
+                >
+                  <span className="sidebar-search-result-ln">{m.line}</span>
+                  <span className="sidebar-search-result-text">
+                    {highlight(m.content, query.trim())}
+                  </span>
+                </div>
+              ))}
+            </div>
+          ))}
+        </div>
+      ) : (
+        renderContent
+      )}
+    </div>
+  );
+}
+
 // ── TreeNode Component ───────────────────────────────────────────────
 
 function TreeNodeComp({
@@ -244,6 +481,7 @@ function TreeNodeComp({
   editingPath,
   onStartEdit,
   onFinishEdit,
+  onNewWindow,
 }: {
   node: TreeNode;
   depth: number;
@@ -257,6 +495,7 @@ function TreeNodeComp({
   editingPath: string | null;
   onStartEdit: (path: string) => void;
   onFinishEdit: (path: string, newName: string) => void;
+  onNewWindow: (filePath: string) => void;
 }) {
   const [ctxMenu, setCtxMenu] = useState<{ x: number; y: number } | null>(null);
   const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false);
@@ -322,18 +561,22 @@ function TreeNodeComp({
   }, [node, onReload]);
 
   const handleCopyPath = useCallback(() => {
-    navigator.clipboard.writeText(node.path).catch(() => { prompt("文件路径:", node.path); });
+    navigator.clipboard.writeText(node.path).then(() => {
+      showToast("路径已复制到剪贴板");
+    }).catch(() => { prompt("文件路径:", node.path); });
   }, [node]);
 
-  const handleOpenLocation = useCallback(() => {
-    navigator.clipboard.writeText(node.path).then(() => {
-      alert(`文件路径已复制到剪贴板:\n${node.path}`);
-    }).catch(() => { alert(`文件路径:\n${node.path}`); });
+  const handleOpenLocation = useCallback(async () => {
+    try {
+      await invoke("open_file_location", { filePath: node.path });
+    } catch (err) {
+      console.error("打开文件位置失败:", err);
+    }
   }, [node]);
 
   const actions: FileActions = {
     onOpen: handleToggle,
-    onNewWindow: showDevAlert,
+    onNewWindow: () => onNewWindow(node.path),
     onNewFile: handleNewFile,
     onNewFolder: handleNewFolder,
     onSearch: showDevAlert,
@@ -420,6 +663,7 @@ function TreeNodeComp({
               editingPath={editingPath}
               onStartEdit={onStartEdit}
               onFinishEdit={onFinishEdit}
+              onNewWindow={onNewWindow}
             />
           ))}
         </div>
@@ -455,16 +699,22 @@ function FileTree({
   activePath,
   onSelect,
   refreshKey,
+  onNewWindow,
+  onScrollToTop,
 }: {
   rootPath: string;
   activePath: string | null;
   onSelect: (path: string) => void;
   refreshKey: number;
+  onNewWindow: (filePath: string) => void;
+  onScrollToTop?: () => void;
 }) {
   const [rootNodes, setRootNodes] = useState<TreeNode[]>([]);
   const [, forceUpdate] = useState(0);
   const [ctxMenu, setCtxMenu] = useState<{ x: number; y: number } | null>(null);
   const [editingPath, setEditingPath] = useState<string | null>(null);
+  const treeRef = useRef<HTMLDivElement>(null);
+  const lastScrollTopRef = useRef(0);
 
   const handleStartEdit = useCallback((path: string) => {
     setEditingPath(path);
@@ -511,6 +761,7 @@ function FileTree({
   }, []);
 
   const handleReload = useCallback(async (expandPath?: string) => {
+    invalidateFileCache(rootPath);
     const paths = collectExpanded(rootNodesRef.current);
     if (expandPath) paths.add(expandPath);
     const nodes = await loadDirectory(rootPath);
@@ -617,13 +868,16 @@ function FileTree({
   }, [rootPath, handleReload, handleStartEdit]);
 
   const handleCopyRootPath = useCallback(() => {
-    navigator.clipboard.writeText(rootPath).catch(() => { prompt("文件夹路径:", rootPath); });
-  }, [rootPath]);
-
-  const handleOpenRootLocation = useCallback(() => {
     navigator.clipboard.writeText(rootPath).then(() => {
-      alert(`文件夹路径已复制到剪贴板:\n${rootPath}`);
-    }).catch(() => { alert(`文件夹路径:\n${rootPath}`); });
+      showToast("路径已复制到剪贴板");
+    }).catch(() => { prompt("文件夹路径:", rootPath); });
+  }, [rootPath]);
+  const handleOpenRootLocation = useCallback(async () => {
+    try {
+      await invoke("open_file_location", { filePath: rootPath });
+    } catch (err) {
+      console.error("打开文件夹位置失败:", err);
+    }
   }, [rootPath]);
 
   const blankActions: FileActions = {
@@ -648,8 +902,18 @@ function FileTree({
 
   useEffect(() => { loadRoot(); }, [loadRoot, refreshKey]);
 
+  const handleScroll = useCallback(() => {
+    const el = treeRef.current;
+    if (!el || !onScrollToTop) return;
+    const st = el.scrollTop;
+    if (st < lastScrollTopRef.current && st < 5) {
+      onScrollToTop();
+    }
+    lastScrollTopRef.current = st;
+  }, [onScrollToTop]);
+
   return (
-    <div className="sidebar-tree" onContextMenu={handleBlankContextMenu}>
+    <div ref={treeRef} className="sidebar-tree" onContextMenu={handleBlankContextMenu} onScroll={handleScroll}>
       {rootNodes.length > 0 &&
         rootNodes.map((node) => (
           <TreeNodeComp
@@ -666,6 +930,7 @@ function FileTree({
             editingPath={editingPath}
             onStartEdit={handleStartEdit}
             onFinishEdit={handleFinishEdit}
+            onNewWindow={onNewWindow}
           />
         ))}
 
@@ -887,6 +1152,7 @@ export default function Sidebar({
   onNewVault,
   onSwitchVault,
   onRemoveVault,
+  onNewWindow,
   collapsed,
   refreshKey,
   width,
@@ -895,11 +1161,36 @@ export default function Sidebar({
   const activeVault = activeVaultIndex >= 0 ? vaults[activeVaultIndex] : null;
   const [isResizing, setIsResizing] = useState(false);
   const [activeTab, setActiveTab] = useState<"files" | "outline">("files");
+  const [searchOpen, setSearchOpen] = useState(false);
 
   const handleSelectFile = useCallback(
-    (path: string) => { onSelectFile(path); },
+    (path: string, line?: number, query?: string) => { onSelectFile(path, line, query); },
     [onSelectFile],
   );
+
+  const closeSearch = useCallback(() => {
+    setSearchOpen(false);
+    setActiveTab("files");
+  }, []);
+
+  // Ctrl+Shift+F to toggle search
+  useEffect(() => {
+    const handler = (e: KeyboardEvent) => {
+      if ((e.ctrlKey || e.metaKey) && e.shiftKey && e.key === "F") {
+        e.preventDefault();
+        setSearchOpen((prev) => {
+          if (prev) {
+            setActiveTab("files");
+            return false;
+          }
+          setActiveTab("outline");
+          return true;
+        });
+      }
+    };
+    window.addEventListener("keydown", handler);
+    return () => window.removeEventListener("keydown", handler);
+  }, []);
 
   const handleNewVault = useCallback(async () => {
     try {
@@ -955,7 +1246,7 @@ export default function Sidebar({
       <div className="sidebar-header">
         <button
           className={`sidebar-tab${activeTab === "files" ? " active" : ""}`}
-          onClick={() => setActiveTab("files")}
+          onClick={() => { setActiveTab("files"); if (searchOpen) closeSearch(); }}
         >
           文件
         </button>
@@ -963,7 +1254,7 @@ export default function Sidebar({
           className={`sidebar-tab${activeTab === "outline" ? " active" : ""}`}
           onClick={() => setActiveTab("outline")}
         >
-          大纲
+          {searchOpen ? "搜索" : "大纲"}
         </button>
       </div>
 
@@ -974,6 +1265,8 @@ export default function Sidebar({
             activePath={currentFilePath}
             onSelect={handleSelectFile}
             refreshKey={refreshKey}
+            onNewWindow={onNewWindow}
+            onScrollToTop={() => { setSearchOpen(true); setActiveTab("outline"); }}
           />
         ) : (
           <div className="sidebar-tree">
@@ -983,8 +1276,32 @@ export default function Sidebar({
         )
       )}
 
-      {activeTab === "outline" && (
+      {activeTab === "outline" && !searchOpen && (
         <Outline content={content} onSelectHeading={onSelectHeading} />
+      )}
+
+      {activeTab === "outline" && searchOpen && (
+        activeVault ? (
+          <SearchBox
+            vaultPath={activeVault.path}
+            onSelectFile={handleSelectFile}
+            onClose={closeSearch}
+            renderContent={
+              <FileTree
+                rootPath={activeVault.path}
+                activePath={currentFilePath}
+                onSelect={handleSelectFile}
+                refreshKey={refreshKey}
+                onNewWindow={onNewWindow}
+              />
+            }
+          />
+        ) : (
+          <div className="sidebar-tree">
+            <div className="tree-empty">尚未打开仓库</div>
+            <div className="tree-empty-hint">请先打开一个仓库</div>
+          </div>
+        )
       )}
 
       <VaultSwitcher

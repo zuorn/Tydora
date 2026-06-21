@@ -18,6 +18,7 @@ interface ShortcutItem {
   id: string;
   label: string;
   keys: string[];
+  group?: string;
 }
 
 // ── Default values ──────────────────────────────────────────────────
@@ -29,43 +30,66 @@ const DEFAULT_GENERAL: GeneralSettings = {
 };
 
 const DEFAULT_SHORTCUTS: ShortcutItem[] = [
-  { id: "save", label: "保存文件", keys: ["Ctrl", "S"] },
-  { id: "new", label: "新建文件", keys: ["Ctrl", "N"] },
-  { id: "open", label: "打开文件", keys: ["Ctrl", "O"] },
-  { id: "close", label: "关闭标签", keys: ["Ctrl", "W"] },
-  { id: "sidebar", label: "切换侧栏", keys: ["Ctrl", "B"] },
-  { id: "fullscreen", label: "全屏编辑", keys: ["F11"] },
-  { id: "find", label: "查找", keys: ["Ctrl", "F"] },
-  { id: "replace", label: "替换", keys: ["Ctrl", "H"] },
-  { id: "undo", label: "撤销", keys: ["Ctrl", "Z"] },
-  { id: "redo", label: "重做", keys: ["Ctrl", "Y"] },
-  { id: "cut", label: "剪切", keys: ["Ctrl", "X"] },
-  { id: "copy", label: "复制", keys: ["Ctrl", "C"] },
-  { id: "paste", label: "粘贴", keys: ["Ctrl", "V"] },
-  { id: "delete", label: "删除", keys: ["Delete"] },
-  { id: "bold", label: "加粗", keys: ["Ctrl", "B"] },
-  { id: "italic", label: "斜体", keys: ["Ctrl", "I"] },
-  { id: "inline-code", label: "行内代码", keys: ["Ctrl", "E"] },
-  { id: "link", label: "插入链接", keys: ["Ctrl", "K"] },
-  { id: "quote", label: "引用", keys: ["Ctrl", "Q"] },
-  { id: "ordered-list", label: "有序列表", keys: ["Ctrl", "Shift", "O"] },
-  { id: "unordered-list", label: "无序列表", keys: ["Ctrl", "Shift", "U"] },
-  { id: "check-list", label: "任务列表", keys: ["Ctrl", "Shift", "C"] },
-  { id: "heading-1", label: "一级标题", keys: ["Ctrl", "1"] },
-  { id: "heading-2", label: "二级标题", keys: ["Ctrl", "2"] },
-  { id: "heading-3", label: "三级标题", keys: ["Ctrl", "3"] },
-  { id: "heading-4", label: "四级标题", keys: ["Ctrl", "4"] },
-  { id: "heading-5", label: "五级标题", keys: ["Ctrl", "5"] },
-  { id: "heading-6", label: "六级标题", keys: ["Ctrl", "6"] },
-  { id: "paragraph", label: "段落", keys: ["Ctrl", "0"] },
-  { id: "image", label: "插入图像", keys: ["Ctrl", "Shift", "I"] },
-  { id: "footnote", label: "插入脚注", keys: ["Ctrl", "Shift", "F"] },
-  { id: "link-ref", label: "插入链接引用", keys: ["Ctrl", "Shift", "R"] },
-  { id: "hr", label: "插入水平分割线", keys: ["Ctrl", "-"] },
-  { id: "table", label: "插入表格", keys: ["Ctrl", "Shift", "T"] },
-  { id: "code-block", label: "插入代码块", keys: ["Ctrl", "`"] },
-  { id: "math", label: "插入公式块", keys: ["Ctrl", "Shift", "M"] },
-  { id: "toc", label: "插入内容目录", keys: ["Ctrl", "Shift", "L"] },
+  // Vditor 编辑器快捷键
+  { id: "bold", label: "加粗", keys: ["Ctrl", "B"], group: "格式" },
+  { id: "italic", label: "斜体", keys: ["Ctrl", "I"], group: "格式" },
+  { id: "strike", label: "删除线", keys: ["Ctrl", "D"], group: "格式" },
+  { id: "inline-code", label: "行内代码", keys: ["Ctrl", "G"], group: "格式" },
+  { id: "code-block", label: "代码块", keys: ["Ctrl", "U"], group: "格式" },
+  { id: "link", label: "超链接", keys: ["Ctrl", "K"], group: "格式" },
+  { id: "quote", label: "引用", keys: ["Ctrl", ";"], group: "格式" },
+  { id: "hr", label: "水平分割线", keys: ["Ctrl", "Shift", "H"], group: "格式" },
+
+  // 列表
+  { id: "unordered-list", label: "无序列表", keys: ["Ctrl", "L"], group: "列表" },
+  { id: "ordered-list", label: "有序列表", keys: ["Ctrl", "O"], group: "列表" },
+  { id: "check-list", label: "任务列表", keys: ["Ctrl", "J"], group: "列表" },
+  { id: "indent", label: "增加缩进", keys: ["Ctrl", "Shift", "O"], group: "列表" },
+  { id: "outdent", label: "减少缩进", keys: ["Ctrl", "Shift", "I"], group: "列表" },
+  { id: "task-toggle", label: "切换任务状态", keys: ["Ctrl", "Shift", "J"], group: "列表" },
+
+  // 标题
+  { id: "heading-1", label: "一级标题", keys: ["Ctrl", "Alt", "1"], group: "标题" },
+  { id: "heading-2", label: "二级标题", keys: ["Ctrl", "Alt", "2"], group: "标题" },
+  { id: "heading-3", label: "三级标题", keys: ["Ctrl", "Alt", "3"], group: "标题" },
+  { id: "heading-4", label: "四级标题", keys: ["Ctrl", "Alt", "4"], group: "标题" },
+  { id: "heading-5", label: "五级标题", keys: ["Ctrl", "Alt", "5"], group: "标题" },
+  { id: "heading-6", label: "六级标题", keys: ["Ctrl", "Alt", "6"], group: "标题" },
+
+  // 插入
+  { id: "table", label: "表格", keys: ["Ctrl", "M"], group: "插入" },
+  { id: "insert-before", label: "在上方插入", keys: ["Ctrl", "Shift", "B"], group: "插入" },
+  { id: "insert-after", label: "在下方插入", keys: ["Ctrl", "Shift", "E"], group: "插入" },
+
+  // 表格操作
+  { id: "table-row-above", label: "表格：上方插入行", keys: ["Ctrl", "Shift", "F"], group: "表格" },
+  { id: "table-row-below", label: "表格：下方插入行", keys: ["Ctrl", "="], group: "表格" },
+  { id: "table-col-left", label: "表格：左侧插入列", keys: ["Ctrl", "Shift", "G"], group: "表格" },
+  { id: "table-col-right", label: "表格：右侧插入列", keys: ["Ctrl", "Shift", "="], group: "表格" },
+  { id: "table-row-delete", label: "表格：删除行", keys: ["Ctrl", "-"], group: "表格" },
+  { id: "table-col-delete", label: "表格：删除列", keys: ["Ctrl", "Shift", "-"], group: "表格" },
+  { id: "table-align-left", label: "表格：左对齐", keys: ["Ctrl", "Shift", "L"], group: "表格" },
+  { id: "table-align-center", label: "表格：居中对齐", keys: ["Ctrl", "Shift", "C"], group: "表格" },
+  { id: "table-align-right", label: "表格：右对齐", keys: ["Ctrl", "Shift", "R"], group: "表格" },
+
+  // 编辑
+  { id: "undo", label: "撤销", keys: ["Ctrl", "Z"], group: "编辑" },
+  { id: "redo", label: "重做", keys: ["Ctrl", "Y"], group: "编辑" },
+  { id: "select-all", label: "全选（代码块内）", keys: ["Ctrl", "A"], group: "编辑" },
+
+  // 视图
+  { id: "fullscreen", label: "全屏", keys: ["Ctrl", "'"], group: "视图" },
+  { id: "split-view", label: "分屏预览", keys: ["Ctrl", "P"], group: "视图" },
+
+  // 编辑模式
+  { id: "mode-wysiwyg", label: "切换到所见即所得模式", keys: ["Ctrl", "Alt", "7"], group: "模式" },
+  { id: "mode-ir", label: "切换到即时渲染模式", keys: ["Ctrl", "Alt", "8"], group: "模式" },
+  { id: "mode-sv", label: "切换到分屏预览模式", keys: ["Ctrl", "Alt", "9"], group: "模式" },
+
+  // 系统
+  { id: "escape", label: "关闭提示", keys: ["Escape"], group: "系统" },
+  { id: "quick-open", label: "快速打开文件", keys: ["Ctrl", "O"], group: "系统" },
+  { id: "command-palette", label: "命令面板", keys: ["Ctrl", "P"], group: "系统" },
 ];
 
 // ── Storage keys ────────────────────────────────────────────────────
@@ -186,6 +210,14 @@ function ShortcutsSettingsContent() {
     s.label.toLowerCase().includes(search.toLowerCase())
   );
 
+  // 按分组整理快捷键
+  const groupedShortcuts = filteredShortcuts.reduce<Record<string, ShortcutItem[]>>((acc, shortcut) => {
+    const group = shortcut.group || "其他";
+    if (!acc[group]) acc[group] = [];
+    acc[group].push(shortcut);
+    return acc;
+  }, {});
+
   const handleKeyDown = (e: KeyboardEvent) => {
     if (editingId === null) return;
     e.preventDefault();
@@ -279,52 +311,57 @@ function ShortcutsSettingsContent() {
         </button>
       </div>
       <div className="settings-shortcuts-list">
-        {filteredShortcuts.map((shortcut) => (
-          <div key={shortcut.id} className="settings-shortcut-item">
-            <span className="settings-shortcut-label">{shortcut.label}</span>
-            <div className="settings-shortcut-actions">
-              <div
-                className={`settings-shortcut-keys${editingId === shortcut.id ? " editing" : ""}`}
-                onClick={() => startEditing(shortcut.id)}
-              >
-                {editingId === shortcut.id ? (
-                  <>
-                    {editingKeys.length > 0 ? (
-                      editingKeys.map((key, j) => (
+        {Object.entries(groupedShortcuts).map(([group, items]) => (
+          <div key={group} className="settings-shortcut-group">
+            <h4 className="settings-shortcut-group-title">{group}</h4>
+            {items.map((shortcut) => (
+              <div key={shortcut.id} className="settings-shortcut-item">
+                <span className="settings-shortcut-label">{shortcut.label}</span>
+                <div className="settings-shortcut-actions">
+                  <div
+                    className={`settings-shortcut-keys${editingId === shortcut.id ? " editing" : ""}`}
+                    onClick={() => startEditing(shortcut.id)}
+                  >
+                    {editingId === shortcut.id ? (
+                      <>
+                        {editingKeys.length > 0 ? (
+                          editingKeys.map((key, j) => (
+                            <span key={j}>
+                              <kbd className="settings-kbd">{key}</kbd>
+                              {j < editingKeys.length - 1 && <span className="settings-kbd-sep">+</span>}
+                            </span>
+                          ))
+                        ) : (
+                          <span className="settings-shortcut-hint">按下快捷键...</span>
+                        )}
+                        <button className="settings-shortcut-save" onClick={(e) => { e.stopPropagation(); saveShortcut(); }}>
+                          ✓
+                        </button>
+                        <button className="settings-shortcut-cancel" onClick={(e) => { e.stopPropagation(); setEditingId(null); setEditingKeys([]); }}>
+                          ✕
+                        </button>
+                      </>
+                    ) : (
+                      shortcut.keys.map((key, j) => (
                         <span key={j}>
                           <kbd className="settings-kbd">{key}</kbd>
-                          {j < editingKeys.length - 1 && <span className="settings-kbd-sep">+</span>}
+                          {j < shortcut.keys.length - 1 && <span className="settings-kbd-sep">+</span>}
                         </span>
                       ))
-                    ) : (
-                      <span className="settings-shortcut-hint">按下快捷键...</span>
                     )}
-                    <button className="settings-shortcut-save" onClick={(e) => { e.stopPropagation(); saveShortcut(); }}>
-                      ✓
+                  </div>
+                  {editingId !== shortcut.id && (
+                    <button
+                      className="settings-shortcut-reset"
+                      onClick={() => resetShortcut(shortcut.id)}
+                      title="重置为默认"
+                    >
+                      ↺
                     </button>
-                    <button className="settings-shortcut-cancel" onClick={(e) => { e.stopPropagation(); setEditingId(null); setEditingKeys([]); }}>
-                      ✕
-                    </button>
-                  </>
-                ) : (
-                  shortcut.keys.map((key, j) => (
-                    <span key={j}>
-                      <kbd className="settings-kbd">{key}</kbd>
-                      {j < shortcut.keys.length - 1 && <span className="settings-kbd-sep">+</span>}
-                    </span>
-                  ))
-                )}
+                  )}
+                </div>
               </div>
-              {editingId !== shortcut.id && (
-                <button
-                  className="settings-shortcut-reset"
-                  onClick={() => resetShortcut(shortcut.id)}
-                  title="重置为默认"
-                >
-                  ↺
-                </button>
-              )}
-            </div>
+            ))}
           </div>
         ))}
       </div>

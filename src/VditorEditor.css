@@ -287,3 +287,11 @@
   opacity: 0.2;
   margin: 4px 8px;
 }
+
+/* ── Search Highlight ── */
+mark.search-highlight {
+  background: rgba(255, 200, 0, 0.4);
+  color: inherit;
+  border-radius: 2px;
+  padding: 0 1px;
+}

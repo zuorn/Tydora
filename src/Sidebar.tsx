@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback, useRef, useLayoutEffect } from "react";
 import { readDir, writeTextFile, mkdir, remove, rename } from "@tauri-apps/plugin-fs";
 import { open } from "@tauri-apps/plugin-dialog";
-import { useTheme } from "./themes";
+import { invoke } from "@tauri-apps/api/core";
 import { ConfirmDialog } from "./ConfirmDialog";
 import "./Sidebar.css";
 
@@ -753,13 +753,10 @@ function VaultSwitcher({
   onRemove: (index: number) => void;
 }) {
   const [menuOpen, setMenuOpen] = useState(false);
-  const [settingsOpen, setSettingsOpen] = useState(false);
   const [removeConfirmOpen, setRemoveConfirmOpen] = useState(false);
   const [removingVaultIndex, setRemovingVaultIndex] = useState<number>(-1);
   const menuRef = useRef<HTMLDivElement>(null);
-  const settingsRef = useRef<HTMLDivElement>(null);
   const activeVault = activeIndex >= 0 ? vaults[activeIndex] : null;
-  const { theme, setTheme } = useTheme();
 
   // Close vault menu on outside click
   useEffect(() => {
@@ -773,17 +770,13 @@ function VaultSwitcher({
     return () => document.removeEventListener("click", handler);
   }, [menuOpen]);
 
-  // Close settings popup on outside click
-  useEffect(() => {
-    if (!settingsOpen) return;
-    const handler = (e: MouseEvent) => {
-      if (settingsRef.current && !settingsRef.current.contains(e.target as Node)) {
-        setSettingsOpen(false);
-      }
-    };
-    document.addEventListener("click", handler);
-    return () => document.removeEventListener("click", handler);
-  }, [settingsOpen]);
+  const handleOpenSettings = useCallback(async () => {
+    try {
+      await invoke("open_settings_window");
+    } catch (err) {
+      console.error("打开设置窗口失败:", err);
+    }
+  }, []);
 
   if (vaults.length === 0) {
     return (
@@ -808,7 +801,6 @@ function VaultSwitcher({
           onClick={(e) => {
             e.stopPropagation();
             setMenuOpen((prev) => !prev);
-            setSettingsOpen(false);
           }}
         >
           {activeVault ? activeVault.name : "未选择"}
@@ -818,8 +810,8 @@ function VaultSwitcher({
           title="设置"
           onClick={(e) => {
             e.stopPropagation();
-            setSettingsOpen((prev) => !prev);
             setMenuOpen(false);
+            handleOpenSettings();
           }}
         >
           ⚙
@@ -864,27 +856,6 @@ function VaultSwitcher({
           >
             <span className="vault-menu-icon">🗄️</span>
             <span>打开新仓库</span>
-          </div>
-        </div>
-      )}
-
-      {/* ── 设置弹出面板 ── */}
-      {settingsOpen && (
-        <div ref={settingsRef} className="vault-menu settings-popup">
-          <div className="settings-popup-header">设置</div>
-          <div className="vault-menu-divider" />
-          <div className="settings-popup-item">
-            <span className="settings-popup-label">主题</span>
-            <select
-              className="settings-popup-select"
-              value={theme}
-              onChange={(e) => setTheme(e.target.value as any)}
-            >
-              <option value="catppuccin-mocha">Catppuccin Mocha</option>
-              <option value="white">白色</option>
-              <option value="mint">Mint</option>
-              <option value="mint-dark">Mint Dark</option>
-            </select>
           </div>
         </div>
       )}

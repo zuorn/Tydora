@@ -1,12 +1,17 @@
 import { useState, useCallback, useRef, useEffect, Component } from "react";
 import { getCurrentWindow, availableMonitors, type Monitor } from "@tauri-apps/api/window";
 import { LogicalSize, LogicalPosition } from "@tauri-apps/api/dpi";
+import { readTextFile, writeTextFile } from "@tauri-apps/plugin-fs";
+import { save } from "@tauri-apps/plugin-dialog";
 import VditorEditor, { VditorEditorHandle, MODE_LABELS, EditorMode } from "./VditorEditor";
 import Sidebar, { VaultInfo } from "./Sidebar";
+import FilePreview from "./FilePreview";
+import QuickOpen from "./QuickOpen";
 import { useTheme } from "./themes";
 import { ConfirmDialog } from "./ConfirmDialog";
 import "./App.css";
 import "./vditor-theme.css";
+import "./FilePreview.css";
 
 // 错误边界：防止编辑器错误导致整个页面空白
 class EditorErrorBoundary extends Component<
@@ -42,6 +47,24 @@ const VAULTS_KEY = "zmd-vaults";
 const ACTIVE_VAULT_KEY = "zmd-active-vault";
 const SIDEBAR_WIDTH_KEY = "zmd-sidebar-width";
 const WINDOW_STATE_KEY = "zmd-window-state";
+const RECENT_FILES_KEY = "zmd-recent-files";
+
+// 最近访问文件的最大数量
+const MAX_RECENT_FILES = 20;
+
+// 判断文件是否为可编辑的文本文件
+function isEditableFile(fileName: string): boolean {
+  const ext = fileName.split(".").pop()?.toLowerCase() || "";
+  const editableExts = [
+    "md", "markdown", "txt", "json", "js", "ts", "tsx", "jsx",
+    "html", "css", "scss", "less", "xml", "yaml", "yml",
+    "py", "rs", "go", "java", "c", "cpp", "h", "hpp",
+    "sh", "bash", "zsh", "bat", "ps1",
+    "toml", "ini", "cfg", "conf", "log",
+    "vue", "svelte", "astro",
+  ];
+  return editableExts.includes(ext);
+}
 
 function App() {
   const { theme } = useTheme();
@@ -49,7 +72,7 @@ function App() {
   const [content, setContent] = useState(initialContent);
   const [fileName, setFileName] = useState<string | null>(null);
   const [modified, setModified] = useState(false);
-  const [viewMode, setViewMode] = useState<EditorMode>("wysiwyg");
+  const [viewMode, setViewMode] = useState<EditorMode>("ir");
 
   // Sidebar / Vault state
   const [vaults, setVaults] = useState<VaultInfo[]>(() => {
@@ -80,6 +103,26 @@ function App() {
   const [treeRefreshKey] = useState(0);
   const [saveConfirmOpen, setSaveConfirmOpen] = useState(false);
   const [pendingFilePath, setPendingFilePath] = useState<string | null>(null);
+  // 预览模式状态
+  const [previewFilePath, setPreviewFilePath] = useState<string | null>(null);
+
+  // 快速打开文件弹窗状态
+  const [quickOpenOpen, setQuickOpenOpen] = useState(false);
+
+  // 最近访问的文件列表（按仓库路径分组）
+  const [recentFiles, setRecentFiles] = useState<Record<string, string[]>>(() => {
+    try {
+      const saved = localStorage.getItem(RECENT_FILES_KEY);
+      return saved ? JSON.parse(saved) : {};
+    } catch {
+      return {};
+    }
+  });
+
+  // Persist recent files
+  useEffect(() => {
+    localStorage.setItem(RECENT_FILES_KEY, JSON.stringify(recentFiles));
+  }, [recentFiles]);
 
   // Persist vaults
   useEffect(() => {
@@ -204,10 +247,8 @@ function App() {
 
   const handleSave = useCallback(async () => {
     try {
-      const { writeTextFile } = await import("@tauri-apps/plugin-fs");
       let path = fileNameRef.current;
       if (!path) {
-        const { save } = await import("@tauri-apps/plugin-dialog");
         const result = await save({
           filters: [{ name: "Markdown", extensions: ["md", "markdown"] }],
           defaultPath: "untitled.md",
@@ -236,6 +277,20 @@ function App() {
     return () => window.removeEventListener("keydown", handler);
   }, [handleSave]);
 
+  // Ctrl+O 快速打开文件
+  useEffect(() => {
+    const handler = (e: KeyboardEvent) => {
+      if ((e.ctrlKey || e.metaKey) && e.key === "o") {
+        e.preventDefault();
+        if (activeVaultIndex >= 0) {
+          setQuickOpenOpen(true);
+        }
+      }
+    };
+    window.addEventListener("keydown", handler);
+    return () => window.removeEventListener("keydown", handler);
+  }, [activeVaultIndex]);
+
   // ── Vault callbacks ──
 
   const handleNewVault = useCallback((path: string, name: string) => {
@@ -263,32 +318,55 @@ function App() {
   // ── File tree callbacks ──
 
   const handleSelectFile = useCallback((path: string) => {
+    // 判断文件类型
+    const fileName = path.split(/[/\\]/).pop() || path;
+    if (!isEditableFile(fileName)) {
+      // 非文本文件，直接预览，同时更新 fileName 以显示选中状态
+      setFileName(path);
+      setPreviewFilePath(path);
+      return;
+    }
+
+    // 文本文件，检查是否有未保存的修改
     if (modified && fileName) {
       setPendingFilePath(path);
       setSaveConfirmOpen(true);
     } else {
       openFile(path);
     }
-  }, [modified, fileName]);
+  }, [modified]);
 
   const openFile = useCallback(async (path: string) => {
     try {
-      const { readTextFile } = await import("@tauri-apps/plugin-fs");
       const text = await readTextFile(path);
       savedContentRef.current = text;
       setContent(text);
       setFileName(path);
       setModified(false);
+      setPreviewFilePath(null); // 关闭预览模式
+
+      // 更新最近访问文件列表
+      const activeVault = activeVaultIndex >= 0 ? vaults[activeVaultIndex] : null;
+      if (activeVault) {
+        setRecentFiles((prev) => {
+          const vaultPath = activeVault.path;
+          const existing = prev[vaultPath] || [];
+          // 移除已存在的该文件（避免重复）
+          const filtered = existing.filter((p) => p !== path);
+          // 将新文件添加到最前面
+          const updated = [path, ...filtered].slice(0, MAX_RECENT_FILES);
+          return { ...prev, [vaultPath]: updated };
+        });
+      }
     } catch (e) {
       console.error("打开文件失败:", e);
     }
-  }, []);
+  }, [activeVaultIndex, vaults]);
 
   const handleSaveConfirm = useCallback(async () => {
     setSaveConfirmOpen(false);
     if (fileName && content) {
       try {
-        const { writeTextFile } = await import("@tauri-apps/plugin-fs");
         await writeTextFile(fileName, content);
       } catch (e) {
         console.error("自动保存失败:", e);
@@ -333,7 +411,11 @@ function App() {
 
   // 模式循环切换
   const cycleMode = useCallback(() => {
-    setViewMode((prev) => (prev === "wysiwyg" ? "sv" : "wysiwyg"));
+    setViewMode((prev) => {
+      if (prev === "wysiwyg") return "ir";
+      if (prev === "ir") return "sv";
+      return "wysiwyg";
+    });
   }, []);
 
   // ── 大纲点击跳转 ──
@@ -426,15 +508,22 @@ function App() {
 
           {/* 编辑器面板 */}
           <div className="editor-panel">
-            <EditorErrorBoundary>
-              <VditorEditor
-                ref={editorHandleRef}
-                value={content}
-                onChange={handleChange}
-                mode={viewMode}
-                theme={theme}
+            {previewFilePath ? (
+              <FilePreview
+                filePath={previewFilePath}
+                onBack={() => setPreviewFilePath(null)}
               />
-            </EditorErrorBoundary>
+            ) : (
+              <EditorErrorBoundary>
+                <VditorEditor
+                  ref={editorHandleRef}
+                  value={content}
+                  onChange={handleChange}
+                  mode={viewMode}
+                  theme={theme}
+                />
+              </EditorErrorBoundary>
+            )}
           </div>
 
           {/* 底部栏 */}
@@ -442,7 +531,7 @@ function App() {
             <button
               className="editor-mode-toggle"
               onClick={cycleMode}
-              title={viewMode === "wysiwyg" ? "切换到源码模式" : "切换到所见即所得模式"}
+              title={`当前: ${MODE_LABELS[viewMode]}，点击切换模式`}
             >
               {MODE_LABELS[viewMode]}
             </button>
@@ -452,6 +541,20 @@ function App() {
           </div>
         </main>
       </div>
+
+      {/* 快速打开文件弹窗 */}
+      {quickOpenOpen && (
+        <QuickOpen
+          vault={activeVaultIndex >= 0 ? vaults[activeVaultIndex] : null}
+          recentFiles={activeVaultIndex >= 0 ? recentFiles[vaults[activeVaultIndex].path] || [] : []}
+          currentFilePath={fileName}
+          onSelect={(path) => {
+            setQuickOpenOpen(false);
+            handleSelectFile(path);
+          }}
+          onClose={() => setQuickOpenOpen(false)}
+        />
+      )}
 
       <ConfirmDialog
         isOpen={saveConfirmOpen}

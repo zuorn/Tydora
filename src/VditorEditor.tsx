@@ -2,7 +2,7 @@ import { useRef, useEffect, forwardRef, useImperativeHandle, useState, useCallba
 import Vditor from "vditor";
 import "./VditorEditor.css";
 
-type EditorMode = "wysiwyg" | "sv";
+type EditorMode = "wysiwyg" | "ir" | "sv";
 
 interface VditorEditorProps {
   value: string;
@@ -19,6 +19,7 @@ export interface VditorEditorHandle {
 
 export const MODE_LABELS: Record<EditorMode, string> = {
   wysiwyg: "</>",
+  ir: "IR",
   sv: "</> 退出源码",
 };
 
@@ -30,9 +31,10 @@ interface ContextMenuPosition {
 }
 
 interface SubMenuItem {
-  name: string;
-  label: string;
+  name?: string;
+  label?: string;
   shortcut?: string;
+  divider?: boolean;
 }
 
 interface ContextMenuItem {
@@ -60,6 +62,7 @@ const HEADING_SUBMENU: SubMenuItem[] = [
   { name: "heading-4", label: "四级标题", shortcut: "Ctrl+4" },
   { name: "heading-5", label: "五级标题", shortcut: "Ctrl+5" },
   { name: "heading-6", label: "六级标题", shortcut: "Ctrl+6" },
+  { divider: true },
   { name: "paragraph", label: "段落", shortcut: "Ctrl+0" },
 ];
 
@@ -93,6 +96,7 @@ const CONTEXT_MENU_ITEMS = (hasSelection: boolean, hasClipboard: boolean): Conte
   { name: "ordered-list", label: "", icon: "#vditor-icon-ordered-list", rowType: "icons" },
   { name: "list", label: "", icon: "#vditor-icon-list", rowType: "icons" },
   { name: "check", label: "", icon: "#vditor-icon-check", rowType: "icons" },
+  { divider: true },
   { divider: true },
   { name: "paragraph", label: "段落", icon: "#vditor-icon-paragraph", submenu: HEADING_SUBMENU, rowType: "text" },
   { divider: true },
@@ -157,13 +161,16 @@ const ContextMenu = forwardRef<HTMLDivElement, ContextMenuProps>(({ items, onCli
     menu.style.top = `${top}px`;
   }, [position]);
 
-  const menuGroups: (ContextMenuItem | { type: "divider" })[][] = [];
-  let currentGroup: (ContextMenuItem | { type: "divider" })[] = [];
+  const menuGroups: (ContextMenuItem | { type: "separator" })[][] = [];
+  let currentGroup: (ContextMenuItem | { type: "separator" })[] = [];
   items.forEach((item) => {
     if (item.divider) {
       if (currentGroup.length > 0) {
         menuGroups.push(currentGroup);
         currentGroup = [];
+      } else {
+        // 连续分隔符 → 渲染为水平分割线
+        menuGroups.push([{ type: "separator" }]);
       }
     } else {
       currentGroup.push(item);
@@ -210,10 +217,30 @@ const ContextMenu = forwardRef<HTMLDivElement, ContextMenuProps>(({ items, onCli
     );
   };
 
+  const handleSubmenuEnter = (e: React.MouseEvent<HTMLDivElement>) => {
+    const wrapper = e.currentTarget;
+    const submenu = wrapper.querySelector(".context-menu-submenu") as HTMLElement;
+    if (!submenu) return;
+
+    // 临时显示以测量尺寸
+    const prevDisplay = submenu.style.display;
+    submenu.style.display = "flex";
+    submenu.style.visibility = "hidden";
+    const sr = submenu.getBoundingClientRect();
+    submenu.style.display = prevDisplay;
+    submenu.style.visibility = "";
+
+    const wr = wrapper.getBoundingClientRect();
+    const GAP = 4;
+
+    wrapper.dataset.flipX = wr.right + 8 + sr.width > window.innerWidth - GAP ? "true" : "false";
+    wrapper.dataset.flipY = wr.top + sr.height > window.innerHeight - GAP ? "true" : "false";
+  };
+
   const renderMenuItem = (menuItem: ContextMenuItem) => {
     if (menuItem.submenu) {
       return (
-        <div key={menuItem.name} className="context-menu-submenu-wrapper">
+        <div key={menuItem.name} className={`context-menu-submenu-wrapper${menuItem.rowType === "text" ? " context-menu-submenu-wrapper--text" : ""}`} onMouseEnter={handleSubmenuEnter}>
           <button
             className={`context-menu-item${menuItem.disabled ? " disabled" : ""}${menuItem.rowType === "text" ? " context-menu-item-text" : ""}`}
             onClick={(e) => menuItem.name && onClick(e, menuItem.name)}
@@ -224,19 +251,24 @@ const ContextMenu = forwardRef<HTMLDivElement, ContextMenuProps>(({ items, onCli
             ) : (
               renderIcon(menuItem.icon)
             )}
-            <span className="context-menu-arrow">›</span>
+            <span className="context-menu-arrow">▶</span>
           </button>
           <div className="context-menu-submenu">
-            {menuItem.submenu.map((sub) => (
-              <button
-                key={sub.name}
-                className="context-menu-subitem"
-                onClick={(e) => onClick(e, sub.name)}
-              >
-                <span>{sub.label}</span>
-                {sub.shortcut && <span className="context-menu-shortcut">{sub.shortcut}</span>}
-              </button>
-            ))}
+            {menuItem.submenu.map((sub, idx) => {
+              if (sub.divider) {
+                return <div key={`sub-divider-${idx}`} className="context-menu-divider" />;
+              }
+              return (
+                <button
+                  key={sub.name}
+                  className="context-menu-subitem"
+                  onClick={(e) => sub.name && onClick(e, sub.name)}
+                >
+                  <span>{sub.label}</span>
+                  {sub.shortcut && <span className="context-menu-shortcut">{sub.shortcut}</span>}
+                </button>
+              );
+            })}
           </div>
         </div>
       );
@@ -262,11 +294,22 @@ const ContextMenu = forwardRef<HTMLDivElement, ContextMenuProps>(({ items, onCli
         top: position?.y ?? 0,
       }}
     >
-      {menuGroups.map((group, groupIndex) => (
-        <div key={groupIndex} className="context-menu-row">
-          {group.map((item) => renderMenuItem(item as ContextMenuItem))}
-        </div>
-      ))}
+      {(() => {
+        let toolRowCount = 0;
+        return menuGroups.map((group, groupIndex) => {
+          if (group.length === 1 && "type" in group[0] && group[0].type === "separator") {
+            return <div key={groupIndex} className="context-menu-divider" />;
+          }
+          toolRowCount++;
+          const isFirstFour = toolRowCount <= 4;
+          const isFirstRow = toolRowCount === 1;
+          return (
+            <div key={groupIndex} className={`context-menu-row${isFirstFour ? " context-menu-row--tools" : ""}${isFirstRow ? " context-menu-row--first" : ""}`}>
+              {group.map((item) => renderMenuItem(item as ContextMenuItem))}
+            </div>
+          );
+        });
+      })()}
     </div>
   );
 });
@@ -279,6 +322,7 @@ const VditorEditor = forwardRef<VditorEditorHandle, VditorEditorProps>(
     const onChangeRef = useRef(onChange);
     const isInternalRef = useRef(false);
     const mountedRef = useRef(true);
+    const savedRangeRef = useRef<Range | null>(null); // 保存右键菜单打开时的 range
     const [status, setStatus] = useState<"loading" | "ready" | "error">("loading");
     const [errorMsg, setErrorMsg] = useState("");
     const [contextMenuPos, setContextMenuPos] = useState<ContextMenuPosition | null>(null);
@@ -306,6 +350,8 @@ const VditorEditor = forwardRef<VditorEditorHandle, VditorEditorProps>(
 
     onChangeRef.current = onChange;
 
+    const isFileSwitchRef = useRef(false);
+
     useImperativeHandle(ref, () => ({
       getValue: () => vditorRef.current?.getValue() ?? "",
       setValue: (val: string) => {
@@ -313,6 +359,9 @@ const VditorEditor = forwardRef<VditorEditorHandle, VditorEditorProps>(
           isInternalRef.current = true;
           vditorRef.current.setValue(val, true);
         }
+      },
+      markFileSwitch: () => {
+        isFileSwitchRef.current = true;
       },
       resize: () => {
         // 触发窗口 resize 事件让 Vditor 内部重新计算布局
@@ -372,6 +421,15 @@ const VditorEditor = forwardRef<VditorEditorHandle, VditorEditorProps>(
           counter: { enable: false },
           resize: { enable: false },
           cache: { enable: false },
+          link: {
+            click: (href: unknown) => {
+              // Ctrl + 点击链接时在浏览器中打开
+              const hrefStr = String(href);
+              if (hrefStr && (hrefStr.startsWith("http://") || hrefStr.startsWith("https://"))) {
+                window.open(hrefStr, "_blank", "noopener,noreferrer");
+              }
+            },
+          },
           toolbar: [
             "emoji",
             "headings",
@@ -427,6 +485,10 @@ const VditorEditor = forwardRef<VditorEditorHandle, VditorEditorProps>(
           preview: {
             mode: "editor",
             maxWidth: 800,
+            theme: {
+              current: theme === "white" || theme === "mint" ? "light" : "dark",
+              path: "/vditor/dist/css/content-theme",
+            },
             hljs: {
               style: theme === "white" || theme === "mint" ? "atom-one-light" : "atom-one-dark",
               enable: true,
@@ -438,9 +500,19 @@ const VditorEditor = forwardRef<VditorEditorHandle, VditorEditorProps>(
               gfmAutoLink: true,
             },
           },
-        });
+        } as any);
 
         vditorRef.current = vditor;
+
+        // 监听链接点击，Ctrl+点击时在浏览器打开
+        const hookClick = (e: MouseEvent) => {
+          const origin = (e.target as HTMLElement).closest("a");
+          if (origin && origin.href) {
+            e.preventDefault();
+            location.href = origin.href;
+          }
+        };
+        el.addEventListener("click", hookClick, { capture: true });
 
         // 按需隐藏 popover：仅对段落/列表/引用隐藏，保留代码块/表格/图表等
         const hideTags = new Set(["P", "UL", "OL", "BLOCKQUOTE"]);
@@ -465,6 +537,12 @@ const VditorEditor = forwardRef<VditorEditorHandle, VditorEditorProps>(
           });
           observer.observe(popover, { attributes: true, attributeFilter: ["style"] });
         }
+
+        // 存储清理函数
+        const cleanup = () => {
+          el.removeEventListener("click", hookClick, { capture: true });
+        };
+        (vditor as any).__zmd_cleanup = cleanup;
       } catch (e: any) {
         console.error("[VditorEditor] init error:", e);
         if (mountedRef.current) {
@@ -477,11 +555,25 @@ const VditorEditor = forwardRef<VditorEditorHandle, VditorEditorProps>(
         clearTimeout(timeoutId);
         mountedRef.current = false;
         if (vditorRef.current) {
+          const cleanup = (vditorRef.current as any).__zmd_cleanup;
+          if (cleanup) cleanup();
           try { vditorRef.current.destroy(); } catch {}
           vditorRef.current = null;
         }
       };
-    }, [mode, theme]);
+    }, [mode]); // theme 变化不再重建，而是通过下面的 useEffect 动态切换
+
+    // 主题变化时动态切换 Vditor 主题
+    useEffect(() => {
+      const vditor = vditorRef.current;
+      if (!vditor || status !== "ready") return;
+
+      const editorTheme = theme === "white" || theme === "mint" ? "classic" : "dark";
+      const contentTheme = theme === "white" || theme === "mint" ? "light" : "dark";
+      const codeTheme = theme === "white" || theme === "mint" ? "atom-one-light" : "atom-one-dark";
+
+      vditor.setTheme(editorTheme, contentTheme, codeTheme, "/vditor/dist/css/content-theme");
+    }, [theme, status]); // 移除 mode，避免模式切换时重复调用
 
     // 外部 value 同步
     useEffect(() => {
@@ -496,6 +588,11 @@ const VditorEditor = forwardRef<VditorEditorHandle, VditorEditorProps>(
 
     const handleContextMenu = useCallback((e: React.MouseEvent) => {
       e.preventDefault();
+      // 保存当前的 range，因为右键菜单打开后 selection 可能会被清除
+      const sel = window.getSelection();
+      if (sel && sel.rangeCount > 0) {
+        savedRangeRef.current = sel.getRangeAt(0).cloneRange();
+      }
       checkSelection();
       checkClipboard();
       setContextMenuPos({ x: e.clientX, y: e.clientY });
@@ -506,13 +603,323 @@ const VditorEditor = forwardRef<VditorEditorHandle, VditorEditorProps>(
       if (!vditor) return;
 
       const internalVditor = (vditor as any).vditor;
-      if (!internalVditor?.toolbar?.element) return;
+      const syncInput = () => {
+        // 直接通过 onChangeRef 更新 React 状态，绕过 Vditor 的 isInternalRef 检测
+        onChangeRef.current(vditor.getValue());
+      };
 
-      const button = internalVditor.toolbar.element.querySelector(`[data-type="${name}"]`);
-      if (button) {
-        button.click();
+      // 标题/段落命令：直接操作 DOM，不依赖隐藏的工具栏面板
+      if (name.startsWith("heading-") || name === "paragraph") {
+        vditor.focus();
+        const mode = internalVditor?.currentMode;
+        const level = name.startsWith("heading-") ? name.replace("heading-", "") : "";
+        const tagName = level ? `h${level}` : "p";
+
+        if (mode === "wysiwyg" || mode === "ir") {
+          const editorEl = internalVditor?.wysiwyg?.element as HTMLElement;
+          if (!editorEl) return;
+
+          const sel = window.getSelection();
+          if (!sel || sel.rangeCount === 0) return;
+          const range = sel.getRangeAt(0);
+
+          let block: HTMLElement | null = null;
+          let node: Node | null = range.startContainer;
+          while (node && node !== editorEl) {
+            if (node instanceof HTMLElement) {
+              if (node.hasAttribute("data-block") ||
+                  /^H[1-6]$/.test(node.tagName) ||
+                  node.tagName === "P" ||
+                  node.tagName === "BLOCKQUOTE") {
+                block = node;
+                break;
+              }
+            }
+            node = node.parentElement;
+          }
+          if (!block || block === editorEl) return;
+
+          range.insertNode(document.createElement("wbr"));
+          const innerHTML = block.innerHTML.trim();
+          block.outerHTML = `<${tagName} data-block="0">${innerHTML}</${tagName}>`;
+
+          const wbr = editorEl.querySelector("wbr");
+          if (wbr) {
+            const newRange = document.createRange();
+            newRange.setStartBefore(wbr);
+            newRange.collapse(true);
+            sel.removeAllRanges();
+            sel.addRange(newRange);
+            wbr.remove();
+          }
+
+          onChangeRef.current(vditor.getValue());
+        } else if (mode === "sv") {
+          vditor.focus();
+          const svEl = internalVditor?.sv?.element as HTMLElement;
+          if (!svEl) return;
+          const sel = window.getSelection();
+          if (!sel || sel.rangeCount === 0) return;
+          const md = vditor.getValue();
+          let cursorOffset = 0;
+          const walker = document.createTreeWalker(svEl, NodeFilter.SHOW_TEXT);
+          let textNode = walker.nextNode();
+          while (textNode) {
+            if (textNode === sel.anchorNode) { cursorOffset += sel.anchorOffset; break; }
+            cursorOffset += (textNode.textContent || "").length;
+            textNode = walker.nextNode();
+          }
+          let lineStart = cursorOffset;
+          while (lineStart > 0 && md[lineStart - 1] !== "\n") lineStart--;
+          let lineEnd = cursorOffset;
+          while (lineEnd < md.length && md[lineEnd] !== "\n") lineEnd++;
+          const oldLine = md.slice(lineStart, lineEnd);
+          let newLine: string;
+          if (name === "paragraph") {
+            newLine = oldLine.replace(/^#{1,6} /, "");
+          } else {
+            newLine = "#".repeat(parseInt(level, 10)) + " " + oldLine.replace(/^#{1,6} /, "");
+          }
+          const newMd = md.slice(0, lineStart) + newLine + md.slice(lineEnd);
+          vditor.setValue(newMd);
+          syncInput();
+          const targetOffset = lineStart + newLine.length;
+          const walker2 = document.createTreeWalker(svEl, NodeFilter.SHOW_TEXT);
+          let n = walker2.nextNode();
+          let acc = 0;
+          while (n) {
+            const len = (n.textContent || "").length;
+            if (acc + len >= targetOffset) {
+              const r = document.createRange();
+              r.setStart(n, targetOffset - acc);
+              r.collapse(true);
+              sel.removeAllRanges();
+              sel.addRange(r);
+              break;
+            }
+            acc += len;
+            n = walker2.nextNode();
+          }
+        }
         return;
       }
+
+      // 逐行/块级格式化命令
+      if (name === "quote" || name === "list" || name === "ordered-list" || name === "check" || name === "inline-code" || name === "code") {
+        vditor.focus();
+        const mode = internalVditor?.currentMode;
+
+        // 行内代码是包裹式（前后缀），其余是前缀式
+        const isWrap = name === "inline-code";
+
+        if (mode === "sv") {
+          const prefixMap: Record<string, string> = {
+            quote: "> ", list: "* ", "ordered-list": "1. ", check: "* [ ] ",
+          };
+          const svEl = internalVditor?.sv?.element as HTMLElement;
+          if (!svEl) return;
+          const sel = window.getSelection();
+          if (!sel || sel.rangeCount === 0 || !sel.anchorNode || !sel.focusNode) return;
+          const md = vditor.getValue();
+
+          const getOffset = (n: Node, o: number): number => {
+            let off = 0;
+            const w = document.createTreeWalker(svEl, NodeFilter.SHOW_TEXT);
+            let t = w.nextNode();
+            while (t) { if (t === n) return off + o; off += (t.textContent || "").length; t = w.nextNode(); }
+            return off;
+          };
+          let a = getOffset(sel.anchorNode, sel.anchorOffset);
+          let b = getOffset(sel.focusNode, sel.focusOffset);
+          if (a > b) [a, b] = [b, a];
+
+          let ls = a; while (ls > 0 && md[ls - 1] !== "\n") ls--;
+          let le = b > a ? b : ls;
+          while (le < md.length && md[le] !== "\n") le++;
+
+          const lines = md.slice(ls, le).split("\n");
+          let processed: string;
+          if (name === "code") {
+            const hasFence = lines.length > 0 && lines[0].startsWith("```") && lines[lines.length - 1].startsWith("```");
+            processed = hasFence
+              ? lines.slice(1, -1).join("\n")
+              : "```\n" + lines.join("\n") + "\n```";
+          } else if (isWrap) {
+            // 行内代码：包装非空行，空行保持原样
+            const nonEmptyLines = lines.filter(l => l !== "");
+            const allWrapped = nonEmptyLines.length > 0 && nonEmptyLines.every(l => { const t = l.trim(); return t.startsWith("`") && t.endsWith("`") && t.length >= 2; });
+            processed = allWrapped
+              ? lines.map(l => l === "" ? l : l.trim().slice(1, -1)).join("\n")
+              : lines.map(l => l === "" ? l : "`" + l + "`").join("\n");
+          } else {
+            const prefix = prefixMap[name];
+            if (name === "quote") {
+              // 引用：保持空行，每行加 >
+              const allHave = lines.every(l => l === "" || l.startsWith(prefix));
+              processed = allHave
+                ? lines.map(l => l === "" ? l : l.slice(prefix.length)).join("\n")
+                : lines.map(l => l.startsWith(prefix) ? l : prefix + l).join("\n");
+            } else {
+              // 列表/有序列表/任务列表：移除空行，紧凑排列
+              const items = lines.filter(l => l !== "");
+              const allHave = items.length > 0 && items.every(l => l.startsWith(prefix));
+              processed = allHave
+                ? items.map(l => l.slice(prefix.length)).join("\n")
+                : items.map(l => l.startsWith(prefix) ? l : prefix + l).join("\n");
+            }
+          }
+          const newMd = md.slice(0, ls) + processed + md.slice(le);
+          vditor.setValue(newMd);
+          syncInput();
+
+          const target = ls + processed.length;
+          const w2 = document.createTreeWalker(svEl, NodeFilter.SHOW_TEXT);
+          let t2 = w2.nextNode(); let acc = 0;
+          while (t2) {
+            const len = (t2.textContent || "").length;
+            if (acc + len >= target) {
+              const r = document.createRange(); r.setStart(t2, target - acc); r.collapse(true);
+              sel.removeAllRanges(); sel.addRange(r); break;
+            }
+            acc += len; t2 = w2.nextNode();
+          }
+          return;
+        }
+
+        // WYSIWYG 模式：用 getSelection().toString() 在 markdown 中定位
+        {
+          // 恢复右键菜单打开时保存的 range
+          if (savedRangeRef.current) {
+            const sel = window.getSelection();
+            if (sel) {
+              sel.removeAllRanges();
+              sel.addRange(savedRangeRef.current);
+            }
+          }
+          const sel = window.getSelection();
+          if (!sel || sel.rangeCount === 0) return;
+          const md = vditor.getValue();
+          const selectedText = sel.toString();
+
+          let a: number, b: number;
+          if (selectedText) {
+            a = md.indexOf(selectedText);
+            if (a === -1) return;
+            b = a + selectedText.length;
+          } else {
+            // 无选中：取光标所在处的短上下文来定位
+            const r = sel.getRangeAt(0);
+            const node = r.startContainer;
+            const off = r.startOffset;
+            const before = (node.textContent || "").slice(Math.max(0, off - 30), off);
+            const after = (node.textContent || "").slice(off, off + 30);
+            const ctx = before + after;
+            a = md.indexOf(ctx);
+            if (a === -1) return;
+            a += before.length;
+            b = a;
+          }
+
+          let ls = a; while (ls > 0 && md[ls - 1] !== "\n") ls--;
+          if (md[ls] === "\n") ls++;
+          let le = b > a ? b : ls;
+          while (le < md.length && md[le] !== "\n") le++;
+
+          const lines = md.slice(ls, le).split("\n");
+          let processed: string;
+          if (name === "code") {
+            const hasFence = lines.length > 0 && lines[0].startsWith("```") && lines[lines.length - 1].startsWith("```");
+            processed = hasFence
+              ? lines.slice(1, -1).join("\n")
+              : "```\n" + lines.join("\n") + "\n```";
+          } else if (isWrap) {
+            // 行内代码：包装非空行，空行保持原样
+            const nonEmptyLines = lines.filter(l => l !== "");
+            const allWrapped = nonEmptyLines.length > 0 && nonEmptyLines.every(l => { const t = l.trim(); return t.startsWith("`") && t.endsWith("`") && t.length >= 2; });
+            processed = allWrapped
+              ? lines.map(l => l === "" ? l : l.trim().slice(1, -1)).join("\n")
+              : lines.map(l => l === "" ? l : "`" + l + "`").join("\n");
+          } else {
+            const prefix: Record<string, string> = { quote: "> ", list: "* ", "ordered-list": "1. ", check: "* [ ] " };
+            const p = prefix[name];
+            if (name === "quote") {
+              const allHave = lines.every(l => l === "" || l.startsWith(p));
+              processed = allHave
+                ? lines.map(l => l === "" ? l : l.slice(p.length)).join("\n")
+                : lines.map(l => l.startsWith(p) ? l : p + l).join("\n");
+            } else {
+              const items = lines.filter(l => l !== "");
+              const allHave = items.length > 0 && items.every(l => l.startsWith(p));
+              processed = allHave
+                ? items.map(l => l.slice(p.length)).join("\n")
+                : items.map(l => l.startsWith(p) ? l : p + l).join("\n");
+            }
+          }
+          const newMd = md.slice(0, ls) + processed + md.slice(le);
+          vditor.setValue(newMd);
+          syncInput();
+          // setValue 重建 DOM，光标会回到开头，调用 focus 保持编辑器激活
+          vditor.focus();
+          return;
+        }
+      }
+
+      // 工具栏按钮辅助（带 try-catch 防止 surroundContents 跨块报错）
+      const safeClick = (dataType: string): boolean => {
+        try {
+          const btn = internalVditor?.toolbar?.element?.querySelector(`[data-type="${dataType}"]`);
+          if (btn) { (btn as HTMLElement).click(); return true; }
+        } catch { /* ignore */ }
+        return false;
+      };
+
+      if (name === "bold" || name === "italic" || name === "strike") {
+        vditor.focus();
+        const cmdMap: Record<string, string> = { bold: "bold", italic: "italic", strike: "strikeThrough" };
+        if (!safeClick(name)) {
+          document.execCommand(cmdMap[name]);
+        }
+        return;
+      }
+      if (name === "link") {
+        vditor.focus();
+        const sel = window.getSelection();
+        const text = sel?.toString() || "";
+        if (text.includes("\n")) {
+          // 多行选中：只处理第一行，弹窗输入链接地址
+          const firstLine = text.split("\n")[0];
+          if (!firstLine) return;
+          const url = prompt("链接地址:", "https://");
+          if (url) {
+            const mode = internalVditor?.currentMode;
+            if (mode === "sv") {
+              const svEl = internalVditor?.sv?.element as HTMLElement;
+              if (!svEl) return;
+              const md = vditor.getValue();
+              const idx = md.indexOf(firstLine);
+              if (idx !== -1) {
+                const newMd = md.slice(0, idx) + "[" + firstLine + "](" + url + ")" + md.slice(idx + firstLine.length);
+                vditor.setValue(newMd);
+          syncInput();
+              }
+            } else {
+              const md = vditor.getValue();
+              const idx = md.indexOf(firstLine);
+              if (idx !== -1) {
+                const newMd = md.slice(0, idx) + "[" + firstLine + "](" + url + ")" + md.slice(idx + firstLine.length);
+                vditor.setValue(newMd);
+          syncInput();
+              }
+            }
+          }
+          return;
+        }
+        // 单行：走工具栏（弹窗）
+        safeClick(name);
+        return;
+      }
+
+      safeClick(name);
 
       if (name === "cut") {
         document.execCommand("cut");
@@ -522,28 +929,14 @@ const VditorEditor = forwardRef<VditorEditorHandle, VditorEditorProps>(
         document.execCommand("paste");
       } else if (name === "delete") {
         document.execCommand("delete");
-      } else if (name === "heading-1") {
-        internalVditor.toolbar.element.querySelector('[data-type="headings"]')?.click();
-      } else if (name === "heading-2") {
-        internalVditor.toolbar.element.querySelector('[data-type="headings"]')?.click();
-      } else if (name === "heading-3") {
-        internalVditor.toolbar.element.querySelector('[data-type="headings"]')?.click();
-      } else if (name === "heading-4") {
-        internalVditor.toolbar.element.querySelector('[data-type="headings"]')?.click();
-      } else if (name === "heading-5") {
-        internalVditor.toolbar.element.querySelector('[data-type="headings"]')?.click();
-      } else if (name === "heading-6") {
-        internalVditor.toolbar.element.querySelector('[data-type="headings"]')?.click();
-      } else if (name === "paragraph") {
-        internalVditor.toolbar.element.querySelector('[data-type="headings"]')?.click();
       } else if (name === "footnotes") {
-        internalVditor.toolbar.element.querySelector('[data-type="footnotes"]')?.click();
+        safeClick("footnotes");
       } else if (name === "link-ref") {
-        internalVditor.toolbar.element.querySelector('[data-type="link"]')?.click();
+        safeClick("link");
       } else if (name === "math") {
-        internalVditor.toolbar.element.querySelector('[data-type="math"]')?.click();
+        safeClick("math");
       } else if (name === "toc") {
-        internalVditor.toolbar.element.querySelector('[data-type="toc"]')?.click();
+        safeClick("toc");
       }
     }, []);
 

@@ -70,9 +70,31 @@
 .vditor-context-menu .context-menu-row {
   display: flex;
   align-items: center;
-  justify-content: center;
-  gap: 4px;
-  padding: 4px;
+  justify-content: space-between;
+  padding: 4px 10px;
+}
+
+.vditor-context-menu .context-menu-row--first {
+  justify-content: flex-start;
+  gap: 10px;
+}
+
+/* 前四行按钮后面的长方形边框 */
+.vditor-context-menu .context-menu-row--tools .context-menu-item {
+  position: relative;
+}
+
+.vditor-context-menu .context-menu-row--tools .context-menu-item:not(:last-child)::after {
+  content: '';
+  position: absolute;
+  right: -6px;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 2px;
+  height: 16px;
+  background: var(--text-secondary);
+  opacity: 0.3;
+  border-radius: 1px;
 }
 
 .vditor-context-menu .context-menu-item {
@@ -126,10 +148,23 @@
   justify-content: space-between;
   align-items: center;
   width: 100%;
+  height: auto;
+  padding: 7px 12px;
+  border: none;
+  border-radius: 4px;
+  font-size: 13px;
+  color: var(--text-primary);
+  transition: background 0.1s ease;
+  white-space: nowrap;
+}
+
+.vditor-context-menu .context-menu-item-text:hover {
+  background: var(--accent);
+  color: var(--bg-primary);
 }
 
 .vditor-context-menu .context-menu-item-text .context-menu-arrow {
-  margin-left: auto;
+  opacity: 0.5;
 }
 
 .vditor-context-menu .context-menu-item.disabled {
@@ -148,15 +183,31 @@
   position: relative;
 }
 
+/* 文本类菜单项撑满整行，保证文字左对齐、箭头右对齐 */
+.vditor-context-menu .context-menu-submenu-wrapper--text {
+  width: 100%;
+}
+
 .vditor-context-menu .context-menu-submenu-wrapper .context-menu-item {
   position: relative;
+}
+
+/* 透明桥接区域，填补按钮与子菜单之间的间隙，保证鼠标能平滑移入子菜单 */
+.vditor-context-menu .context-menu-submenu-wrapper::after {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 100%;
+  width: 8px;
+  height: 100%;
+  z-index: 1000;
 }
 
 .vditor-context-menu .context-menu-submenu {
   display: none;
   position: absolute;
-  top: 0;
-  left: calc(100% + 4px);
+  top: -4px;
+  left: calc(100% + 8px);
   background: var(--bg-secondary);
   border: 1px solid var(--border);
   border-radius: 8px;
@@ -168,8 +219,36 @@
   gap: 2px;
 }
 
-.vditor-context-menu .context-menu-submenu-wrapper:hover > .context-menu-submenu {
+.vditor-context-menu .context-menu-submenu-wrapper:hover > .context-menu-submenu,
+.vditor-context-menu .context-menu-submenu-wrapper > .context-menu-submenu:hover {
   display: flex;
+}
+
+/* ── 子菜单贴边翻转 ── */
+
+/* 右侧贴边：子菜单翻到左侧 */
+.vditor-context-menu .context-menu-submenu-wrapper[data-flip-x="true"] .context-menu-submenu {
+  left: auto;
+  right: 100%;
+  margin-right: 8px;
+}
+.vditor-context-menu .context-menu-submenu-wrapper[data-flip-x="true"]::after {
+  left: auto;
+  right: 100%;
+  width: 8px;
+}
+.vditor-context-menu .context-menu-submenu-wrapper[data-flip-x="true"] .context-menu-arrow {
+  transform: rotate(180deg);
+}
+
+/* 底部贴边：子菜单向上展开 */
+.vditor-context-menu .context-menu-submenu-wrapper[data-flip-y="true"] .context-menu-submenu {
+  top: auto;
+  bottom: -4px;
+}
+.vditor-context-menu .context-menu-submenu-wrapper[data-flip-y="true"]::after {
+  top: auto;
+  bottom: 0;
 }
 
 .vditor-context-menu .context-menu-subitem {
@@ -204,6 +283,7 @@
 /* 分隔线 */
 .vditor-context-menu .context-menu-divider {
   height: 1px;
-  background: var(--border);
-  margin: 4px 0;
+  background: var(--text-secondary);
+  opacity: 0.2;
+  margin: 4px 8px;
 }

@@ -1,0 +1,175 @@
+@import "./mint.css";
+
+:root {
+  
+  --bg-color: #272729;
+  --text-color: #cccccc;
+  --blur-text-color: #818286;
+  --side-bar-bg-color: #232325;
+  --control-text-color: #7a7b7e;
+  --active-file-bg-color: #19191b;
+  --active-file-border-color: #4eb289;
+  --active-file-text-color: #4eb289;
+  --table-head-color:#232325;
+  --mint-light-color:#d9ede5;
+  --deep-theme-color: #4eb289;
+  --code-block-bg-color: #0F111A;
+  --rawblock-edit-panel-bd: #232325;
+  --footer-box:#6a6b6e;
+  --select-text-bg-color:#7a88a3;
+  --item-hover-bg-color: #56575a;
+  --window-border: 1px solid #39393a;
+  --highlight-color:#4eb289;
+}
+
+/*scroll bar*/
+::-webkit-scrollbar-thumb
+{
+  border-radius: 8px;
+  background-color: var(--control-text-color);
+}
+
+#write pre.md-meta-block {
+	background-color: var(--item-hover-bg-color);
+	color: var(--text-color);
+}
+
+/*source code mode*/
+.cm-s-typora-default .cm-header {
+	color:var(--mint-light-color);
+}
+.cm-s-typora-default .cm-link {
+	color:var(--deep-theme-color);
+}
+
+#toggle-sourceview-btn {
+  background: var(--bg-color)!important;
+}
+
+#toggle-sourceview-btn:hover {
+  background: #39393b;
+}
+
+/*table*/
+table tr:nth-child(even){
+    background-color: var(--bg-color);
+}
+
+thead{
+	background-color: var(--table-head-color);
+  color: var(--deep-theme-color);
+}
+
+table th{
+	border: 1px solid var(--mint-light-color);
+}
+
+table td{
+	border: 1px solid var(--mint-light-color);
+}
+table tr{
+	border: 1px solid var(--mint-light-color);
+}
+
+
+/* footer */
+footer.ty-footer {
+  border: none;
+}
+
+.footer-item:hover {
+  background-color: var(--footer-box);
+}
+
+/*megamenu*/
+.megamenu-menu {
+  box-shadow: none;
+  background-color:var(--side-bar-bg-color);
+}
+
+.megamenu-content,
+.megamenu-opened header {
+    background: var(--bg-color);
+    background-image: none;
+}
+
+.megamenu-menu-panel table td:nth-child(1) {
+  background-color: var(--bg-color);
+}
+
+.megamenu-menu-panel table td:nth-child(2) {
+  background-color: var(--bg-color);
+}
+
+#recent-file-panel-action-btn {
+  background-color: var(--bg-color);
+}
+
+/* preferences */
+.ty-preferences .window-header{
+  background-color: var(--active-file-bg-color);
+}
+
+.ty-preferences .nav-group-item:hover {
+  background-color: var(--item-hover-bg-color);
+}
+
+.btn:hover,
+.button-hover,
+.md-image-btn:hover {
+  background-color:#39393a !important;
+  color: var(--text-color);
+}
+
+.menu-style-btn:hover {
+  background-color: var(--item-hover-bg-color);
+  border: none;
+}
+
+/*blockquote*/
+blockquote {
+	border-left: 0.2rem solid var(--deep-theme-color);
+	color: #919191;
+}
+
+/*checkbox*/
+.md-task-list-item:hover > input:before,
+input[type='checkbox']:hover:before {
+	background-color: #505052;
+}
+
+.task-list-item input::before {
+  border: 1.2px solid var(--deep-theme-color);
+  background-color:var(--bg-color);
+}
+
+.task-list-item input:checked::before {
+  color:var(--bg-color);
+  font-weight: 600;
+	background-color: var(--deep-theme-color);
+}
+
+.task-list-done {
+  color: #777777;
+}
+
+/*highlight*/
+#write mark {
+	background-color: var(--highlight-color);
+	color:#fff;
+}
+
+/*inline code*/
+#write code,tt {
+  padding: 2px 4px;
+	border-radius: 2px;
+	background-color: var(--code-block-bg-color);
+	color: var(--text-color);
+  margin: 0 2px;
+}
+
+/*footnote*/
+#write .md-footnote {
+	color: #777777;
+	background-color: var(--code-block-bg-color);
+}

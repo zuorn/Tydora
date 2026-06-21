@@ -95,3 +95,66 @@ npm run tauri
 - `src/Sidebar.css` — 侧栏/文件树/右键菜单样式
 - `src/VditorEditor.css` — 编辑器 wrapper 和加载/错误状态
 - `src/Settings.css` — 设置面板样式
+
+## 重要开发规则
+
+### 1. 程序化修改编辑器内容后必须同步 React 状态
+
+Vditor 的 `setValue()` 方法内部 `enableInput: false`，不会触发 `onChange` 回调。此外 VditorEditor 的 `input` 回调有 `isInternalRef` 守卫：
+
+```typescript
+// VditorEditor.tsx — input 回调
+input: (val) => {
+    if (isInternalRef.current) {     // ← 程序化 setValue 后会置为 true
+        isInternalRef.current = false;
+        return;                      // ← 直接返回，不调用 onChange！
+    }
+    onChangeRef.current(val);
+}
+```
+
+**正确做法**：程序化修改内容后，绕过 Vditor 回调，直接用 `onChangeRef.current(vditor.getValue())` 同步状态：
+
+```typescript
+// ✅ 正确
+onChangeRef.current(vditor.getValue());
+
+// ❌ 错误 — 可能被 isInternalRef 拦截
+internalVditor.options.input(vditor.getValue());
+```
+
+`onChangeRef` 定义在 VditorEditor 组件中：`const onChangeRef = useRef(onChange); onChangeRef.current = onChange;`
+
+### 2. Vditor WYSIWYG vs SV 模式差异
+
+| 特性 | WYSIWYG (`mode === "wysiwyg"`) | SV (`mode === "sv"`) |
+|------|-------------------------------|----------------------|
+| DOM 元素 | `<div class="vditor-wysiwyg">` | `<pre class="vditor-sv" contenteditable>` |
+| 获取内容 | `vditor.lute.VditorDOM2Md(innerHTML)` | `element.textContent`（纯文本） |
+| 设置内容 | `vditor.lute.VditorDOM2VditorDOM(md)` | `vditor.lute.SpinVditorSVDOM(md)` |
+| textContent 与 markdown 关系 | **不匹配**（textContent 单 `\n`，markdown 双 `\n`） | **匹配**（textContent 即 markdown） |
+
+因此 WYSIWYG 模式下**不能用** TreeWalker 在 textContent 中计算偏移并在 markdown 中定位——两者不一致。应用 `sel.toString()` + `md.indexOf()` 定位。
+
+### 3. 右键菜单 executeCommand 命令分发
+
+`src/VditorEditor.tsx` 中的 `executeCommand` 按以下顺序处理：
+
+1. **标题/段落** (`heading-X`, `paragraph`): DOM 直接操作（WYSIWYG 替换 outerHTML，SV 走 markdown 文本）
+2. **块级命令** (`quote`, `list`, `ordered-list`, `check`, `inline-code`, `code`): markdown 文本逐行处理，toggle 行为
+3. **加粗/斜体/删除线**: `safeClick` → `execCommand` 兜底
+4. **超链接**: 单行走工具栏，多行 markdown 方式 + prompt
+5. **其余**: `safeClick`（try-catch 包裹，防止跨块 `surroundContents` 报错）
+
+块级命令空行处理：
+- **引用**: 空行保留 `> `（保持引用块连续性）
+- **列表/有序列表/任务列表**: 过滤空行，紧凑排列
+- **行内代码/代码块**: 空行不动（代码块内空行有意义）
+
+### 4. 子菜单边缘检测
+
+`context-menu-submenu-wrapper` 有 `onMouseEnter` 处理，检测子菜单是否会超出窗口边界，超出时设置 `data-flip-x`/`data-flip-y` 属性翻转方向。CSS 对应规则在 `VditorEditor.css` 中。
+
+### 5. Mint 主题颜色陷阱
+
+Mint 主题中 `--border: #d9ede5` 和 `--bg-secondary: #d9ede5` 相同，用 `--border` 做分割线会不可见。应使用 `var(--text-secondary)` + `opacity: 0.2`。

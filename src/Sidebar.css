@@ -95,15 +95,29 @@
   color: var(--text-primary);
   transition: background 0.1s ease;
   white-space: nowrap;
+  position: relative;
 }
 
 .tree-node:hover {
-  background: rgba(137, 180, 250, 0.06);
+  background: rgba(78, 178, 137, 0.08);
 }
 
 .tree-node.active {
-  background: rgba(137, 180, 250, 0.12);
-  color: var(--accent);
+  background: rgba(78, 178, 137, 0.15);
+  color: var(--text-primary);
+  font-weight: 600;
+}
+
+.tree-node.active::before {
+  content: "";
+  position: absolute;
+  left: 0;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 3px;
+  height: 70%;
+  background: var(--accent);
+  border-radius: 0 2px 2px 0;
 }
 
 .tree-icon {
@@ -433,11 +447,25 @@
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
+  position: relative;
 }
 
 .outline-item:hover {
-  background: rgba(137, 180, 250, 0.06);
+  background: rgba(78, 178, 137, 0.15);
   color: var(--text-primary);
+  font-weight: 600;
+}
+
+.outline-item:hover::before {
+  content: "";
+  position: absolute;
+  left: 0;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 3px;
+  height: 70%;
+  background: var(--accent);
+  border-radius: 0 2px 2px 0;
 }
 
 .outline-level {
@@ -592,6 +620,12 @@
 
 .confirm-dialog-btn-confirm:hover {
   opacity: 0.9;
+}
+
+.confirm-dialog-btn-hint {
+  font-size: 11px;
+  opacity: 0.7;
+  margin-left: 4px;
 }
 
 .confirm-dialog-danger .confirm-dialog-btn-confirm {

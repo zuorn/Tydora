@@ -1,0 +1,249 @@
+/* 文件预览组件样式 */
+
+.file-preview {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  width: 100%;
+  background: var(--bg-primary);
+}
+
+.preview-header {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 8px 16px;
+  background: var(--bg-secondary);
+  border-bottom: 1px solid var(--border);
+  min-height: 40px;
+  width: 100%;
+  flex-shrink: 0;
+}
+
+.preview-back-btn {
+  padding: 4px 12px;
+  background: transparent;
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  color: var(--text-primary);
+  cursor: pointer;
+  font-size: 13px;
+  transition: all 0.15s ease;
+}
+
+.preview-back-btn:hover {
+  background: var(--bg-hover);
+  border-color: var(--text-secondary);
+}
+
+.preview-file-info {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex: 1;
+  overflow: hidden;
+}
+
+.preview-file-name {
+  font-size: 14px;
+  color: var(--text-primary);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.preview-file-size {
+  font-size: 12px;
+  color: var(--text-secondary);
+  padding: 2px 6px;
+  background: var(--bg-secondary);
+  border-radius: 3px;
+}
+
+/* 缩放控制 */
+.preview-zoom-controls {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-shrink: 0;
+}
+
+.preview-zoom-level {
+  font-size: 12px;
+  color: var(--text-secondary);
+  min-width: 40px;
+  text-align: center;
+}
+
+.preview-zoom-reset {
+  padding: 4px 8px;
+  background: transparent;
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  color: var(--text-primary);
+  cursor: pointer;
+  font-size: 16px;
+  transition: all 0.15s ease;
+}
+
+.preview-zoom-reset:hover {
+  background: var(--bg-hover);
+  border-color: var(--text-secondary);
+}
+
+.preview-content {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: auto;
+  padding: 0;
+  width: 100%;
+}
+
+/* 图片预览 */
+.preview-image-container {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  height: 100%;
+  overflow: auto;
+}
+
+.preview-image {
+  max-width: 100%;
+  max-height: 100%;
+  border-radius: 4px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+  transform-origin: center center;
+  transition: transform 0.1s ease;
+}
+
+/* 视频预览 */
+.preview-video-container {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  height: 100%;
+  overflow: auto;
+}
+
+.preview-video {
+  max-width: 100%;
+  max-height: 100%;
+  border-radius: 4px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+}
+
+/* 音频预览 */
+.preview-audio-container {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 16px;
+  padding: 32px;
+}
+
+.preview-audio-icon {
+  font-size: 64px;
+  opacity: 0.8;
+}
+
+.preview-audio-name {
+  font-size: 16px;
+  color: var(--text-primary);
+  max-width: 300px;
+  text-align: center;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.preview-audio {
+  width: 300px;
+  max-width: 100%;
+}
+
+/* PDF 预览 */
+.preview-pdf-container {
+  width: 100%;
+  height: 100%;
+  display: flex;
+}
+
+.preview-pdf {
+  width: 100%;
+  height: 100%;
+  border: none;
+  border-radius: 4px;
+}
+
+/* 错误状态 */
+.preview-error {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  color: var(--text-secondary);
+}
+
+.preview-error-icon {
+  font-size: 48px;
+}
+
+.preview-error-text {
+  font-size: 14px;
+}
+
+/* 加载状态 */
+.preview-loading {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  color: var(--text-secondary);
+}
+
+.preview-loading-spinner {
+  font-size: 48px;
+  animation: spin 1s linear infinite;
+}
+
+.preview-loading-text {
+  font-size: 14px;
+}
+
+@keyframes spin {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+}
+
+/* 不支持的文件类型 */
+.preview-unsupported {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  color: var(--text-secondary);
+  padding: 32px;
+}
+
+.preview-unsupported-icon {
+  font-size: 64px;
+  opacity: 0.5;
+}
+
+.preview-unsupported-text {
+  font-size: 16px;
+}
+
+.preview-unsupported-hint {
+  font-size: 12px;
+  opacity: 0.7;
+}

@@ -16,8 +16,11 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>zmd - Markdown Editor</title>
-    <!-- 代码高亮主题（data-highlight-theme 用于运行时切换） -->
-    <link data-highlight-theme rel="stylesheet" href="/vditor/dist/js/highlight.js/styles/atom-one-dark.min.css" />
+    <!-- 预加载 highlight.js：id 需匹配 Vditor 的 addScript 检查，避免动态加载 -->
+    <script id="vditorHljsScript" src="/vditor/dist/js/highlight.js/highlight.min.js"></script>
+    <script id="vditorHljsThirdScript" src="/vditor/dist/js/highlight.js/third-languages.js"></script>
+    <!-- 代码高亮主题（data-highlight-theme 用于运行时切换，id 用于 Vditor 内部替换） -->
+    <link id="vditorHljsStyle" data-highlight-theme rel="stylesheet" href="/vditor/dist/js/highlight.js/styles/atom-one-dark.min.css" />
   </head>
   <body>
     <div id="root"></div>

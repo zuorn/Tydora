@@ -26,8 +26,16 @@ export function ConfirmDialog({
   useEffect(() => {
     if (!isOpen) return;
 
-    const handleEscape = (e: KeyboardEvent) => {
-      if (e.key === "Escape") onCancel();
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === "Escape") {
+        onCancel();
+      } else if (e.key === "Enter") {
+        onConfirm();
+      } else if (e.key.toLowerCase() === "y") {
+        onConfirm();
+      } else if (e.key.toLowerCase() === "n") {
+        onCancel();
+      }
     };
 
     const handleOverlayClick = (e: MouseEvent) => {
@@ -36,14 +44,14 @@ export function ConfirmDialog({
       }
     };
 
-    document.addEventListener("keydown", handleEscape);
+    document.addEventListener("keydown", handleKeyDown);
     document.addEventListener("mousedown", handleOverlayClick);
 
     return () => {
-      document.removeEventListener("keydown", handleEscape);
+      document.removeEventListener("keydown", handleKeyDown);
       document.removeEventListener("mousedown", handleOverlayClick);
     };
-  }, [isOpen, onCancel]);
+  }, [isOpen, onConfirm, onCancel]);
 
   if (!isOpen) return null;
 
@@ -67,10 +75,10 @@ export function ConfirmDialog({
         <div className="confirm-dialog-message">{message}</div>
         <div className="confirm-dialog-actions">
           <button className="confirm-dialog-btn confirm-dialog-btn-cancel" onClick={onCancel}>
-            {cancelText}
+            {cancelText} <span className="confirm-dialog-btn-hint">(N)</span>
           </button>
           <button className="confirm-dialog-btn confirm-dialog-btn-confirm" onClick={onConfirm}>
-            {confirmText}
+            {confirmText} <span className="confirm-dialog-btn-hint">(Y/Enter)</span>
           </button>
         </div>
       </div>

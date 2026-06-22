@@ -414,7 +414,7 @@ function App({ initialFilePath }: { initialFilePath?: string | null }) {
           editorHandleRef.current?.highlightSearch(query);
         }
         if (line != null) {
-          setTimeout(() => scrollToLine(line), 350);
+          setTimeout(() => editorHandleRef.current?.scrollToLine(line), 350);
         }
       }
 
@@ -515,60 +515,8 @@ function App({ initialFilePath }: { initialFilePath?: string | null }) {
   }, []);
 
   // ── 大纲点击跳转 ──
-  const scrollToLine = useCallback((line: number) => {
-    const editorPanel = document.querySelector(".editor-panel");
-    if (!editorPanel) return;
-
-    // SV 模式：滚动到指定行
-    const svContainer = editorPanel.querySelector(".vditor-sv .vditor-reset") as HTMLElement | null;
-    if (svContainer) {
-      const lines = svContainer.querySelectorAll(".vditor-sv__line");
-      const target = lines[line - 1];
-      if (target) {
-        target.scrollIntoView({ behavior: "smooth", block: "center" });
-        return;
-      }
-    }
-
-    // WYSIWYG 模式：通过行号估算位置
-    const reset = editorPanel.querySelector(".vditor-wysiwyg .vditor-reset") as HTMLElement | null;
-    if (reset) {
-      const totalLines = reset.textContent?.split("\n").length || 1;
-      const ratio = (line - 1) / totalLines;
-      reset.scrollTop = ratio * reset.scrollHeight;
-    }
-  }, []);
-
-  const handleSelectHeading = useCallback((_level: number, text: string, _line: number) => {
-    // 在 Vditor WYSIWYG 渲染区查找匹配的标题元素并滚动到它
-    const editorPanel = document.querySelector(".editor-panel");
-    if (!editorPanel) return;
-
-    // 尝试 WYSIWYG 模式（标题为真实 h1-h6 元素）
-    const reset = editorPanel.querySelector(".vditor-wysiwyg .vditor-reset") as HTMLElement | null;
-    if (reset) {
-      const headings = reset.querySelectorAll("h1, h2, h3, h4, h5, h6");
-      for (const h of headings) {
-        if ((h.textContent || "").trim() === text.trim()) {
-          h.scrollIntoView({ behavior: "smooth", block: "start" });
-          return;
-        }
-      }
-    }
-
-    // 尝试 SV 模式（源码视图，滚动到匹配行）
-    const svContainer = editorPanel.querySelector(".vditor-sv .vditor-reset") as HTMLElement | null;
-    if (svContainer) {
-      const lines = svContainer.querySelectorAll(".vditor-sv__line");
-      for (const line of lines) {
-        const lineText = (line.textContent || "").trim();
-        const hashText = "#".repeat(_level) + " " + text;
-        if (lineText.startsWith(hashText) || lineText === text) {
-          line.scrollIntoView({ behavior: "smooth", block: "start" });
-          return;
-        }
-      }
-    }
+  const handleSelectHeading = useCallback((_level: number, text: string, line: number) => {
+    editorHandleRef.current?.scrollToHeading(text, line);
   }, []);
 
   // ── Refs ──
@@ -690,13 +638,20 @@ function App({ initialFilePath }: { initialFilePath?: string | null }) {
             </div>
             <div className="window-controls">
               <button className="window-control-btn" onClick={handleMinimize} title="最小化">
-                ─
+                <svg width="10" height="10" viewBox="0 0 10 10">
+                  <line x1="1" y1="5" x2="9" y2="5" stroke="currentColor" strokeWidth="1.2" />
+                </svg>
               </button>
               <button className="window-control-btn" onClick={handleToggleMaximize} title="最大化">
-                ▢
+                <svg width="10" height="10" viewBox="0 0 10 10">
+                  <rect x="1" y="1" width="8" height="8" rx="0.5" fill="none" stroke="currentColor" strokeWidth="1.2" />
+                </svg>
               </button>
               <button className="window-control-btn window-control-close" onClick={handleClose} title="关闭">
-                ✕
+                <svg width="10" height="10" viewBox="0 0 10 10">
+                  <line x1="1.5" y1="1.5" x2="8.5" y2="8.5" stroke="currentColor" strokeWidth="1.2" />
+                  <line x1="8.5" y1="1.5" x2="1.5" y2="8.5" stroke="currentColor" strokeWidth="1.2" />
+                </svg>
               </button>
             </div>
           </div>

@@ -6,6 +6,8 @@ dist/
 dist-ssr/
 
 
+themes/
+
 public/
 
 # Tauri

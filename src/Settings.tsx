@@ -55,6 +55,7 @@ const DEFAULT_SHORTCUTS: ShortcutItem[] = [
   { id: "heading-4", label: "四级标题", keys: ["Ctrl", "Alt", "4"], group: "标题" },
   { id: "heading-5", label: "五级标题", keys: ["Ctrl", "Alt", "5"], group: "标题" },
   { id: "heading-6", label: "六级标题", keys: ["Ctrl", "Alt", "6"], group: "标题" },
+  { id: "paragraph", label: "段落", keys: ["Ctrl", "Alt", "0"], group: "标题" },
 
   // 插入
   { id: "table", label: "表格", keys: ["Ctrl", "M"], group: "插入" },
@@ -95,7 +96,9 @@ const DEFAULT_SHORTCUTS: ShortcutItem[] = [
 // ── Storage keys ────────────────────────────────────────────────────
 
 const GENERAL_SETTINGS_KEY = "zmd-general-settings";
-const SHORTCUTS_KEY = "zmd-shortcuts";
+export const SHORTCUTS_KEY = "zmd-shortcuts";
+
+export { DEFAULT_SHORTCUTS };
 
 // ── Components ──────────────────────────────────────────────────────
 

@@ -1,6 +1,7 @@
 import { useRef, useEffect, forwardRef, useImperativeHandle, useState, useCallback, useLayoutEffect } from "react";
 import Vditor from "vditor";
 import "./VditorEditor.css";
+import { SHORTCUTS_KEY, DEFAULT_SHORTCUTS } from "./Settings";
 
 type EditorMode = "wysiwyg" | "ir" | "sv";
 
@@ -18,6 +19,8 @@ export interface VditorEditorHandle {
   highlightSearch: (query: string) => void;
   clearHighlight: () => void;
   executeCommand: (name: string) => void;
+  scrollToHeading: (text: string, line: number) => void;
+  scrollToLine: (line: number) => void;
 }
 
 export const MODE_LABELS: Record<EditorMode, string> = {
@@ -49,6 +52,7 @@ interface ContextMenuItem {
   divider?: boolean;
   highlight?: boolean;
   rowType?: "icons" | "text";
+  shortcut?: string;
 }
 
 const CUSTOM_ICONS: Record<string, string> = {
@@ -140,53 +144,75 @@ function highlightInElement(el: HTMLElement, query: string) {
   }
 }
 
-const HEADING_SUBMENU: SubMenuItem[] = [
-  { name: "heading-1", label: "一级标题", shortcut: "Ctrl+1" },
-  { name: "heading-2", label: "二级标题", shortcut: "Ctrl+2" },
-  { name: "heading-3", label: "三级标题", shortcut: "Ctrl+3" },
-  { name: "heading-4", label: "四级标题", shortcut: "Ctrl+4" },
-  { name: "heading-5", label: "五级标题", shortcut: "Ctrl+5" },
-  { name: "heading-6", label: "六级标题", shortcut: "Ctrl+6" },
+const getHeadingSubmenu = (shortcuts: Record<string, string>): SubMenuItem[] => [
+  { name: "heading-1", label: "一级标题", shortcut: shortcuts["heading-1"] || "Ctrl+Alt+1" },
+  { name: "heading-2", label: "二级标题", shortcut: shortcuts["heading-2"] || "Ctrl+Alt+2" },
+  { name: "heading-3", label: "三级标题", shortcut: shortcuts["heading-3"] || "Ctrl+Alt+3" },
+  { name: "heading-4", label: "四级标题", shortcut: shortcuts["heading-4"] || "Ctrl+Alt+4" },
+  { name: "heading-5", label: "五级标题", shortcut: shortcuts["heading-5"] || "Ctrl+Alt+5" },
+  { name: "heading-6", label: "六级标题", shortcut: shortcuts["heading-6"] || "Ctrl+Alt+6" },
   { divider: true },
-  { name: "paragraph", label: "段落", shortcut: "Ctrl+0" },
+  { name: "paragraph", label: "段落", shortcut: shortcuts["paragraph"] || "Ctrl+Alt+0" },
 ];
 
-const INSERT_SUBMENU: SubMenuItem[] = [
+const getInsertSubmenu = (shortcuts: Record<string, string>): SubMenuItem[] => [
   { name: "upload", label: "图像" },
   { name: "footnotes", label: "脚注" },
-  { name: "link-ref", label: "链接引用" },
-  { name: "line", label: "水平分割线" },
-  { name: "table", label: "表格" },
-  { name: "code", label: "代码块" },
+  { name: "line", label: "水平分割线", shortcut: shortcuts["hr"] || "Ctrl+Shift+H" },
+  { name: "table", label: "表格", shortcut: shortcuts["table"] || "Ctrl+M" },
+  { name: "code", label: "代码块", shortcut: shortcuts["code-block"] || "Ctrl+U" },
   { name: "math", label: "公式块" },
-  { name: "toc", label: "内容目录" },
 ];
 
-const CONTEXT_MENU_ITEMS = (hasSelection: boolean, hasClipboard: boolean): ContextMenuItem[] => [
-  { name: "undo", label: "", icon: "#vditor-icon-undo", rowType: "icons" },
-  { name: "redo", label: "", icon: "#vditor-icon-redo", rowType: "icons" },
-  { divider: true },
-  { name: "cut", label: "", icon: "#vditor-icon-cut", disabled: !hasSelection, rowType: "icons" },
-  { name: "copy", label: "", icon: "#vditor-icon-copy", disabled: !hasSelection, rowType: "icons" },
-  { name: "paste", label: "", icon: "#vditor-icon-paste", disabled: !hasClipboard, rowType: "icons" },
-  { name: "delete", label: "", icon: "#vditor-icon-delete", rowType: "icons" },
-  { divider: true },
-  { divider: true },
-  { name: "bold", label: "", icon: "#vditor-icon-bold", rowType: "icons" },
-  { name: "italic", label: "", icon: "#vditor-icon-italic", rowType: "icons" },
-  { name: "inline-code", label: "", icon: "#vditor-icon-inline-code", rowType: "icons" },
-  { name: "link", label: "", icon: "#vditor-icon-link", rowType: "icons" },
-  { divider: true },
-  { name: "quote", label: "", icon: "#vditor-icon-quote", rowType: "icons" },
-  { name: "ordered-list", label: "", icon: "#vditor-icon-ordered-list", rowType: "icons" },
-  { name: "list", label: "", icon: "#vditor-icon-list", rowType: "icons" },
-  { name: "check", label: "", icon: "#vditor-icon-check", rowType: "icons" },
-  { divider: true },
-  { divider: true },
-  { name: "paragraph", label: "段落", icon: "#vditor-icon-paragraph", submenu: HEADING_SUBMENU, rowType: "text" },
-  { divider: true },
-  { name: "insert", label: "插入", icon: "#vditor-icon-upload", submenu: INSERT_SUBMENU, rowType: "text" },
-];
+const getShortcuts = (): Record<string, string> => {
+  try {
+    const saved = localStorage.getItem(SHORTCUTS_KEY);
+    if (saved) {
+      const parsed = JSON.parse(saved);
+      const merged = DEFAULT_SHORTCUTS.map((def) => {
+        const savedItem = parsed.find((s: { id: string }) => s.id === def.id);
+        return savedItem ? savedItem : def;
+      });
+      return merged.reduce((acc: Record<string, string>, s: { id: string; keys: string[] }) => {
+        acc[s.id] = s.keys.join("+");
+        return acc;
+      }, {});
+    }
+  } catch {}
+  return DEFAULT_SHORTCUTS.reduce((acc: Record<string, string>, s) => {
+    acc[s.id] = s.keys.join("+");
+    return acc;
+  }, {});
+};
+
+const CONTEXT_MENU_ITEMS = (hasSelection: boolean, hasClipboard: boolean): ContextMenuItem[] => {
+  const shortcuts = getShortcuts();
+  return [
+    { name: "undo", label: "撤销", shortcut: shortcuts["undo"] || "Ctrl+Z", icon: "#vditor-icon-undo", rowType: "icons" },
+    { name: "redo", label: "重做", shortcut: shortcuts["redo"] || "Ctrl+Y", icon: "#vditor-icon-redo", rowType: "icons" },
+    { divider: true },
+    { name: "cut", label: "剪切", shortcut: "Ctrl+X", icon: "#vditor-icon-cut", disabled: !hasSelection, rowType: "icons" },
+    { name: "copy", label: "复制", shortcut: "Ctrl+C", icon: "#vditor-icon-copy", disabled: !hasSelection, rowType: "icons" },
+    { name: "paste", label: "粘贴", shortcut: "Ctrl+V", icon: "#vditor-icon-paste", disabled: !hasClipboard, rowType: "icons" },
+    { name: "delete", label: "删除", shortcut: "Delete", icon: "#vditor-icon-delete", rowType: "icons" },
+    { divider: true },
+    { divider: true },
+    { name: "bold", label: "加粗", shortcut: shortcuts["bold"] || "Ctrl+B", icon: "#vditor-icon-bold", rowType: "icons" },
+    { name: "italic", label: "斜体", shortcut: shortcuts["italic"] || "Ctrl+I", icon: "#vditor-icon-italic", rowType: "icons" },
+    { name: "inline-code", label: "行内代码", shortcut: shortcuts["inline-code"] || "Ctrl+G", icon: "#vditor-icon-inline-code", rowType: "icons" },
+    { name: "link", label: "链接", shortcut: shortcuts["link"] || "Ctrl+K", icon: "#vditor-icon-link", rowType: "icons" },
+    { divider: true },
+    { name: "quote", label: "引用", shortcut: shortcuts["quote"] || "Ctrl+;", icon: "#vditor-icon-quote", rowType: "icons" },
+    { name: "ordered-list", label: "有序列表", shortcut: shortcuts["ordered-list"] || "Ctrl+O", icon: "#vditor-icon-ordered-list", rowType: "icons" },
+    { name: "list", label: "无序列表", shortcut: shortcuts["unordered-list"] || "Ctrl+L", icon: "#vditor-icon-list", rowType: "icons" },
+    { name: "check", label: "任务列表", shortcut: shortcuts["check-list"] || "Ctrl+J", icon: "#vditor-icon-check", rowType: "icons" },
+    { divider: true },
+    { divider: true },
+    { name: "paragraph", label: "段落", icon: "#vditor-icon-paragraph", submenu: getHeadingSubmenu(shortcuts), rowType: "text" },
+    { divider: true },
+    { name: "insert", label: "插入", icon: "#vditor-icon-upload", submenu: getInsertSubmenu(shortcuts), rowType: "text" },
+  ];
+};
 
 interface ContextMenuProps {
   items: ContextMenuItem[];
@@ -366,6 +392,12 @@ const ContextMenu = forwardRef<HTMLDivElement, ContextMenuProps>(({ items, onCli
         disabled={menuItem.disabled}
       >
         {renderIcon(menuItem.icon)}
+        {menuItem.label && (
+          <span className="context-menu-tooltip">
+            {menuItem.label}
+            {menuItem.shortcut && ` ${menuItem.shortcut}`}
+          </span>
+        )}
       </button>
     );
   };
@@ -485,6 +517,108 @@ const VditorEditor = forwardRef<VditorEditorHandle, VditorEditorProps>(
       },
       executeCommand: (name: string) => {
         executeCommand(name);
+      },
+      scrollToHeading: (text: string, _line: number) => {
+        const editorEl = elRef.current;
+        if (!editorEl) return;
+
+        const cleanText = text.replace(/[#*_`~]/g, "").trim();
+
+        if (mode === "wysiwyg" || mode === "ir") {
+          // WYSIWYG/IR：使用模式特定选择器防止查到隐藏的其他模式容器
+          const modeClass = mode === "wysiwyg" ? ".vditor-wysiwyg" : ".vditor-ir";
+          const resetEl = editorEl.querySelector(
+            `${modeClass} .vditor-reset`
+          ) as HTMLElement | null;
+          if (!resetEl) return;
+
+          const headings = resetEl.querySelectorAll("h1, h2, h3, h4, h5, h6");
+          let bestMatch: Element | null = null;
+          let bestScore = 0;
+
+          for (const h of headings) {
+            const headingText = (h.textContent || "").replace(/[#*_`~]/g, "").trim();
+            let score = 0;
+            if (headingText === cleanText) {
+              score = 100;
+            } else if (headingText.includes(cleanText) || cleanText.includes(headingText)) {
+              // 部分匹配：按重合比例打分
+              score = (Math.min(headingText.length, cleanText.length) /
+                       Math.max(headingText.length, cleanText.length)) * 50;
+            }
+            if (score > bestScore) {
+              bestScore = score;
+              bestMatch = h;
+            }
+          }
+
+          if (bestMatch && bestScore > 0) {
+            bestMatch.scrollIntoView({ behavior: "smooth", block: "center" });
+          }
+          return;
+        }
+
+        if (mode === "sv") {
+          // SV 模式：.vditor-sv 和 .vditor-reset 在同一元素上，不是父子关系
+          // 通过 .vditor-sv__marker--heading 查找标题标记元素
+          const svElement = editorEl.querySelector(".vditor-sv") as HTMLElement | null;
+          if (!svElement) return;
+
+          // 找到所有标题标记（# ## ### 等），匹配后面的标题文字
+          const headingMarkers = svElement.querySelectorAll(".vditor-sv__marker--heading");
+          for (const marker of headingMarkers) {
+            // 标题标记和文字通常在同一个块级父元素中
+            const blockEl = marker.closest("[data-block]") || marker.parentElement;
+            if (!blockEl) continue;
+            const lineText = (blockEl.textContent || "")
+              .replace(/^#{1,6}\s+/, "")
+              .replace(/[#*_`~]/g, "")
+              .trim();
+            if (lineText === cleanText || lineText.includes(cleanText) || cleanText.includes(lineText)) {
+              marker.scrollIntoView({ behavior: "smooth", block: "center" });
+              return;
+            }
+          }
+
+          // 回退：通过 textContent 按比例估算滚动位置
+          const textContent = svElement.textContent || "";
+          const lines = textContent.split("\n");
+          const headingLineIdx = lines.findIndex(l => {
+            const cleaned = l.replace(/^#{1,6}\s+/, "").replace(/[#*_`~]/g, "").trim();
+            return cleaned === cleanText || cleaned.includes(cleanText) || cleanText.includes(cleaned);
+          });
+          if (headingLineIdx >= 0) {
+            const ratio = headingLineIdx / Math.max(lines.length - 1, 1);
+            svElement.scrollTop = ratio * (svElement.scrollHeight - svElement.clientHeight);
+          }
+        }
+      },
+      scrollToLine: (line: number) => {
+        const editorEl = elRef.current;
+        if (!editorEl) return;
+
+        if (mode === "sv") {
+          // SV 模式：.vditor-sv 和 .vditor-reset 在同一元素上
+          const svElement = editorEl.querySelector(".vditor-sv") as HTMLElement | null;
+          if (svElement) {
+            const textContent = svElement.textContent || "";
+            const totalLines = Math.max(textContent.split("\n").length, 1);
+            const ratio = Math.min((line - 1) / Math.max(totalLines - 1, 1), 1);
+            svElement.scrollTop = ratio * (svElement.scrollHeight - svElement.clientHeight);
+            return;
+          }
+        }
+
+        // WYSIWYG/IR 或 SV 回退：按比例估算滚动位置
+        const resetEl = editorEl.querySelector(".vditor-reset") as HTMLElement | null;
+        if (!resetEl) return;
+
+        const scrollContainer = resetEl.parentElement as HTMLElement | null;
+        if (!scrollContainer) return;
+
+        const lineCount = (scrollContainer.textContent || "").split("\n").length || 1;
+        const ratio = Math.min((line - 1) / Math.max(lineCount - 1, 1), 1);
+        scrollContainer.scrollTop = ratio * (scrollContainer.scrollHeight - scrollContainer.clientHeight);
       },
     }));
 
@@ -827,10 +961,6 @@ const VditorEditor = forwardRef<VditorEditorHandle, VditorEditorProps>(
       if (name === "quote" || name === "list" || name === "ordered-list" || name === "check" || name === "inline-code" || name === "code") {
         vditor.focus();
         const mode = internalVditor?.currentMode;
-
-        // 行内代码是包裹式（前后缀），其余是前缀式
-        const isWrap = name === "inline-code";
-
         if (mode === "sv") {
           const prefixMap: Record<string, string> = {
             quote: "> ", list: "* ", "ordered-list": "1. ", check: "* [ ] ",
@@ -863,7 +993,7 @@ const VditorEditor = forwardRef<VditorEditorHandle, VditorEditorProps>(
             processed = hasFence
               ? lines.slice(1, -1).join("\n")
               : "```\n" + lines.join("\n") + "\n```";
-          } else if (isWrap) {
+          } else if (name === "inline-code") {
             // 行内代码：包装非空行，空行保持原样
             const nonEmptyLines = lines.filter(l => l !== "");
             const allWrapped = nonEmptyLines.length > 0 && nonEmptyLines.every(l => { const t = l.trim(); return t.startsWith("`") && t.endsWith("`") && t.length >= 2; });
@@ -905,80 +1035,106 @@ const VditorEditor = forwardRef<VditorEditorHandle, VditorEditorProps>(
           return;
         }
 
-        // WYSIWYG 模式：用 getSelection().toString() 在 markdown 中定位
+        // WYSIWYG/IR 模式：DOM 直接操作，避免 markdown 往返丢失空行
         {
-          // 恢复右键菜单打开时保存的 range
+          const editorEl = internalVditor?.wysiwyg?.element as HTMLElement;
+          if (!editorEl) return;
+
           if (savedRangeRef.current) {
-            const sel = window.getSelection();
-            if (sel) {
-              sel.removeAllRanges();
-              sel.addRange(savedRangeRef.current);
-            }
+            const s = window.getSelection();
+            if (s) { s.removeAllRanges(); s.addRange(savedRangeRef.current); }
           }
+
           const sel = window.getSelection();
           if (!sel || sel.rangeCount === 0) return;
-          const md = vditor.getValue();
-          const selectedText = sel.toString();
+          const range = sel.getRangeAt(0);
 
-          let a: number, b: number;
-          if (selectedText) {
-            a = md.indexOf(selectedText);
-            if (a === -1) return;
-            b = a + selectedText.length;
-          } else {
-            // 无选中：取光标所在处的短上下文来定位
-            const r = sel.getRangeAt(0);
-            const node = r.startContainer;
-            const off = r.startOffset;
-            const before = (node.textContent || "").slice(Math.max(0, off - 30), off);
-            const after = (node.textContent || "").slice(off, off + 30);
-            const ctx = before + after;
-            a = md.indexOf(ctx);
-            if (a === -1) return;
-            a += before.length;
-            b = a;
+          // 向上找到块元素（与标题命令相同的模式）
+          let block: HTMLElement | null = null;
+          let node: Node | null = range.startContainer;
+          while (node && node !== editorEl) {
+            if (node instanceof HTMLElement) {
+              if (node.hasAttribute("data-block") ||
+                  /^H[1-6]$/.test(node.tagName) ||
+                  node.tagName === "P" || node.tagName === "BLOCKQUOTE" ||
+                  node.tagName === "LI") {
+                block = node;
+                break;
+              }
+            }
+            node = node.parentElement;
           }
+          if (!block || block === editorEl) return;
 
-          let ls = a; while (ls > 0 && md[ls - 1] !== "\n") ls--;
-          if (md[ls] === "\n") ls++;
-          let le = b > a ? b : ls;
-          while (le < md.length && md[le] !== "\n") le++;
+          // 插入 wbr 标记光标
+          range.insertNode(document.createElement("wbr"));
 
-          const lines = md.slice(ls, le).split("\n");
-          let processed: string;
-          if (name === "code") {
-            const hasFence = lines.length > 0 && lines[0].startsWith("```") && lines[lines.length - 1].startsWith("```");
-            processed = hasFence
-              ? lines.slice(1, -1).join("\n")
-              : "```\n" + lines.join("\n") + "\n```";
-          } else if (isWrap) {
-            // 行内代码：包装非空行，空行保持原样
-            const nonEmptyLines = lines.filter(l => l !== "");
-            const allWrapped = nonEmptyLines.length > 0 && nonEmptyLines.every(l => { const t = l.trim(); return t.startsWith("`") && t.endsWith("`") && t.length >= 2; });
-            processed = allWrapped
-              ? lines.map(l => l === "" ? l : l.trim().slice(1, -1)).join("\n")
-              : lines.map(l => l === "" ? l : "`" + l + "`").join("\n");
-          } else {
-            const prefix: Record<string, string> = { quote: "> ", list: "* ", "ordered-list": "1. ", check: "* [ ] " };
-            const p = prefix[name];
-            if (name === "quote") {
-              const allHave = lines.every(l => l === "" || l.startsWith(p));
-              processed = allHave
-                ? lines.map(l => l === "" ? l : l.slice(p.length)).join("\n")
-                : lines.map(l => l.startsWith(p) ? l : p + l).join("\n");
+          if (name === "list" || name === "ordered-list" || name === "check") {
+            if (block.tagName === "LI") {
+              // 取消列表：li → p
+              const listEl = block.parentElement!;
+              let pHTML = "";
+              for (let i = 0; i < listEl.childElementCount; i++) {
+                const li = listEl.children[i];
+                const inputEl = li.querySelector("input");
+                if (inputEl) inputEl.remove();
+                // 避免嵌套 <p>：如果有 <p> 包裹则取内部 HTML
+                const inner = li.firstElementChild?.tagName === "P"
+                  ? (li.firstElementChild as HTMLElement).innerHTML
+                  : li.innerHTML;
+                pHTML += `<p data-block="0">${inner}</p>`;
+              }
+              listEl.insertAdjacentHTML("beforebegin", pHTML);
+              listEl.remove();
             } else {
-              const items = lines.filter(l => l !== "");
-              const allHave = items.length > 0 && items.every(l => l.startsWith(p));
-              processed = allHave
-                ? items.map(l => l.slice(p.length)).join("\n")
-                : items.map(l => l.startsWith(p) ? l : p + l).join("\n");
+              // 添加列表：p/h* → ul/ol > li
+              // 普通列表包裹 <p> 以支持 fixList Enter 换行
+              // 任务列表不加 <p>（fixTask 单独处理 Enter，用 firstElementChild 取 checkbox）
+              const wrapperTag = name === "ordered-list" ? "ol" : "ul";
+              const inner = name === "check"
+                ? ` class="vditor-task"><input type="checkbox" /> ${block.innerHTML}`
+                : `><p data-block="0">${block.innerHTML}</p>`;
+              block.insertAdjacentHTML("beforebegin",
+                `<${wrapperTag} data-block="0"><li${inner}</li></${wrapperTag}>`);
+              block.remove();
+            }
+          } else if (name === "quote") {
+            if (block.tagName === "BLOCKQUOTE") {
+              block.outerHTML = block.innerHTML;
+            } else {
+              block.outerHTML = `<blockquote data-block="0">${block.outerHTML}</blockquote>`;
+            }
+          } else if (name === "inline-code") {
+            // 行内代码：toggle <code> 包裹
+            const codeParent = (range.startContainer as Element).closest?.("code") ||
+                               range.startContainer.parentElement?.closest("code");
+            if (codeParent) {
+              const text = codeParent.textContent || "";
+              codeParent.replaceWith(document.createTextNode(text));
+            } else if (!range.collapsed) {
+              const code = document.createElement("code");
+              try { range.surroundContents(code); } catch { /* cross-node, ignore */ }
+            }
+          } else if (name === "code") {
+            if (block.tagName === "PRE") {
+              block.outerHTML = `<p data-block="0">${block.textContent || ""}</p>`;
+            } else {
+              block.outerHTML = `<pre data-block="0"><code>${block.textContent || ""}</code></pre>`;
             }
           }
-          const newMd = md.slice(0, ls) + processed + md.slice(le);
-          vditor.setValue(newMd);
-          syncInput();
-          // setValue 重建 DOM，光标会回到开头，调用 focus 保持编辑器激活
-          vditor.focus();
+
+          // 恢复光标到 wbr 位置
+          const wbr = editorEl.querySelector("wbr");
+          if (wbr) {
+            const newRange = document.createRange();
+            newRange.setStartBefore(wbr);
+            newRange.collapse(true);
+            sel.removeAllRanges();
+            sel.addRange(newRange);
+            wbr.remove();
+          }
+
+          onChangeRef.current(vditor.getValue());
           return;
         }
       }
@@ -1049,13 +1205,44 @@ const VditorEditor = forwardRef<VditorEditorHandle, VditorEditorProps>(
       } else if (name === "delete") {
         document.execCommand("delete");
       } else if (name === "footnotes") {
-        safeClick("footnotes");
-      } else if (name === "link-ref") {
-        safeClick("link");
+        if (!safeClick("footnotes")) {
+          vditor.focus();
+          const md = vditor.getValue();
+          const newMd = md + "\n\n[^1]: ";
+          vditor.setValue(newMd);
+          syncInput();
+        }
       } else if (name === "math") {
-        safeClick("math");
-      } else if (name === "toc") {
-        safeClick("toc");
+        if (!safeClick("math")) {
+          vditor.focus();
+          const md = vditor.getValue();
+          const newMd = md + "\n\n$$\n\n$$";
+          vditor.setValue(newMd);
+          syncInput();
+          // 将光标移到两个 $$ 之间
+          const svEl = internalVditor?.sv?.element as HTMLElement;
+          if (svEl) {
+            const sel = window.getSelection();
+            const textContent = svEl.textContent || "";
+            const target = textContent.indexOf("\n\n") + 4;
+            const walker = document.createTreeWalker(svEl, NodeFilter.SHOW_TEXT);
+            let n = walker.nextNode();
+            let acc = 0;
+            while (n) {
+              const len = (n.textContent || "").length;
+              if (acc + len >= target) {
+                const r = document.createRange();
+                r.setStart(n, target - acc);
+                r.collapse(true);
+                sel?.removeAllRanges();
+                sel?.addRange(r);
+                break;
+              }
+              acc += len;
+              n = walker.nextNode();
+            }
+          }
+        }
       }
     }, []);
 

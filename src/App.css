@@ -152,12 +152,16 @@ body {
   border: none;
   color: var(--text-secondary);
   cursor: pointer;
-  font-size: 12px;
   border-radius: 4px;
   display: flex;
   align-items: center;
   justify-content: center;
   padding: 0;
+  transition: background-color 0.15s, color 0.15s;
+}
+
+.window-control-btn svg {
+  flex-shrink: 0;
 }
 
 .window-control-btn:hover {

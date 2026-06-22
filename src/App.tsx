@@ -305,6 +305,27 @@ function App({ initialFilePath }: { initialFilePath?: string | null }) {
     return () => window.removeEventListener("keydown", handler);
   }, [handleSave]);
 
+  // 自动保存：内容变化且有已保存的文件路径时，延迟 1 秒自动写入
+  useEffect(() => {
+    if (!modified || !fileNameRef.current) return;
+    const timer = setTimeout(async () => {
+      try {
+        const raw = localStorage.getItem("zmd-general-settings");
+        if (!raw) return;
+        const settings = JSON.parse(raw);
+        if (!settings.autoSave) return;
+        const path = fileNameRef.current;
+        if (!path) return;
+        await writeTextFile(path, contentRef.current);
+        savedContentRef.current = contentRef.current;
+        setModified(false);
+      } catch (e) {
+        console.error("自动保存失败:", e);
+      }
+    }, 1000);
+    return () => clearTimeout(timer);
+  }, [content, modified]);
+
   // Ctrl+O 快速打开文件
   useEffect(() => {
     const handler = (e: KeyboardEvent) => {
@@ -647,7 +668,19 @@ function App({ initialFilePath }: { initialFilePath?: string | null }) {
           <div className="editor-topbar">
             <div className="editor-topbar-left">
               <button className="sidebar-toggle-btn" onClick={handleSidebarToggle} title={sidebarOpen ? "折叠侧栏" : "展开侧栏"}>
-                {sidebarOpen ? "◀" : "▶"}
+                <svg width="18" height="18" viewBox="0 0 18 18" fill="none" xmlns="http://www.w3.org/2000/svg">
+                  {sidebarOpen ? (
+                    <>
+                      <path d="M4 5h10M4 9h10M4 13h10" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round"/>
+                      <path d="M2 9l3-2.5v5L2 9z" fill="currentColor"/>
+                    </>
+                  ) : (
+                    <>
+                      <path d="M4 5h10M4 9h10M4 13h10" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round"/>
+                      <path d="M16 9l-3-2.5v5L16 9z" fill="currentColor"/>
+                    </>
+                  )}
+                </svg>
               </button>
               <span className="editor-file-name" title={fileName || "Tydora"}>
                 {fileName && <span className="editor-file-icon">📄</span>}
@@ -684,6 +717,20 @@ function App({ initialFilePath }: { initialFilePath?: string | null }) {
                   mode={viewMode}
                   theme={theme}
                 />
+                {/* 欢迎提示 */}
+                {!fileName && content === initialContent && (
+                  <div className="welcome-overlay">
+                    <div className="welcome-hint">
+                      <div className="welcome-hint-icon">⌨️</div>
+                      <div className="welcome-hint-item">
+                        <kbd>Ctrl + O</kbd> 打开文件
+                      </div>
+                      <div className="welcome-hint-item">
+                        <kbd>Ctrl + P</kbd> 命令面板
+                      </div>
+                    </div>
+                  </div>
+                )}
               </EditorErrorBoundary>
             )}
           </div>

@@ -24,8 +24,8 @@
 .vditor-wysiwyg .vditor-reset {
   background: #1e1e2e !important;
   color: #cdd6f4 !important;
-  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
-  font-size: 15px;
+  font-family: var(--editor-font);
+  font-size: var(--editor-font-size);
   line-height: 1.75;
   /* 动态水平 padding：与 SV 模式保持一致（最大内容宽度 ~880px） */
   padding-top: 24px !important;
@@ -159,8 +159,8 @@
 .vditor-sv {
   background: #1e1e2e !important;
   counter-reset: sv-line;
-  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif !important;
-  font-size: 15px !important;
+  font-family: var(--editor-font) !important;
+  font-size: var(--editor-font-size) !important;
   line-height: 1.75 !important;
   /* 动态水平 padding：宽屏时居中（最大内容宽度 ~880px），窄屏时保留最小边距 */
   padding-top: 24px !important;
@@ -284,6 +284,9 @@
 .vditor-ir .vditor-reset {
   background: #1e1e2e !important;
   color: #cdd6f4 !important;
+  font-family: var(--editor-font);
+  font-size: var(--editor-font-size);
+  line-height: 1.75;
   padding-top: 24px !important;
   padding-bottom: 24px !important;
   padding-left: max(32px, calc((100% - 800px) / 2)) !important;
@@ -1234,4 +1237,15 @@
 
 [data-theme="mint-dark"] .vditor-ir__preview .hljs {
   background: #232325 !important;
+}
+
+/* =============================================================
+   ========== 打字机模式样式 ==========
+   ============================================================= */
+
+.typewriter-mode .vditor-ir .vditor-reset,
+.typewriter-mode .vditor-wysiwyg .vditor-reset,
+.typewriter-mode .vditor-sv {
+  padding-top: 0 !important;
+  padding-bottom: 0 !important;
 }

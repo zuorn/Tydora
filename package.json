@@ -15,6 +15,8 @@
     "@tauri-apps/plugin-dialog": "^2.0.0",
     "@tauri-apps/plugin-fs": "^2.0.0",
     "@tauri-apps/plugin-window-state": "^2.4.1",
+    "markmap-lib": "^0.18.12",
+    "markmap-view": "^0.18.12",
     "react": "^19.0.0",
     "react-dom": "^19.0.0",
     "vditor": "^3.11.2"

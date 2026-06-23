@@ -116,7 +116,15 @@
 }
 
 .settings-section {
+  width: 100%;
   max-width: 560px;
+  margin-left: auto;
+  margin-right: auto;
+}
+
+.about-header {
+  text-align: center;
+  margin-bottom: 32px;
 }
 
 .settings-section-title {
@@ -181,7 +189,7 @@
   height: 4px;
   -webkit-appearance: none;
   appearance: none;
-  background: var(--border);
+  background: color-mix(in srgb, var(--text-secondary) 20%, transparent);
   border-radius: 2px;
   cursor: pointer;
 }
@@ -263,24 +271,33 @@
   padding: 12px;
   background: var(--bg-secondary);
   border: 2px solid transparent;
-  border-radius: 6px;
+  border-radius: 8px;
   cursor: pointer;
-  transition: border-color 0.15s, background 0.15s;
+  transition: all 0.2s ease;
 }
 
 .settings-theme-card:hover {
   background: var(--bg-surface);
+  transform: translateY(-1px);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
 }
 
 .settings-theme-card.active {
   border-color: var(--accent);
+  background: color-mix(in srgb, var(--accent) 8%, var(--bg-secondary));
+  box-shadow: 0 0 0 1px var(--accent), 0 2px 12px rgba(0, 0, 0, 0.15);
 }
 
 .settings-theme-preview {
+  position: relative;
   height: 60px;
   border-radius: 4px;
   margin-bottom: 8px;
   background: linear-gradient(135deg, #2a2a4a 0%, #1a1a2e 100%);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
 }
 
 .settings-theme-preview[data-theme="catppuccin-mocha"] {
@@ -297,6 +314,18 @@
 
 .settings-theme-preview[data-theme="mint-dark"] {
   background: linear-gradient(135deg, #1a3a2a 0%, #0d1f15 100%);
+}
+
+.settings-theme-check {
+  width: 28px;
+  height: 28px;
+  background: var(--accent);
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: white;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.3);
 }
 
 .settings-theme-name {
@@ -320,6 +349,7 @@
   border-radius: 6px;
   color: var(--text-primary);
   font-size: 14px;
+  min-width: 0;
 }
 
 .settings-search:focus {
@@ -329,6 +359,92 @@
 
 .settings-search::placeholder {
   color: var(--text-secondary);
+}
+
+.settings-search-inner {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  background: var(--bg-secondary);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  transition: border-color 0.15s;
+}
+
+.settings-search-inner:focus-within {
+  border-color: var(--accent);
+}
+
+.settings-search-inner.recording {
+  border-color: var(--accent);
+  animation: pulse 1.5s ease-in-out infinite;
+}
+
+.settings-search-inner .settings-search {
+  border: none;
+  background: transparent;
+  flex: 1;
+  padding-left: 12px;
+}
+
+.settings-search-inner .settings-search:focus {
+  outline: none;
+}
+
+@keyframes pulse {
+  0%, 100% { border-color: var(--accent); }
+  50% { border-color: transparent; }
+}
+
+.settings-search-inner .settings-icon-group {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  padding: 0 6px 0 0;
+}
+
+.settings-record-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  background: transparent;
+  border: none;
+  border-radius: 4px;
+  color: var(--text-secondary);
+  cursor: pointer;
+  transition: all 0.15s;
+  flex-shrink: 0;
+}
+
+.settings-record-btn:hover {
+  background: var(--bg-surface);
+  color: var(--text-primary);
+}
+
+.settings-record-btn.active {
+  color: var(--accent);
+}
+
+.settings-clear-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  background: transparent;
+  border: none;
+  border-radius: 4px;
+  color: var(--text-secondary);
+  cursor: pointer;
+  transition: all 0.15s;
+  flex-shrink: 0;
+}
+
+.settings-clear-btn:hover {
+  background: var(--bg-surface);
+  color: var(--text-primary);
 }
 
 .settings-reset-all-btn {
@@ -564,4 +680,32 @@
 
 .settings-window ::-webkit-scrollbar-thumb:hover {
   background: var(--text-secondary);
+}
+
+/* ── Path Input ──────────────────────────────────────────────────── */
+
+.settings-path-wrapper {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+}
+
+.settings-input {
+  flex: 1;
+  padding: 6px 12px;
+  background: var(--bg-surface);
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  color: var(--text-primary);
+  font-size: 13px;
+  min-width: 0;
+}
+
+.settings-input:focus {
+  outline: none;
+  border-color: var(--accent);
+}
+
+.settings-input::placeholder {
+  color: var(--text-secondary);
 }

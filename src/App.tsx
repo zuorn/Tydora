@@ -11,6 +11,8 @@ import QuickOpen from "./QuickOpen";
 import CommandPalette from "./CommandPalette";
 import { useTheme } from "./themes";
 import { ConfirmDialog } from "./ConfirmDialog";
+import { emit } from "@tauri-apps/api/event";
+import { loadImageSettings, type ImageSettings } from "./ImageManager";
 import "./App.css";
 import "./vditor-theme.css";
 import "./FilePreview.css";
@@ -75,6 +77,31 @@ function App({ initialFilePath }: { initialFilePath?: string | null }) {
   const [fileName, setFileName] = useState<string | null>(null);
   const [modified, setModified] = useState(false);
   const [viewMode, setViewMode] = useState<EditorMode>("ir");
+  const [typewriterMode, setTypewriterMode] = useState(false);
+
+  // 应用编辑器字体和字号设置
+  useEffect(() => {
+    const applySettings = () => {
+      try {
+        const raw = localStorage.getItem("zmd-general-settings");
+        if (raw) {
+          const settings = JSON.parse(raw);
+          if (settings.editorFont) {
+            document.documentElement.style.setProperty("--editor-font", settings.editorFont);
+          }
+          if (settings.fontSize) {
+            document.documentElement.style.setProperty("--editor-font-size", settings.fontSize + "px");
+          }
+        }
+      } catch {}
+    };
+    applySettings();
+    const handleStorage = (e: StorageEvent) => {
+      if (e.key === "zmd-general-settings") applySettings();
+    };
+    window.addEventListener("storage", handleStorage);
+    return () => window.removeEventListener("storage", handleStorage);
+  }, []);
 
   // Sidebar / Vault state
   const [vaults, setVaults] = useState<VaultInfo[]>(() => {
@@ -110,6 +137,9 @@ function App({ initialFilePath }: { initialFilePath?: string | null }) {
 
   // 快速打开文件弹窗状态
   const [quickOpenOpen, setQuickOpenOpen] = useState(false);
+
+  // 图像设置状态
+  const [imageSettings] = useState<ImageSettings>(() => loadImageSettings());
 
   // 命令面板状态
   const [commandPaletteOpen, setCommandPaletteOpen] = useState(false);
@@ -260,12 +290,24 @@ function App({ initialFilePath }: { initialFilePath?: string | null }) {
     };
   }, []);
 
+  // Debounced mindmap sync to avoid flooding IPC on every keystroke
+  const mindmapSyncTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const syncMindmapContent = useCallback((value: string) => {
+    if (mindmapSyncTimerRef.current) clearTimeout(mindmapSyncTimerRef.current);
+    mindmapSyncTimerRef.current = setTimeout(() => {
+      localStorage.setItem("zmd-mindmap-content", value);
+      emit("mindmap-content-update", { content: value }).catch(() => {});
+    }, 500);
+  }, []);
+
   const handleChange = useCallback((value: string) => {
     setContent(value);
     setModified(value !== savedContentRef.current);
     // Clear search highlights when user edits
     editorHandleRef.current?.clearHighlight();
-  }, []);
+    // Sync content to mindmap window if open
+    syncMindmapContent(value);
+  }, [syncMindmapContent]);
 
   // 用 ref 保存最新值，避免 Ctrl+S 回调频繁重建
   const contentRef = useRef(content);
@@ -505,12 +547,28 @@ function App({ initialFilePath }: { initialFilePath?: string | null }) {
     getCurrentWindow().close();
   }, []);
 
+  const toggleTypewriterMode = useCallback(() => {
+    setTypewriterMode((prev) => !prev);
+  }, []);
+
+  // Ctrl+Alt+T 打字机模式
+  useEffect(() => {
+    const handler = (e: KeyboardEvent) => {
+      if (e.ctrlKey && e.altKey && e.key === "t") {
+        e.preventDefault();
+        toggleTypewriterMode();
+      }
+    };
+    window.addEventListener("keydown", handler);
+    return () => window.removeEventListener("keydown", handler);
+  }, [toggleTypewriterMode]);
+
   // 模式循环切换
   const cycleMode = useCallback(() => {
     setViewMode((prev) => {
-      if (prev === "wysiwyg") return "ir";
-      if (prev === "ir") return "sv";
-      return "wysiwyg";
+      if (prev === "ir") return "wysiwyg";
+      if (prev === "wysiwyg") return "sv";
+      return "ir";
     });
   }, []);
 
@@ -542,6 +600,11 @@ function App({ initialFilePath }: { initialFilePath?: string | null }) {
     // 视图操作
     { id: "toggle-sidebar", label: "切换侧栏", category: "视图", shortcut: "Ctrl+B", action: handleSidebarToggle },
     { id: "toggle-mode", label: "切换编辑模式", category: "视图", action: cycleMode },
+    { id: "toggle-typewriter", label: "切换打字机模式", category: "视图", shortcut: "Ctrl+Alt+T", action: toggleTypewriterMode },
+    { id: "open-mindmap", label: "打开思维导图", category: "视图", action: () => {
+      localStorage.setItem("zmd-mindmap-content", content);
+      invoke("open_mindmap_window");
+    }},
 
     // 编辑模式
     { id: "mode-wysiwyg", label: "切换到所见即所得模式", category: "模式", action: () => setViewMode("wysiwyg") },
@@ -635,6 +698,20 @@ function App({ initialFilePath }: { initialFilePath?: string | null }) {
                 {title}
                 {modified && <span className="editor-modified-dot">●</span>}
               </span>
+              {fileName && (
+                <button
+                  className="mindmap-open-btn"
+                  title="打开思维导图"
+                  onClick={() => {
+                    localStorage.setItem("zmd-mindmap-content", content);
+                    invoke("open_mindmap_window");
+                  }}
+                >
+                  <svg width="14" height="14" viewBox="0 0 1024 1024" fill="currentColor">
+                    <path d="M768 166.4a38.4 38.4 0 0 1 0 76.8h-102.4a268.8 268.8 0 0 0-265.984 230.4H768l3.9424 0.1536a38.4 38.4 0 0 1 0 76.4416l-3.9424 0.1536H399.616A268.8 268.8 0 0 0 665.6 780.8h80.896l3.84 0.2048a38.4 38.4 0 0 1 0 76.4416l-3.8912 0.2048H665.6a345.5488 345.5488 0 0 1-343.3984-307.2H204.8a38.4 38.4 0 0 1 0-76.8h117.4016a345.6 345.6 0 0 1 343.3984-307.2h102.4z" />
+                  </svg>
+                </button>
+              )}
             </div>
             <div className="window-controls">
               <button className="window-control-btn" onClick={handleMinimize} title="最小化">
@@ -671,6 +748,10 @@ function App({ initialFilePath }: { initialFilePath?: string | null }) {
                   onChange={handleChange}
                   mode={viewMode}
                   theme={theme}
+                  typewriterMode={typewriterMode}
+                  imageSettings={imageSettings}
+                  currentFilePath={fileName}
+                  activeVaultPath={activeVaultIndex >= 0 ? vaults[activeVaultIndex]?.path : null}
                 />
                 {/* 欢迎提示 */}
                 {!fileName && content === initialContent && (
@@ -698,6 +779,20 @@ function App({ initialFilePath }: { initialFilePath?: string | null }) {
               title={`当前: ${MODE_LABELS[viewMode]}，点击切换模式`}
             >
               {MODE_LABELS[viewMode]}
+            </button>
+            <button
+              className={`typewriter-indicator ${typewriterMode ? 'active' : ''}`}
+              onClick={toggleTypewriterMode}
+              title={typewriterMode ? "打字机模式已开启，点击关闭" : "点击开启打字机模式"}
+            >
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M5 7h14v12H5z" />
+                <path d="M9 4h6v3H9z" />
+                <circle cx="9" cy="13" r="1" fill="currentColor" />
+                <circle cx="12" cy="13" r="1" fill="currentColor" />
+                <circle cx="15" cy="13" r="1" fill="currentColor" />
+                <line x1="10" y1="17" x2="14" y2="17" />
+              </svg>
             </button>
             <span className="editor-word-count">
               {content.length} 字

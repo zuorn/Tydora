@@ -331,3 +331,10 @@ mark.search-highlight {
   border-radius: 2px;
   padding: 0 1px;
 }
+
+/* ── Drag Over ── */
+.vditor-editor-container.drag-over {
+  outline: 2px dashed var(--text-secondary);
+  outline-offset: -4px;
+  background: color-mix(in srgb, var(--accent) 5%, transparent);
+}

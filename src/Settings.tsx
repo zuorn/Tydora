@@ -1,16 +1,19 @@
 import { useState, useCallback, useEffect } from "react";
 import { getCurrentWebviewWindow } from "@tauri-apps/api/webviewWindow";
 import { invoke } from "@tauri-apps/api/core";
+import { open } from "@tauri-apps/plugin-dialog";
 import { useTheme, type ThemeName } from "./themes";
+import { loadImageSettings, saveImageSettings, type ImageSettings, type StorageMode, type FilenameFormat } from "./ImageManager";
 import "./Settings.css";
 
 // ── Types ────────────────────────────────────────────────────────────
 
-type SettingsTab = "general" | "theme" | "shortcuts" | "about";
+type SettingsTab = "general" | "theme" | "shortcuts" | "mindmap" | "image" | "about";
 
 interface GeneralSettings {
   appearance: "system" | "light" | "dark";
   fontSize: number;
+  editorFont: string;
   autoSave: boolean;
 }
 
@@ -26,7 +29,28 @@ interface ShortcutItem {
 const DEFAULT_GENERAL: GeneralSettings = {
   appearance: "system",
   fontSize: 14,
+  editorFont: "-apple-system, BlinkMacSystemFont, \"Segoe UI\", Roboto, \"Helvetica Neue\", Arial, sans-serif",
   autoSave: true,
+};
+
+interface MindmapSettings {
+  maxWidth: number;
+  duration: number;
+  initialExpandLevel: number;
+  spacingHorizontal: number;
+  spacingVertical: number;
+  lineWidth: number;
+  colorFreezeLevel: number;
+}
+
+const DEFAULT_MINDMAP: MindmapSettings = {
+  maxWidth: 200,
+  duration: 300,
+  initialExpandLevel: 2,
+  spacingHorizontal: 80,
+  spacingVertical: 5,
+  lineWidth: 1.5,
+  colorFreezeLevel: 0,
 };
 
 const DEFAULT_SHORTCUTS: ShortcutItem[] = [
@@ -81,6 +105,7 @@ const DEFAULT_SHORTCUTS: ShortcutItem[] = [
   // 视图
   { id: "fullscreen", label: "全屏", keys: ["Ctrl", "'"], group: "视图" },
   { id: "split-view", label: "分屏预览", keys: ["Ctrl", "P"], group: "视图" },
+  { id: "typewriter", label: "打字机模式", keys: ["Ctrl", "Alt", "T"], group: "视图" },
 
   // 编辑模式
   { id: "mode-wysiwyg", label: "切换到所见即所得模式", keys: ["Ctrl", "Alt", "7"], group: "模式" },
@@ -97,8 +122,10 @@ const DEFAULT_SHORTCUTS: ShortcutItem[] = [
 
 const GENERAL_SETTINGS_KEY = "zmd-general-settings";
 export const SHORTCUTS_KEY = "zmd-shortcuts";
+export const MINDMAP_SETTINGS_KEY = "zmd-mindmap-settings";
+export type { MindmapSettings };
 
-export { DEFAULT_SHORTCUTS };
+export { DEFAULT_SHORTCUTS, DEFAULT_MINDMAP };
 
 // ── Components ──────────────────────────────────────────────────────
 
@@ -128,6 +155,21 @@ function GeneralSettingsContent({
       </div>
 
       <h3 className="settings-section-title">字体</h3>
+      <div className="settings-item">
+        <label className="settings-item-label">编辑器字体</label>
+        <select
+          className="settings-select"
+          value={settings.editorFont}
+          onChange={(e) => onChange({ ...settings, editorFont: e.target.value })}
+        >
+          <option value="system-ui, -apple-system, sans-serif">系统默认</option>
+          <option value="'Inter', system-ui, sans-serif">Inter</option>
+          <option value="'Noto Sans SC', system-ui, sans-serif">Noto Sans SC</option>
+          <option value="ui-sans-serif, 'Segoe UI', system-ui, sans-serif">Segoe UI</option>
+          <option value="'Roboto', system-ui, sans-serif">Roboto</option>
+          <option value="'Source Sans 3', system-ui, sans-serif">Source Sans</option>
+        </select>
+      </div>
       <div className="settings-item">
         <label className="settings-item-label">字体大小</label>
         <div className="settings-range-wrapper">
@@ -159,6 +201,128 @@ function GeneralSettingsContent({
   );
 }
 
+function MindmapSettingsContent({
+  settings,
+  onChange,
+}: {
+  settings: MindmapSettings;
+  onChange: (s: MindmapSettings) => void;
+}) {
+  return (
+    <div className="settings-section">
+      <h3 className="settings-section-title">布局</h3>
+      <div className="settings-item">
+        <label className="settings-item-label">最大节点宽度</label>
+        <div className="settings-range-wrapper">
+          <input
+            type="range"
+            className="settings-range"
+            min="0"
+            max="500"
+            step="10"
+            value={settings.maxWidth}
+            onChange={(e) => onChange({ ...settings, maxWidth: Number(e.target.value) })}
+          />
+          <span className="settings-range-value">{settings.maxWidth}px</span>
+        </div>
+      </div>
+      <div className="settings-item">
+        <label className="settings-item-label">水平间距</label>
+        <div className="settings-range-wrapper">
+          <input
+            type="range"
+            className="settings-range"
+            min="20"
+            max="200"
+            step="5"
+            value={settings.spacingHorizontal}
+            onChange={(e) => onChange({ ...settings, spacingHorizontal: Number(e.target.value) })}
+          />
+          <span className="settings-range-value">{settings.spacingHorizontal}px</span>
+        </div>
+      </div>
+      <div className="settings-item">
+        <label className="settings-item-label">垂直间距</label>
+        <div className="settings-range-wrapper">
+          <input
+            type="range"
+            className="settings-range"
+            min="1"
+            max="30"
+            value={settings.spacingVertical}
+            onChange={(e) => onChange({ ...settings, spacingVertical: Number(e.target.value) })}
+          />
+          <span className="settings-range-value">{settings.spacingVertical}px</span>
+        </div>
+      </div>
+      <div className="settings-item">
+        <label className="settings-item-label">连线宽度</label>
+        <div className="settings-range-wrapper">
+          <input
+            type="range"
+            className="settings-range"
+            min="0.5"
+            max="4"
+            step="0.5"
+            value={settings.lineWidth}
+            onChange={(e) => onChange({ ...settings, lineWidth: Number(e.target.value) })}
+          />
+          <span className="settings-range-value">{settings.lineWidth}px</span>
+        </div>
+      </div>
+
+      <h3 className="settings-section-title">展开</h3>
+      <div className="settings-item">
+        <label className="settings-item-label">初始展开层级</label>
+        <div className="settings-range-wrapper">
+          <input
+            type="range"
+            className="settings-range"
+            min="-1"
+            max="10"
+            value={settings.initialExpandLevel}
+            onChange={(e) => onChange({ ...settings, initialExpandLevel: Number(e.target.value) })}
+          />
+          <span className="settings-range-value">{settings.initialExpandLevel === -1 ? "全部" : `第${settings.initialExpandLevel}级`}</span>
+        </div>
+      </div>
+
+      <h3 className="settings-section-title">动画</h3>
+      <div className="settings-item">
+        <label className="settings-item-label">动画时长</label>
+        <div className="settings-range-wrapper">
+          <input
+            type="range"
+            className="settings-range"
+            min="0"
+            max="1000"
+            step="50"
+            value={settings.duration}
+            onChange={(e) => onChange({ ...settings, duration: Number(e.target.value) })}
+          />
+          <span className="settings-range-value">{settings.duration}ms</span>
+        </div>
+      </div>
+
+      <h3 className="settings-section-title">颜色</h3>
+      <div className="settings-item">
+        <label className="settings-item-label">颜色冻结层级</label>
+        <div className="settings-range-wrapper">
+          <input
+            type="range"
+            className="settings-range"
+            min="0"
+            max="10"
+            value={settings.colorFreezeLevel}
+            onChange={(e) => onChange({ ...settings, colorFreezeLevel: Number(e.target.value) })}
+          />
+          <span className="settings-range-value">{settings.colorFreezeLevel === 0 ? "不冻结" : settings.colorFreezeLevel}</span>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 function ThemeSettingsContent({ theme, setTheme }: { theme: ThemeName; setTheme: (t: ThemeName) => void }) {
   const themes: { value: ThemeName; label: string }[] = [
     { value: "catppuccin-mocha", label: "Catppuccin Mocha" },
@@ -177,7 +341,15 @@ function ThemeSettingsContent({ theme, setTheme }: { theme: ThemeName; setTheme:
             className={`settings-theme-card${theme === t.value ? " active" : ""}`}
             onClick={() => setTheme(t.value)}
           >
-            <div className="settings-theme-preview" data-theme={t.value} />
+            <div className="settings-theme-preview" data-theme={t.value}>
+              {theme === t.value && (
+                <div className="settings-theme-check">
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
+                    <path d="M20 6L9 17l-5-5" />
+                  </svg>
+                </div>
+              )}
+            </div>
             <span className="settings-theme-name">{t.label}</span>
           </div>
         ))}
@@ -188,6 +360,7 @@ function ThemeSettingsContent({ theme, setTheme }: { theme: ThemeName; setTheme:
 
 function ShortcutsSettingsContent() {
   const [search, setSearch] = useState("");
+  const [recordingSearch, setRecordingSearch] = useState(false);
   const [shortcuts, setShortcuts] = useState<ShortcutItem[]>(() => {
     try {
       const saved = localStorage.getItem(SHORTCUTS_KEY);
@@ -209,9 +382,13 @@ function ShortcutsSettingsContent() {
     localStorage.setItem(SHORTCUTS_KEY, JSON.stringify(shortcuts));
   }, [shortcuts]);
 
-  const filteredShortcuts = shortcuts.filter((s) =>
-    s.label.toLowerCase().includes(search.toLowerCase())
-  );
+  const filteredShortcuts = shortcuts.filter((s) => {
+    const query = search.toLowerCase();
+    if (!query) return true;
+    if (s.label.toLowerCase().includes(query)) return true;
+    const keysStr = s.keys.join("+").toLowerCase();
+    return keysStr.includes(query);
+  });
 
   // 按分组整理快捷键
   const groupedShortcuts = filteredShortcuts.reduce<Record<string, ShortcutItem[]>>((acc, shortcut) => {
@@ -222,7 +399,7 @@ function ShortcutsSettingsContent() {
   }, {});
 
   const handleKeyDown = (e: KeyboardEvent) => {
-    if (editingId === null) return;
+    if (editingId === null && !recordingSearch) return;
     e.preventDefault();
 
     const keyMap: Record<string, string> = {
@@ -245,8 +422,13 @@ function ShortcutsSettingsContent() {
     const key = keyMap[e.key] || e.key;
 
     if (e.key === "Escape") {
-      setEditingId(null);
-      setEditingKeys([]);
+      if (recordingSearch) {
+        setRecordingSearch(false);
+        setSearch("");
+      } else {
+        setEditingId(null);
+        setEditingKeys([]);
+      }
       return;
     }
 
@@ -258,13 +440,19 @@ function ShortcutsSettingsContent() {
     if (e.altKey) newKeys.push("Alt");
     newKeys.push(key);
 
+    if (recordingSearch) {
+      setSearch(newKeys.join("+"));
+      setRecordingSearch(false);
+      return;
+    }
+
     setEditingKeys(newKeys);
   };
 
   useEffect(() => {
     window.addEventListener("keydown", handleKeyDown);
     return () => window.removeEventListener("keydown", handleKeyDown);
-  }, [editingId]);
+  }, [editingId, recordingSearch]);
 
   const startEditing = (id: string) => {
     const shortcut = shortcuts.find((s) => s.id === id);
@@ -302,13 +490,33 @@ function ShortcutsSettingsContent() {
   return (
     <div className="settings-section">
       <div className="settings-search-wrapper">
-        <input
-          type="text"
-          className="settings-search"
-          placeholder="搜索快捷键..."
-          value={search}
-          onChange={(e) => setSearch(e.target.value)}
-        />
+        <div className={`settings-search-inner${recordingSearch ? " recording" : ""}`}>
+          <input
+            type="text"
+            className="settings-search"
+            placeholder={recordingSearch ? "请按下快捷键..." : "搜索快捷键..."}
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            readOnly={recordingSearch}
+          />
+          <button
+            className={`settings-record-btn${recordingSearch ? " active" : ""}`}
+            onClick={() => {
+              if (recordingSearch) {
+                setRecordingSearch(false);
+                setSearch("");
+              } else {
+                setRecordingSearch(true);
+              }
+            }}
+            title={recordingSearch ? "取消录制" : "按键录制搜索"}
+          >
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <rect x="2" y="6" width="20" height="12" rx="2" />
+              <path d="M6 10h.01M10 10h.01M14 10h.01M18 10h.01M8 14h8" />
+            </svg>
+          </button>
+        </div>
         <button className="settings-reset-all-btn" onClick={resetAll}>
           重置所有
         </button>
@@ -368,6 +576,119 @@ function ShortcutsSettingsContent() {
           </div>
         ))}
       </div>
+    </div>
+  );
+}
+
+function ImageSettingsContent({
+  settings,
+  onChange,
+}: {
+  settings: ImageSettings;
+  onChange: (s: ImageSettings) => void;
+}) {
+  const handleSelectDirectory = async () => {
+    const selected = await open({ directory: true, multiple: false });
+    if (selected && typeof selected === "string") {
+      onChange({ ...settings, fixedDirectory: { ...settings.fixedDirectory, path: selected } });
+    }
+  };
+
+  return (
+    <div className="settings-section">
+      <h3 className="settings-section-title">存储模式</h3>
+      <div className="settings-item">
+        <label className="settings-item-label">图片存储位置</label>
+        <select
+          className="settings-select"
+          value={settings.storageMode}
+          onChange={(e) => onChange({ ...settings, storageMode: e.target.value as StorageMode })}
+        >
+          <option value="vault-assets">仓库 assets 目录</option>
+          <option value="fixed-directory">固定本地目录</option>
+          <option value="image-bed">图床上传（后续支持）</option>
+        </select>
+      </div>
+
+      {settings.storageMode === "vault-assets" && (
+        <>
+          <h3 className="settings-section-title">本地存储设置</h3>
+          <div className="settings-item">
+            <label className="settings-item-label">文件命名格式</label>
+            <select
+              className="settings-select"
+              value={settings.local.filenameFormat}
+              onChange={(e) => onChange({
+                ...settings,
+                local: { ...settings.local, filenameFormat: e.target.value as FilenameFormat },
+              })}
+            >
+              <option value="original">原始名称</option>
+              <option value="timestamp">时间戳</option>
+              <option value="both">原始名称 + 时间戳</option>
+            </select>
+          </div>
+          <div className="settings-item">
+            <label className="settings-item-label">自动创建 assets 目录</label>
+            <label className="settings-toggle">
+              <input
+                type="checkbox"
+                checked={settings.local.autoCreateAssetsDir}
+                onChange={(e) => onChange({
+                  ...settings,
+                  local: { ...settings.local, autoCreateAssetsDir: e.target.checked },
+                })}
+              />
+              <span className="settings-toggle-slider" />
+            </label>
+          </div>
+        </>
+      )}
+
+      {settings.storageMode === "fixed-directory" && (
+        <>
+          <h3 className="settings-section-title">固定目录设置</h3>
+          <div className="settings-item">
+            <label className="settings-item-label">存储路径</label>
+            <div className="settings-path-wrapper">
+              <input
+                type="text"
+                className="settings-input"
+                value={settings.fixedDirectory.path}
+                placeholder="选择图片存储目录..."
+                readOnly
+              />
+              <button className="settings-button" onClick={handleSelectDirectory}>
+                选择目录
+              </button>
+            </div>
+          </div>
+          <div className="settings-item">
+            <label className="settings-item-label">文件命名格式</label>
+            <select
+              className="settings-select"
+              value={settings.local.filenameFormat}
+              onChange={(e) => onChange({
+                ...settings,
+                local: { ...settings.local, filenameFormat: e.target.value as FilenameFormat },
+              })}
+            >
+              <option value="original">原始名称</option>
+              <option value="timestamp">时间戳</option>
+              <option value="both">原始名称 + 时间戳</option>
+            </select>
+          </div>
+        </>
+      )}
+
+      {settings.storageMode === "image-bed" && (
+        <div className="settings-item">
+          <label className="settings-item-label">图床功能</label>
+          <span className="settings-about-value" style={{ fontSize: 13, color: "var(--text-secondary)" }}>
+            图床上传功能将在后续版本中支持，敬请期待。
+          </span>
+        </div>
+      )}
     </div>
   );
 }
@@ -460,6 +781,29 @@ export default function Settings() {
     localStorage.setItem(GENERAL_SETTINGS_KEY, JSON.stringify(generalSettings));
   }, [generalSettings]);
 
+  // 思维导图设置状态
+  const [mindmapSettings, setMindmapSettings] = useState<MindmapSettings>(() => {
+    try {
+      const saved = localStorage.getItem(MINDMAP_SETTINGS_KEY);
+      return saved ? { ...DEFAULT_MINDMAP, ...JSON.parse(saved) } : DEFAULT_MINDMAP;
+    } catch {
+      return DEFAULT_MINDMAP;
+    }
+  });
+
+  // 保存思维导图设置到 localStorage
+  useEffect(() => {
+    localStorage.setItem(MINDMAP_SETTINGS_KEY, JSON.stringify(mindmapSettings));
+  }, [mindmapSettings]);
+
+  // 图像设置状态
+  const [imageSettings, setImageSettings] = useState<ImageSettings>(() => loadImageSettings());
+
+  // 保存图像设置到 localStorage
+  useEffect(() => {
+    saveImageSettings(imageSettings);
+  }, [imageSettings]);
+
   const handleClose = useCallback(async () => {
     const win = getCurrentWebviewWindow();
     await win.close();
@@ -474,6 +818,8 @@ export default function Settings() {
     { id: "general", label: "通用" },
     { id: "theme", label: "主题" },
     { id: "shortcuts", label: "快捷键" },
+    { id: "mindmap", label: "思维导图" },
+    { id: "image", label: "图像" },
     { id: "about", label: "关于" },
   ];
 
@@ -524,6 +870,12 @@ export default function Settings() {
             <ThemeSettingsContent theme={theme} setTheme={setTheme} />
           )}
           {activeTab === "shortcuts" && <ShortcutsSettingsContent />}
+          {activeTab === "mindmap" && (
+            <MindmapSettingsContent settings={mindmapSettings} onChange={setMindmapSettings} />
+          )}
+          {activeTab === "image" && (
+            <ImageSettingsContent settings={imageSettings} onChange={setImageSettings} />
+          )}
           {activeTab === "about" && <AboutSettingsContent />}
         </main>
       </div>

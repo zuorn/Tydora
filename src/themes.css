@@ -50,6 +50,8 @@
   --danger: #f38ba8;
   --font-mono: "Cascadia Code", "JetBrains Mono", "Fira Code", "Consolas", monospace;
   --font-ui: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+  --editor-font: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+  --editor-font-size: 15px;
 }
 
 /* ── 白色主题 ── */
@@ -78,6 +80,7 @@
   --danger: #e06c75;
   --font-mono: "SourceCodePro", "Cascadia Code", "JetBrains Mono", "Fira Code", monospace;
   --font-ui: "Lexend", "NotoSansSC", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  --editor-font: "Lexend", "NotoSansSC", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
 }
 
 /* ── Mint Dark 主题（深色） ── */
@@ -93,4 +96,5 @@
   --danger: #e06c75;
   --font-mono: "SourceCodePro", "Cascadia Code", "JetBrains Mono", "Fira Code", monospace;
   --font-ui: "Lexend", "NotoSansSC", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  --editor-font: "Lexend", "NotoSansSC", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
 }

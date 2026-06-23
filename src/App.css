@@ -210,6 +210,29 @@ body {
   color: var(--text-primary);
 }
 
+.editor-bottombar .typewriter-indicator {
+  background: none;
+  border: none;
+  color: var(--text-secondary);
+  cursor: pointer;
+  padding: 0 4px;
+  border-radius: 3px;
+  line-height: 1;
+  display: inline-flex;
+  align-items: center;
+  transition: color 0.2s, opacity 0.2s;
+  opacity: 0;
+}
+
+.editor-bottombar:hover .typewriter-indicator,
+.editor-bottombar .typewriter-indicator.active {
+  opacity: 1;
+}
+
+.editor-bottombar .typewriter-indicator:hover {
+  color: var(--text-primary);
+}
+
 .editor-bottombar .editor-word-count {
   font-size: 11px;
   color: var(--text-secondary);
@@ -912,6 +935,37 @@ body {
   margin-left: 2px;
   font-size: 12px;
   flex-shrink: 0;
+}
+
+.mindmap-open-btn {
+  background: none;
+  border: none;
+  color: var(--text-secondary);
+  cursor: pointer;
+  padding: 2px 4px;
+  border-radius: 3px;
+  display: flex;
+  align-items: center;
+  opacity: 0;
+  transition: opacity 0.15s ease, color 0.15s ease;
+}
+
+.editor-topbar:hover .mindmap-open-btn {
+  opacity: 1;
+}
+
+.mindmap-open-btn:hover {
+  color: var(--accent);
+}
+
+/* ========== 打字机模式 ========== */
+
+.typewriter-mode .editor-panel {
+  background: var(--bg-primary);
+}
+
+.typewriter-mode .vditor-editor-wrapper {
+  position: relative;
 }
 
 /* ========== Vditor 布局适配 ========== */

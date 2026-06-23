@@ -80,6 +80,39 @@ async fn open_file_in_new_window(
     }
 }
 
+/// 打开思维导图窗口
+#[tauri::command]
+async fn open_mindmap_window(
+    app: tauri::AppHandle,
+) -> Result<(), String> {
+    let label = "mindmap";
+
+    // Check if mindmap window already exists, if so just focus it
+    if let Some(existing) = app.get_webview_window(label) {
+        let _ = existing.set_focus();
+        return Ok(());
+    }
+
+    let url = "index.html?window=mindmap";
+
+    let window = WebviewWindowBuilder::new(
+        &app,
+        label,
+        tauri::WebviewUrl::App(url.into()),
+    )
+    .title("思维导图 - Tydora")
+    .inner_size(900.0, 600.0)
+    .min_inner_size(400.0, 300.0)
+    .decorations(false)
+    .resizable(true)
+    .build();
+
+    match window {
+        Ok(_win) => Ok(()),
+        Err(e) => Err(e.to_string()),
+    }
+}
+
 /// 在系统文件管理器中打开文件位置并选中文件
 #[tauri::command]
 fn open_file_location(file_path: String) -> Result<(), String> {
@@ -122,6 +155,7 @@ pub fn run() {
             open_settings_window,
             open_file_in_new_window,
             open_file_location,
+            open_mindmap_window,
         ])
         .setup(|_app| {
             #[cfg(debug_assertions)]

@@ -1,5 +1,6 @@
 import { useRef, useEffect, forwardRef, useImperativeHandle, useState, useCallback, useLayoutEffect } from "react";
 import Vditor from "vditor";
+import { saveImageToLocal, loadImageSettings, type ImageSettings } from "./ImageManager";
 import "./VditorEditor.css";
 import { SHORTCUTS_KEY, DEFAULT_SHORTCUTS } from "./Settings";
 
@@ -10,6 +11,10 @@ interface VditorEditorProps {
   onChange: (value: string) => void;
   mode: EditorMode;
   theme: "catppuccin-mocha" | "white" | "mint" | "mint-dark";
+  typewriterMode?: boolean;
+  imageSettings?: ImageSettings;
+  currentFilePath?: string | null;
+  activeVaultPath?: string | null;
 }
 
 export interface VditorEditorHandle {
@@ -432,7 +437,7 @@ const ContextMenu = forwardRef<HTMLDivElement, ContextMenuProps>(({ items, onCli
 });
 
 const VditorEditor = forwardRef<VditorEditorHandle, VditorEditorProps>(
-  ({ value, onChange, mode, theme }, ref) => {
+  ({ value, onChange, mode, theme, typewriterMode, imageSettings, currentFilePath, activeVaultPath }, ref) => {
     const elRef = useRef<HTMLDivElement>(null);
     const vditorRef = useRef<Vditor | null>(null);
     const menuRef = useRef<HTMLDivElement>(null);
@@ -464,6 +469,63 @@ const VditorEditor = forwardRef<VditorEditorHandle, VditorEditorProps>(
         setHasSelection(false);
       }
     }, []);
+
+    const [isDragOver, setIsDragOver] = useState(false);
+
+    const handleImageFileRef = useRef<((file: File) => Promise<void>) | null>(null);
+
+    const handleImageFile = useCallback(async (file: File) => {
+      const vditor = vditorRef.current;
+      if (!vditor) {
+        console.warn("[ImageManager] vditor 未就绪");
+        return;
+      }
+
+      const settings = imageSettings || loadImageSettings();
+      console.log("[ImageManager] 开始保存图片:", file.name, file.size, "存储模式:", settings.storageMode);
+      try {
+        const result = await saveImageToLocal(file, settings, currentFilePath || null, activeVaultPath || null);
+        console.log("[ImageManager] 图片已保存:", result.savedPath, "引用:", result.markdownRef);
+        vditor.focus();
+        vditor.insertValue(`![${file.name}](${result.markdownRef})`);
+        onChangeRef.current(vditor.getValue());
+        console.log("[ImageManager] 图片引用已插入编辑器");
+      } catch (e: any) {
+        console.error("[ImageManager] save failed:", e);
+        (vditor as any).tip?.show?.(e?.message || "图片保存失败", 3000);
+      }
+    }, [imageSettings, currentFilePath, activeVaultPath]);
+
+    handleImageFileRef.current = handleImageFile;
+
+    const handleImageUrlRef = useRef<((url: string) => Promise<void>) | null>(null);
+
+    const handleImageUrl = useCallback(async (url: string) => {
+      const vditor = vditorRef.current;
+      if (!vditor) return;
+
+      const settings = imageSettings || loadImageSettings();
+      if (settings.storageMode === "image-bed") {
+        vditor.insertValue(`![](${url})`);
+        onChangeRef.current(vditor.getValue());
+        return;
+      }
+
+      try {
+        const resp = await fetch(url);
+        const blob = await resp.blob();
+        const ext = blob.type.split("/")[1] || "png";
+        const filename = `image-${Date.now()}.${ext}`;
+        const file = new File([blob], filename, { type: blob.type });
+        handleImageFileRef.current?.(file);
+      } catch (e: any) {
+        console.error("[ImageManager] download image failed:", e);
+        vditor.insertValue(`![](${url})`);
+        onChangeRef.current(vditor.getValue());
+      }
+    }, [imageSettings]);
+
+    handleImageUrlRef.current = handleImageUrl;
 
     onChangeRef.current = onChange;
 
@@ -659,6 +721,61 @@ const VditorEditor = forwardRef<VditorEditorHandle, VditorEditorProps>(
       const tag = Symbol("init");
       (el as any).__zmd_init_tag = tag;
 
+      // ★ 在 document 上注册 capture 阶段 paste handler
+      // 截图粘贴时剪贴板同时有 text/html（含 base64 <img>）和 files
+      // Vditor 先检查 textHTML，发现不为空就走 HTML 路径，files 路径永远不会执行
+      // 所以必须在 Vditor 之前拦截，阻止 Vditor 处理图片粘贴
+      // 注册在 document 上确保比任何元素级别的 handler 更早执行
+      const hookPaste = (e: ClipboardEvent) => {
+        // 只处理编辑器内的粘贴
+        if (!el.contains(e.target as Node)) return;
+
+        const items = e.clipboardData?.items;
+        if (!items) return;
+
+        for (const item of items) {
+          if (item.type.startsWith("image/")) {
+            console.log("[Image] 检测到粘贴图片:", item.type);
+            e.preventDefault();
+            e.stopPropagation();
+
+            // 策略1: getAsFile()
+            const file = item.getAsFile();
+            if (file && file.size > 0) {
+              console.log("[Image] getAsFile 成功:", file.name, file.size);
+              handleImageFileRef.current?.(file);
+              return;
+            }
+
+            // 策略2: 从 text/html 中提取 base64 图片
+            console.log("[Image] getAsFile 失败，尝试从 HTML 提取 base64...");
+            const html = e.clipboardData?.getData("text/html");
+            if (html) {
+              const match = html.match(/<img[^>]+src=["']data:image\/([^"';\s]+);base64,([^"']+)["']/i);
+              if (match) {
+                const ext = match[1];
+                const b64 = match[2];
+                const binaryStr = atob(b64);
+                const bytes = new Uint8Array(binaryStr.length);
+                for (let i = 0; i < binaryStr.length; i++) {
+                  bytes[i] = binaryStr.charCodeAt(i);
+                }
+                const mimeMap: Record<string, string> = { png: "image/png", jpeg: "image/jpeg", jpg: "image/jpeg", gif: "image/gif", webp: "image/webp" };
+                const mime = mimeMap[ext] || `image/${ext}`;
+                const blob = new Blob([bytes], { type: mime });
+                const f = new File([blob], `paste-${Date.now()}.${ext}`, { type: mime });
+                console.log("[Image] 从 HTML 提取成功:", f.size);
+                handleImageFileRef.current?.(f);
+                return;
+              }
+            }
+
+            console.warn("[Image] 所有策略均失败，无法读取图片数据");
+          }
+        }
+      };
+      document.addEventListener("paste", hookPaste, { capture: true });
+
       try {
         const vditor = new Vditor(el, {
           mode,
@@ -670,17 +787,53 @@ const VditorEditor = forwardRef<VditorEditorHandle, VditorEditorProps>(
           theme: theme === "white" || theme === "mint" ? "classic" : "dark",
           height: "100%",
           width: "100%",
+          typewriterMode,
           outline: { enable: false, position: "left" },
           counter: { enable: false },
           resize: { enable: false },
           cache: { enable: false },
           link: {
             click: (href: unknown) => {
-              // Ctrl + 点击链接时在浏览器中打开
               const hrefStr = String(href);
               if (hrefStr && (hrefStr.startsWith("http://") || hrefStr.startsWith("https://"))) {
                 window.open(hrefStr, "_blank", "noopener,noreferrer");
               }
+            },
+          },
+          image: {
+            isPreview: true,
+          },
+          upload: {
+            accept: "image/*",
+            max: 20 * 1024 * 1024,
+            multiple: true,
+            filename: (name: string) => {
+              const ext = name.split(".").pop() || "png";
+              const base = name.replace(/\.[^.]+$/, "").replace(/[<>:"/\\|?*]/g, "_");
+              const now = new Date();
+              const ts = `${now.getFullYear()}${String(now.getMonth() + 1).padStart(2, "0")}${String(now.getDate()).padStart(2, "0")}-${String(now.getHours()).padStart(2, "0")}${String(now.getMinutes()).padStart(2, "0")}${String(now.getSeconds()).padStart(2, "0")}`;
+              return `${base}-${ts}.${ext}`;
+            },
+            validate: (files: File[]): string | boolean => {
+              const allowed = ["image/jpeg", "image/png", "image/gif", "image/webp", "image/bmp", "image/svg+xml"];
+              for (const file of files) {
+                if (!allowed.includes(file.type)) {
+                  return `不支持的文件类型: ${file.name}`;
+                }
+              }
+              return true;
+            },
+            handler: (files: File[]): null => {
+              for (const file of files) {
+                handleImageFileRef.current?.(file);
+              }
+              return null;
+            },
+            success: (_editor: HTMLPreElement, msg: string) => {
+              (vditorRef.current as any)?.tip?.show?.(msg || "图片已保存", 2000);
+            },
+            error: (msg: string) => {
+              (vditorRef.current as any)?.tip?.show?.(msg || "图片保存失败", 3000);
             },
           },
           toolbar: [
@@ -791,9 +944,52 @@ const VditorEditor = forwardRef<VditorEditorHandle, VditorEditorProps>(
           observer.observe(popover, { attributes: true, attributeFilter: ["style"] });
         }
 
+        // 拖拽放置处理
+        const hookDragOver = (e: DragEvent) => {
+          e.preventDefault();
+          e.stopPropagation();
+          if (e.dataTransfer?.types.includes("Files")) {
+            setIsDragOver(true);
+          }
+        };
+
+        const hookDragLeave = (e: DragEvent) => {
+          e.preventDefault();
+          e.stopPropagation();
+          const related = e.relatedTarget as HTMLElement;
+          if (!related || !el.contains(related)) {
+            setIsDragOver(false);
+          }
+        };
+
+        const hookDrop = (e: DragEvent) => {
+          e.preventDefault();
+          e.stopPropagation();
+          setIsDragOver(false);
+
+          const files = e.dataTransfer?.files;
+          if (!files || files.length === 0) return;
+
+          const imageExts = new Set(["jpg", "jpeg", "png", "gif", "webp", "bmp", "svg", "avif", "ico"]);
+          for (const file of files) {
+            const ext = file.name.split(".").pop()?.toLowerCase() || "";
+            if (imageExts.has(ext) || file.type.startsWith("image/")) {
+              handleImageFileRef.current?.(file);
+            }
+          }
+        };
+
+        el.addEventListener("dragover", hookDragOver);
+        el.addEventListener("dragleave", hookDragLeave);
+        el.addEventListener("drop", hookDrop);
+
         // 存储清理函数
         const cleanup = () => {
+          document.removeEventListener("paste", hookPaste, { capture: true });
           el.removeEventListener("click", hookClick, { capture: true });
+          el.removeEventListener("dragover", hookDragOver);
+          el.removeEventListener("dragleave", hookDragLeave);
+          el.removeEventListener("drop", hookDrop);
         };
         (vditor as any).__zmd_cleanup = cleanup;
       } catch (e: any) {
@@ -1267,7 +1463,7 @@ const VditorEditor = forwardRef<VditorEditorHandle, VditorEditorProps>(
         )}
         <div
           ref={elRef}
-          className="vditor-editor-container"
+          className={`vditor-editor-container${isDragOver ? " drag-over" : ""}`}
           style={{ display: status === "error" ? "none" : undefined }}
           onContextMenu={handleContextMenu}
         />

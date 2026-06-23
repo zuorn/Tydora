@@ -296,9 +296,14 @@
   color: white;
 }
 
-.vault-menu-icon {
-  font-size: 14px;
+.vault-icon {
   flex-shrink: 0;
+  color: inherit;
+}
+
+.vault-menu-icon {
+  flex-shrink: 0;
+  color: inherit;
 }
 
 .vault-menu-divider {
@@ -394,11 +399,48 @@
 /* ── Tabs ── */
 .sidebar-header {
   display: flex;
+  align-items: center;
   justify-content: center;
-  gap: 30px;
   padding: 0 0 10px;
   border-bottom: none;
   flex-shrink: 0;
+  position: relative;
+}
+
+.sidebar-search-trigger {
+  position: absolute;
+  left: 8px;
+  background: none;
+  border: none;
+  color: var(--text-secondary);
+  cursor: pointer;
+  padding: 2px 8px;
+  border-radius: 4px;
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  opacity: 0;
+  transition: opacity 0.15s ease, background 0.15s ease, color 0.15s ease;
+}
+
+.sidebar:hover .sidebar-search-trigger {
+  opacity: 1;
+}
+
+.sidebar-search-trigger:hover {
+  background: var(--bg-surface);
+  color: var(--accent);
+}
+
+.sidebar-search-trigger.active {
+  opacity: 1;
+  color: var(--accent);
+}
+
+.sidebar-tabs-wrapper {
+  display: flex;
+  align-items: center;
+  gap: 30px;
 }
 
 .sidebar-tab {

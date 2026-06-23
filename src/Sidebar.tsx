@@ -1043,11 +1043,19 @@ function VaultSwitcher({
     }
   }, []);
 
+  const vaultSvgIcon = (
+    <svg className="vault-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20" />
+      <path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z" />
+      <path d="M9 7h6M9 11h4" />
+    </svg>
+  );
+
   if (vaults.length === 0) {
     return (
       <div className="sidebar-footer">
         <button className="vault-open-btn" onClick={onNew}>
-          <span className="vault-icon">🗄️</span>
+          {vaultSvgIcon}
           <span className="vault-name">打开仓库</span>
         </button>
       </div>
@@ -1060,7 +1068,7 @@ function VaultSwitcher({
         className="vault-current"
         title="切换仓库"
       >
-        <span className="vault-icon">🗄️</span>
+        {vaultSvgIcon}
         <span
           className="vault-name"
           onClick={(e) => {
@@ -1119,7 +1127,11 @@ function VaultSwitcher({
               onNew();
             }}
           >
-            <span className="vault-menu-icon">🗄️</span>
+            <svg className="vault-menu-icon" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+              <path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20" />
+              <path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z" />
+              <path d="M9 7h6M9 11h4" />
+            </svg>
             <span>打开新仓库</span>
           </div>
         </div>
@@ -1245,17 +1257,36 @@ export default function Sidebar({
 
       <div className="sidebar-header">
         <button
-          className={`sidebar-tab${activeTab === "files" ? " active" : ""}`}
-          onClick={() => { setActiveTab("files"); if (searchOpen) closeSearch(); }}
+          className={`sidebar-search-trigger${searchOpen ? " active" : ""}`}
+          title="搜索 (Ctrl+Shift+F)"
+          onClick={() => {
+            if (searchOpen) {
+              closeSearch();
+            } else {
+              setSearchOpen(true);
+              setActiveTab("outline");
+            }
+          }}
         >
-          文件
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+            <circle cx="11" cy="11" r="8" />
+            <path d="M21 21l-4.35-4.35" />
+          </svg>
         </button>
-        <button
-          className={`sidebar-tab${activeTab === "outline" ? " active" : ""}`}
-          onClick={() => setActiveTab("outline")}
-        >
-          {searchOpen ? "搜索" : "大纲"}
-        </button>
+        <div className="sidebar-tabs-wrapper">
+          <button
+            className={`sidebar-tab${activeTab === "files" ? " active" : ""}`}
+            onClick={() => { setActiveTab("files"); if (searchOpen) closeSearch(); }}
+          >
+            文件
+          </button>
+          <button
+            className={`sidebar-tab${activeTab === "outline" ? " active" : ""}`}
+            onClick={() => setActiveTab("outline")}
+          >
+            {searchOpen ? "搜索" : "大纲"}
+          </button>
+        </div>
       </div>
 
       {activeTab === "files" && (

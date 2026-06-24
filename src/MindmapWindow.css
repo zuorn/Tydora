@@ -58,3 +58,26 @@
   overflow: hidden;
   display: flex;
 }
+
+/* =============================================================
+   ========== Liquid Glass 主题样式 ==========
+   ============================================================= */
+
+[data-theme="liquid-glass"] .mindmap-window {
+  background: #ffffff;
+}
+
+[data-theme="liquid-glass"] .mindmap-window-titlebar {
+  background: rgba(245, 245, 247, 0.5);
+  backdrop-filter: blur(20px) saturate(180%);
+  -webkit-backdrop-filter: blur(20px) saturate(180%);
+}
+
+[data-theme="liquid-glass"] .mindmap-window-btn:hover {
+  background: rgba(0, 0, 0, 0.06);
+}
+
+[data-theme="liquid-glass"] .mindmap-window-close:hover {
+  background: #FF3B30;
+  color: white;
+}

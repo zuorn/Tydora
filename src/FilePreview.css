@@ -247,3 +247,45 @@
   font-size: 12px;
   opacity: 0.7;
 }
+
+/* =============================================================
+   ========== Liquid Glass 主题样式 ==========
+   ============================================================= */
+
+[data-theme="liquid-glass"] .file-preview {
+  background: linear-gradient(135deg, #e8edf2 0%, #d5dce6 30%, #c8d5e3 60%, #e0e8f0 100%);
+  background-attachment: fixed;
+}
+
+[data-theme="liquid-glass"] .preview-header {
+  background: rgba(245, 245, 247, 0.6);
+  backdrop-filter: blur(20px) saturate(180%);
+  -webkit-backdrop-filter: blur(20px) saturate(180%);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.3);
+}
+
+[data-theme="liquid-glass"] .preview-back-btn {
+  background: rgba(255, 255, 255, 0.5);
+  border: 1px solid rgba(0, 0, 0, 0.06);
+  border-radius: 6px;
+}
+
+[data-theme="liquid-glass"] .preview-back-btn:hover {
+  background: rgba(0, 122, 255, 0.08);
+  border-color: var(--accent);
+  color: var(--accent);
+}
+
+[data-theme="liquid-glass"] .preview-file-size {
+  background: rgba(0, 0, 0, 0.04);
+}
+
+[data-theme="liquid-glass"] .preview-zoom-reset {
+  background: rgba(255, 255, 255, 0.5);
+  border: 1px solid rgba(0, 0, 0, 0.06);
+}
+
+[data-theme="liquid-glass"] .preview-zoom-reset:hover {
+  background: rgba(0, 122, 255, 0.08);
+  border-color: var(--accent);
+}

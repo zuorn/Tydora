@@ -82,7 +82,7 @@ const DEFAULT_SHORTCUTS: ShortcutItem[] = [
   { id: "paragraph", label: "段落", keys: ["Ctrl", "Alt", "0"], group: "标题" },
 
   // 插入
-  { id: "table", label: "表格", keys: ["Ctrl", "M"], group: "插入" },
+  { id: "table", label: "表格", keys: ["Ctrl", "T"], group: "插入" },
   { id: "insert-before", label: "在上方插入", keys: ["Ctrl", "Shift", "B"], group: "插入" },
   { id: "insert-after", label: "在下方插入", keys: ["Ctrl", "Shift", "E"], group: "插入" },
 
@@ -106,6 +106,7 @@ const DEFAULT_SHORTCUTS: ShortcutItem[] = [
   { id: "fullscreen", label: "全屏", keys: ["Ctrl", "'"], group: "视图" },
   { id: "split-view", label: "分屏预览", keys: ["Ctrl", "P"], group: "视图" },
   { id: "typewriter", label: "打字机模式", keys: ["Ctrl", "Alt", "T"], group: "视图" },
+  { id: "open-mindmap", label: "打开思维导图", keys: ["Ctrl", "M"], group: "视图" },
 
   // 编辑模式
   { id: "mode-wysiwyg", label: "切换到所见即所得模式", keys: ["Ctrl", "Alt", "7"], group: "模式" },
@@ -330,6 +331,7 @@ function ThemeSettingsContent({ theme, setTheme }: { theme: ThemeName; setTheme:
     { value: "white", label: "白色" },
     { value: "mint", label: "Mint" },
     { value: "mint-dark", label: "Mint Dark" },
+    { value: "liquid-glass", label: "Liquid Glass" },
   ];
 
   return (

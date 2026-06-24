@@ -65,6 +65,9 @@
   --accent-hover: #1d4ed8;
   --border: #d1d9e6;
   --danger: #dc2626;
+  --font-mono: "SourceCodePro", "Cascadia Code", "JetBrains Mono", "Fira Code", monospace;
+  --font-ui: "Lexend", "NotoSansSC", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  --editor-font: "Lexend", "NotoSansSC", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
 }
 
 /* ── Mint 主题（浅色） ── */
@@ -97,4 +100,27 @@
   --font-mono: "SourceCodePro", "Cascadia Code", "JetBrains Mono", "Fira Code", monospace;
   --font-ui: "Lexend", "NotoSansSC", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
   --editor-font: "Lexend", "NotoSansSC", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+}
+
+/* ── Liquid Glass 主题（苹果液态玻璃风格） ── */
+[data-theme="liquid-glass"] {
+  --bg-primary: rgba(255, 255, 255, 0.82);
+  --bg-secondary: rgba(255, 255, 255, 0.68);
+  --bg-surface: rgba(255, 255, 255, 0.58);
+  --text-primary: #1d1d1f;
+  --text-secondary: #6e6e73;
+  --accent: #007AFF;
+  --accent-hover: #0056CC;
+  --border: rgba(0, 0, 0, 0.08);
+  --danger: #FF3B30;
+  --font-mono: "SF Mono", "Fira Code", "Cascadia Code", "JetBrains Mono", monospace;
+  --font-ui: -apple-system, BlinkMacSystemFont, "SF Pro Text", "SF Pro Display", "Helvetica Neue", Arial, sans-serif;
+  --editor-font: -apple-system, BlinkMacSystemFont, "SF Pro Text", "Helvetica Neue", Arial, sans-serif;
+  --editor-font-size: 15px;
+  --glass-blur: 28px;
+  --glass-saturate: 180%;
+  --glass-shadow: 0 2px 8px rgba(0, 0, 0, 0.04), 0 8px 32px rgba(0, 0, 0, 0.06);
+  --glass-inner-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.6), inset 0 -1px 0 rgba(0, 0, 0, 0.03);
+  --glass-border: 1px solid rgba(255, 255, 255, 0.6);
+  --glass-highlight: linear-gradient(180deg, rgba(255,255,255,0.6) 0%, rgba(255,255,255,0) 40%);
 }

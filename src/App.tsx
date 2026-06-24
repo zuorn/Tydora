@@ -596,6 +596,31 @@ function App({ initialFilePath }: { initialFilePath?: string | null }) {
     return () => window.removeEventListener("keydown", handler);
   }, [toggleWysiwygSv]);
 
+  // Ctrl+T 插入表格
+  useEffect(() => {
+    const handler = (e: KeyboardEvent) => {
+      if ((e.ctrlKey || e.metaKey) && e.key === "t") {
+        e.preventDefault();
+        editorHandleRef.current?.executeCommand("table");
+      }
+    };
+    window.addEventListener("keydown", handler);
+    return () => window.removeEventListener("keydown", handler);
+  }, []);
+
+  // Ctrl+M 打开思维导图
+  useEffect(() => {
+    const handler = (e: KeyboardEvent) => {
+      if ((e.ctrlKey || e.metaKey) && e.key === "m") {
+        e.preventDefault();
+        localStorage.setItem("zmd-mindmap-content", contentRef.current);
+        invoke("open_mindmap_window");
+      }
+    };
+    window.addEventListener("keydown", handler);
+    return () => window.removeEventListener("keydown", handler);
+  }, []);
+
   // ── 大纲点击跳转 ──
   const handleSelectHeading = useCallback((_level: number, text: string, line: number) => {
     editorHandleRef.current?.scrollToHeading(text, line);
@@ -625,7 +650,7 @@ function App({ initialFilePath }: { initialFilePath?: string | null }) {
     { id: "toggle-sidebar", label: "切换侧栏", category: "视图", shortcut: "Ctrl+B", action: handleSidebarToggle },
     { id: "toggle-mode", label: "切换编辑模式", category: "视图", shortcut: "Ctrl+/", action: cycleMode },
     { id: "toggle-typewriter", label: "切换打字机模式", category: "视图", shortcut: "Ctrl+Alt+T", action: toggleTypewriterMode },
-    { id: "open-mindmap", label: "打开思维导图", category: "视图", action: () => {
+    { id: "open-mindmap", label: "打开思维导图", category: "视图", shortcut: "Ctrl+M", action: () => {
       localStorage.setItem("zmd-mindmap-content", content);
       invoke("open_mindmap_window");
     }},
@@ -644,7 +669,7 @@ function App({ initialFilePath }: { initialFilePath?: string | null }) {
     { id: "link", label: "超链接", category: "格式", shortcut: "Ctrl+K", action: () => editorHandleRef.current?.executeCommand("link") },
     { id: "quote", label: "引用", category: "格式", shortcut: "Ctrl+;", action: () => editorHandleRef.current?.executeCommand("quote") },
     { id: "hr", label: "水平分割线", category: "格式", shortcut: "Ctrl+Shift+H", action: () => editorHandleRef.current?.executeCommand("line") },
-    { id: "table", label: "表格", category: "格式", shortcut: "Ctrl+M", action: () => editorHandleRef.current?.executeCommand("table") },
+    { id: "table", label: "表格", category: "格式", shortcut: "Ctrl+T", action: () => editorHandleRef.current?.executeCommand("table") },
 
     // 列表
     { id: "unordered-list", label: "无序列表", category: "列表", shortcut: "Ctrl+L", action: () => editorHandleRef.current?.executeCommand("list") },
@@ -718,7 +743,7 @@ function App({ initialFilePath }: { initialFilePath?: string | null }) {
                 </svg>
               </button>
               <span className="editor-file-name" title={fileName || "Tydora"}>
-                {fileName && <span className="editor-file-icon">📄</span>}
+                {fileName && <span className="editor-file-icon"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg></span>}
                 {title}
                 {modified && <span className="editor-modified-dot">●</span>}
               </span>

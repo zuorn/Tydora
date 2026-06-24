@@ -5,6 +5,7 @@ import { convertFileSrc } from "@tauri-apps/api/core";
 import { saveImageToLocal, loadImageSettings, type ImageSettings, dirName, relativePath, resolveRelativePath } from "./ImageManager";
 import "./VditorEditor.css";
 import { SHORTCUTS_KEY, DEFAULT_SHORTCUTS } from "./Settings";
+import type { ThemeName } from "./themes";
 
 type EditorMode = "wysiwyg" | "ir" | "sv";
 
@@ -12,7 +13,7 @@ interface VditorEditorProps {
   value: string;
   onChange: (value: string) => void;
   mode: EditorMode;
-  theme: "catppuccin-mocha" | "white" | "mint" | "mint-dark";
+  theme: ThemeName;
   typewriterMode?: boolean;
   imageSettings?: ImageSettings;
   currentFilePath?: string | null;
@@ -222,7 +223,7 @@ const getInsertSubmenu = (shortcuts: Record<string, string>): SubMenuItem[] => [
   { name: "upload", label: "图像" },
   { name: "footnotes", label: "脚注" },
   { name: "line", label: "水平分割线", shortcut: shortcuts["hr"] || "Ctrl+Shift+H" },
-  { name: "table", label: "表格", shortcut: shortcuts["table"] || "Ctrl+M" },
+  { name: "table", label: "表格", shortcut: shortcuts["table"] || "Ctrl+T" },
   { name: "code", label: "代码块", shortcut: shortcuts["code-block"] || "Ctrl+U" },
   { name: "math", label: "公式块" },
 ];
@@ -860,7 +861,7 @@ const VditorEditor = forwardRef<VditorEditorHandle, VditorEditorProps>(
           icon: "ant",
           lang: "zh_CN",
           placeholder: "开始输入 Markdown... ✍️",
-          theme: theme === "white" || theme === "mint" ? "classic" : "dark",
+          theme: theme === "white" || theme === "mint" || theme === "liquid-glass" ? "classic" : "dark",
           height: "100%",
           width: "100%",
           typewriterMode,
@@ -969,11 +970,11 @@ const VditorEditor = forwardRef<VditorEditorHandle, VditorEditorProps>(
             mode: "editor",
             maxWidth: 800,
             theme: {
-              current: theme === "white" || theme === "mint" ? "light" : "dark",
+              current: theme === "white" || theme === "mint" || theme === "liquid-glass" ? "light" : "dark",
               path: "/vditor/dist/css/content-theme",
             },
             hljs: {
-              style: theme === "white" || theme === "mint" ? "atom-one-light" : "atom-one-dark",
+              style: theme === "white" || theme === "mint" || theme === "liquid-glass" ? "atom-one-light" : "atom-one-dark",
               enable: true,
             },
             markdown: {
@@ -987,6 +988,18 @@ const VditorEditor = forwardRef<VditorEditorHandle, VditorEditorProps>(
 
         vditorRef.current = vditor;
 
+        // IR 模式：阻止 mousedown 在代码块预览区（嵌套 <pre>）放置光标，
+        // 否则 contenteditable 会尝试合并相邻 DOM 导致下方内容被吸入代码块
+        const hookIRCodeBlockMousedown = (e: MouseEvent) => {
+          const previewInCodeBlock = (e.target as HTMLElement).closest(
+            '.vditor-ir__node[data-type="code-block"] .vditor-ir__preview',
+          );
+          if (previewInCodeBlock) {
+            e.preventDefault();
+          }
+        };
+        el.addEventListener("mousedown", hookIRCodeBlockMousedown);
+
         // 监听链接点击，Ctrl+点击时在浏览器打开
         const hookClick = (e: MouseEvent) => {
           const origin = (e.target as HTMLElement).closest("a");
@@ -996,6 +1009,14 @@ const VditorEditor = forwardRef<VditorEditorHandle, VditorEditorProps>(
           }
         };
         el.addEventListener("click", hookClick, { capture: true });
+
+        // 拦截 Ctrl+M / Ctrl+T，阻止 Vditor 内置快捷键，交给 App.tsx 处理
+        const hookKeydown = (e: KeyboardEvent) => {
+          if ((e.ctrlKey || e.metaKey) && (e.key === "m" || e.key === "t")) {
+            e.stopPropagation();
+          }
+        };
+        el.addEventListener("keydown", hookKeydown, { capture: true });
 
         // 按需隐藏 popover：仅对段落/列表/引用隐藏，保留代码块/表格/图表等
         const hideTags = new Set(["P", "UL", "OL", "BLOCKQUOTE"]);
@@ -1063,7 +1084,9 @@ const VditorEditor = forwardRef<VditorEditorHandle, VditorEditorProps>(
         // 存储清理函数
         const cleanup = () => {
           document.removeEventListener("paste", hookPaste, { capture: true });
+          el.removeEventListener("mousedown", hookIRCodeBlockMousedown);
           el.removeEventListener("click", hookClick, { capture: true });
+          el.removeEventListener("keydown", hookKeydown, { capture: true });
           el.removeEventListener("dragover", hookDragOver);
           el.removeEventListener("dragleave", hookDragLeave);
           el.removeEventListener("drop", hookDrop);
@@ -1094,9 +1117,9 @@ const VditorEditor = forwardRef<VditorEditorHandle, VditorEditorProps>(
       const vditor = vditorRef.current;
       if (!vditor || status !== "ready") return;
 
-      const editorTheme = theme === "white" || theme === "mint" ? "classic" : "dark";
-      const contentTheme = theme === "white" || theme === "mint" ? "light" : "dark";
-      const codeTheme = theme === "white" || theme === "mint" ? "atom-one-light" : "atom-one-dark";
+      const editorTheme = theme === "white" || theme === "mint" || theme === "liquid-glass" ? "classic" : "dark";
+      const contentTheme = theme === "white" || theme === "mint" || theme === "liquid-glass" ? "light" : "dark";
+      const codeTheme = theme === "white" || theme === "mint" || theme === "liquid-glass" ? "atom-one-light" : "atom-one-dark";
 
       vditor.setTheme(editorTheme, contentTheme, codeTheme, "/vditor/dist/css/content-theme");
     }, [theme, status]); // 移除 mode，避免模式切换时重复调用

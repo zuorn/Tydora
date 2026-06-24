@@ -122,7 +122,7 @@ export default function FilePreview({ filePath, onBack }: FilePreviewProps) {
     if (error) {
       return (
         <div className="preview-error">
-          <span className="preview-error-icon">❌</span>
+          <span className="preview-error-icon"><svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"/><line x1="15" y1="9" x2="9" y2="15"/><line x1="9" y1="9" x2="15" y2="15"/></svg></span>
           <span className="preview-error-text">{error}</span>
         </div>
       );
@@ -167,7 +167,7 @@ export default function FilePreview({ filePath, onBack }: FilePreviewProps) {
       case "audio":
         return (
           <div className="preview-audio-container">
-            <div className="preview-audio-icon">🎵</div>
+            <div className="preview-audio-icon"><svg width="64" height="64" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><path d="M9 18V5l12-2v13"/><circle cx="6" cy="18" r="3"/><circle cx="18" cy="16" r="3"/></svg></div>
             <div className="preview-audio-name">{fileName}</div>
             <audio
               src={fileSrc}
@@ -199,7 +199,7 @@ export default function FilePreview({ filePath, onBack }: FilePreviewProps) {
       default:
         return (
           <div className="preview-unsupported">
-            <span className="preview-unsupported-icon">📄</span>
+            <span className="preview-unsupported-icon"><svg width="64" height="64" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg></span>
             <span className="preview-unsupported-text">
               无法预览此类型文件
             </span>

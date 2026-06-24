@@ -263,7 +263,7 @@
 
 .settings-theme-grid {
   display: grid;
-  grid-template-columns: repeat(2, 1fr);
+  grid-template-columns: repeat(3, 1fr);
   gap: 12px;
 }
 
@@ -314,6 +314,12 @@
 
 .settings-theme-preview[data-theme="mint-dark"] {
   background: linear-gradient(135deg, #1a3a2a 0%, #0d1f15 100%);
+}
+
+.settings-theme-preview[data-theme="liquid-glass"] {
+  background: linear-gradient(135deg, rgba(255,255,255,0.8) 0%, rgba(0,122,255,0.15) 50%, rgba(255,255,255,0.6) 100%);
+  border: 1px solid rgba(255,255,255,0.3);
+  box-shadow: inset 0 1px 0 rgba(255,255,255,0.5);
 }
 
 .settings-theme-check {
@@ -708,4 +714,222 @@
 
 .settings-input::placeholder {
   color: var(--text-secondary);
+}
+
+/* =============================================================
+   ========== Liquid Glass 主题样式 ==========
+   ============================================================= */
+
+[data-theme="liquid-glass"] .settings-window {
+  background: linear-gradient(135deg, #e3e8ef 0%, #dce3ed 20%, #d4dcea 40%, #dce3ed 60%, #e3e8ef 80%, #dce3ed 100%);
+  background-attachment: fixed;
+}
+
+/* ── 标题栏 ── */
+[data-theme="liquid-glass"] .settings-titlebar {
+  background: rgba(255, 255, 255, 0.75);
+  backdrop-filter: blur(28px) saturate(180%);
+  -webkit-backdrop-filter: blur(28px) saturate(180%);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.7);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.7), 0 1px 2px rgba(0, 0, 0, 0.03);
+}
+
+[data-theme="liquid-glass"] .settings-titlebar-btn:hover {
+  background: rgba(0, 0, 0, 0.06);
+}
+
+[data-theme="liquid-glass"] .settings-titlebar-close:hover {
+  background: #FF3B30;
+  color: white;
+}
+
+/* ── 导航栏 ── */
+[data-theme="liquid-glass"] .settings-nav {
+  background: rgba(255, 255, 255, 0.65);
+  backdrop-filter: blur(28px) saturate(180%);
+  -webkit-backdrop-filter: blur(28px) saturate(180%);
+  border-right: 1px solid rgba(255, 255, 255, 0.6);
+}
+
+[data-theme="liquid-glass"] .settings-nav-item:hover {
+  background: rgba(0, 122, 255, 0.08);
+  color: var(--text-primary);
+}
+
+[data-theme="liquid-glass"] .settings-nav-item.active {
+  background: var(--accent);
+  color: white;
+  box-shadow: 0 2px 8px rgba(0, 122, 255, 0.3);
+}
+
+/* ── 主内容区 ── */
+[data-theme="liquid-glass"] .settings-main {
+  background: transparent;
+}
+
+/* ── 设置项 ── */
+[data-theme="liquid-glass"] .settings-item {
+  background: rgba(255, 255, 255, 0.65);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  border: 1px solid rgba(255, 255, 255, 0.5);
+  border-radius: 12px;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.03), inset 0 1px 0 rgba(255, 255, 255, 0.5);
+}
+
+/* ── Select ── */
+[data-theme="liquid-glass"] .settings-select {
+  background: rgba(255, 255, 255, 0.65);
+  border: 1px solid rgba(0, 0, 0, 0.08);
+  border-radius: 8px;
+}
+
+[data-theme="liquid-glass"] .settings-select:focus {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 3px rgba(0, 122, 255, 0.12);
+}
+
+/* ── Range Input ── */
+[data-theme="liquid-glass"] .settings-range::-webkit-slider-thumb {
+  background: var(--accent);
+  box-shadow: 0 1px 4px rgba(0, 122, 255, 0.3);
+}
+
+/* ── Toggle Switch ── */
+[data-theme="liquid-glass"] .settings-toggle-slider {
+  background: rgba(0, 0, 0, 0.1);
+}
+
+[data-theme="liquid-glass"] .settings-toggle input:checked + .settings-toggle-slider {
+  background: var(--accent);
+  box-shadow: 0 2px 6px rgba(0, 122, 255, 0.3);
+}
+
+/* ── 主题卡片 ── */
+[data-theme="liquid-glass"] .settings-theme-card {
+  background: rgba(255, 255, 255, 0.65);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  border: 1px solid rgba(255, 255, 255, 0.5);
+  border-radius: 12px;
+}
+
+[data-theme="liquid-glass"] .settings-theme-card:hover {
+  background: rgba(255, 255, 255, 0.75);
+}
+
+[data-theme="liquid-glass"] .settings-theme-card.active {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 1px var(--accent), 0 4px 12px rgba(0, 122, 255, 0.2);
+}
+
+/* ── 搜索栏 ── */
+[data-theme="liquid-glass"] .settings-search-inner {
+  background: rgba(255, 255, 255, 0.65);
+  border: 1px solid rgba(0, 0, 0, 0.08);
+  border-radius: 8px;
+}
+
+[data-theme="liquid-glass"] .settings-search-inner:focus-within {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 3px rgba(0, 122, 255, 0.12);
+}
+
+[data-theme="liquid-glass"] .settings-search-inner.recording {
+  border-color: var(--accent);
+}
+
+/* ── 快捷键 ── */
+[data-theme="liquid-glass"] .settings-shortcut-group-title {
+  border-bottom-color: rgba(0, 0, 0, 0.06);
+}
+
+[data-theme="liquid-glass"] .settings-shortcut-item {
+  background: rgba(255, 255, 255, 0.65);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  border: 1px solid rgba(255, 255, 255, 0.5);
+  border-radius: 12px;
+}
+
+[data-theme="liquid-glass"] .settings-shortcut-keys:hover {
+  background: rgba(0, 122, 255, 0.08);
+}
+
+[data-theme="liquid-glass"] .settings-shortcut-keys.editing {
+  background: var(--accent);
+}
+
+[data-theme="liquid-glass"] .settings-kbd {
+  background: rgba(0, 0, 0, 0.05);
+  border: 1px solid rgba(0, 0, 0, 0.08);
+  border-radius: 4px;
+  color: var(--text-secondary);
+}
+
+/* ── 按钮 ── */
+[data-theme="liquid-glass"] .settings-button {
+  background: var(--accent);
+  color: white;
+  border-radius: 8px;
+  box-shadow: 0 2px 8px rgba(0, 122, 255, 0.3);
+}
+
+[data-theme="liquid-glass"] .settings-button:hover:not(:disabled) {
+  background: var(--accent-hover);
+  box-shadow: 0 4px 12px rgba(0, 122, 255, 0.4);
+}
+
+[data-theme="liquid-glass"] .settings-reset-all-btn {
+  background: rgba(255, 255, 255, 0.65);
+  border: 1px solid rgba(0, 0, 0, 0.08);
+  border-radius: 8px;
+}
+
+[data-theme="liquid-glass"] .settings-reset-all-btn:hover {
+  background: rgba(255, 255, 255, 0.75);
+}
+
+/* ── 路径输入 ── */
+[data-theme="liquid-glass"] .settings-input {
+  background: rgba(255, 255, 255, 0.65);
+  border: 1px solid rgba(0, 0, 0, 0.08);
+  border-radius: 8px;
+}
+
+[data-theme="liquid-glass"] .settings-input:focus {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 3px rgba(0, 122, 255, 0.12);
+}
+
+/* ── 滚动条 ── */
+[data-theme="liquid-glass"] .settings-window ::-webkit-scrollbar-thumb {
+  background: rgba(0, 0, 0, 0.1);
+  border-radius: 10px;
+}
+
+[data-theme="liquid-glass"] .settings-window ::-webkit-scrollbar-thumb:hover {
+  background: rgba(0, 0, 0, 0.18);
+}
+
+/* ── 区域标题 ── */
+[data-theme="liquid-glass"] .settings-section-title {
+  color: var(--text-secondary);
+}
+
+/* ── 关于页面 ── */
+[data-theme="liquid-glass"] .settings-about-title {
+  color: var(--text-primary);
+}
+
+[data-theme="liquid-glass"] .settings-about-subtitle {
+  color: var(--text-secondary);
+}
+
+[data-theme="liquid-glass"] .settings-link {
+  color: var(--accent);
+}
+
+[data-theme="liquid-glass"] .settings-link:hover {
+  color: var(--accent-hover);
 }

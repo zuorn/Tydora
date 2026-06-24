@@ -1250,3 +1250,421 @@
   padding-top: 0 !important;
   padding-bottom: 0 !important;
 }
+
+/* =============================================================
+   ========== Liquid Glass 主题（苹果液态玻璃风格） ==========
+   ============================================================= */
+
+[data-theme="liquid-glass"] .vditor {
+  --vditor-bg: rgba(255, 255, 255, 0.82);
+  --vditor-bg-secondary: rgba(255, 255, 255, 0.68);
+  --vditor-border: rgba(0, 0, 0, 0.08);
+  --vditor-text: #1d1d1f;
+  --vditor-text-secondary: #6e6e73;
+  --vditor-accent: #007AFF;
+  --ir-link-color: #007AFF;
+  --ir-bracket-color: #007AFF;
+}
+
+/* ── WYSIWYG 编辑区域 ── */
+[data-theme="liquid-glass"] .vditor-wysiwyg {
+  background: rgba(255, 255, 255, 0.82) !important;
+  color: #1d1d1f !important;
+}
+
+[data-theme="liquid-glass"] .vditor-wysiwyg .vditor-reset {
+  background: rgba(255, 255, 255, 0.82) !important;
+  color: #1d1d1f !important;
+  font-family: var(--editor-font);
+  font-size: var(--editor-font-size);
+  line-height: 1.75;
+  padding-top: 24px !important;
+  padding-bottom: 24px !important;
+  padding-left: max(32px, calc((100% - 800px) / 2)) !important;
+  padding-right: max(32px, calc((100% - 800px) / 2)) !important;
+}
+
+[data-theme="liquid-glass"] .vditor-wysiwyg .vditor-reset h1,
+[data-theme="liquid-glass"] .vditor-wysiwyg .vditor-reset h2,
+[data-theme="liquid-glass"] .vditor-wysiwyg .vditor-reset h3,
+[data-theme="liquid-glass"] .vditor-wysiwyg .vditor-reset h4,
+[data-theme="liquid-glass"] .vditor-wysiwyg .vditor-reset h5,
+[data-theme="liquid-glass"] .vditor-wysiwyg .vditor-reset h6 {
+  color: #1d1d1f !important;
+}
+
+[data-theme="liquid-glass"] .vditor-wysiwyg .vditor-reset p,
+[data-theme="liquid-glass"] .vditor-wysiwyg .vditor-reset div,
+[data-theme="liquid-glass"] .vditor-wysiwyg .vditor-reset span {
+  color: #1d1d1f !important;
+}
+
+[data-theme="liquid-glass"] .vditor-wysiwyg .vditor-reset code:not(.hljs) {
+  background: rgba(0, 122, 255, 0.08) !important;
+  color: #007AFF !important;
+  font-family: var(--font-mono);
+  padding: 2px 6px;
+  border-radius: 4px;
+}
+
+[data-theme="liquid-glass"] .vditor-wysiwyg .vditor-reset pre {
+  background: rgba(245, 245, 247, 0.6) !important;
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  border: 1px solid rgba(0, 0, 0, 0.06) !important;
+  border-radius: 10px;
+  padding: 16px 20px;
+}
+
+[data-theme="liquid-glass"] .vditor-wysiwyg .vditor-reset pre code {
+  background: transparent !important;
+  padding: 0;
+}
+
+[data-theme="liquid-glass"] .vditor-wysiwyg .vditor-reset blockquote {
+  border-left: 4px solid #007AFF !important;
+  background: rgba(0, 122, 255, 0.04) !important;
+  color: #86868b !important;
+  border-radius: 0 8px 8px 0;
+  padding: 8px 16px;
+}
+
+[data-theme="liquid-glass"] .vditor-wysiwyg .vditor-reset a {
+  color: #007AFF !important;
+}
+
+[data-theme="liquid-glass"] .vditor-wysiwyg .vditor-reset th,
+[data-theme="liquid-glass"] .vditor-wysiwyg .vditor-reset td {
+  color: #1d1d1f !important;
+  border: 1px solid rgba(0, 0, 0, 0.08) !important;
+  padding: 8px 14px;
+}
+
+[data-theme="liquid-glass"] .vditor-wysiwyg .vditor-reset th {
+  background: rgba(0, 0, 0, 0.03) !important;
+  font-weight: 600;
+}
+
+[data-theme="liquid-glass"] .vditor-wysiwyg .vditor-reset tr:nth-child(even) td {
+  background: rgba(0, 0, 0, 0.02);
+}
+
+[data-theme="liquid-glass"] .vditor-wysiwyg .vditor-reset hr {
+  border: none;
+  border-top: 1px solid rgba(0, 0, 0, 0.08);
+}
+
+[data-theme="liquid-glass"] .vditor-wysiwyg .vditor-reset ul,
+[data-theme="liquid-glass"] .vditor-wysiwyg .vditor-reset ol,
+[data-theme="liquid-glass"] .vditor-wysiwyg .vditor-reset li,
+[data-theme="liquid-glass"] .vditor-wysiwyg .vditor-reset strong,
+[data-theme="liquid-glass"] .vditor-wysiwyg .vditor-reset em {
+  color: #1d1d1f !important;
+}
+
+[data-theme="liquid-glass"] .vditor-wysiwyg .vditor-reset del {
+  color: #86868b !important;
+}
+
+[data-theme="liquid-glass"] .vditor-wysiwyg__preview {
+  color: #1d1d1f !important;
+}
+
+/* ── SV 源码模式 ── */
+[data-theme="liquid-glass"] .vditor-sv {
+  background: rgba(255, 255, 255, 0.82) !important;
+  color: #1d1d1f !important;
+  counter-reset: sv-line;
+  font-family: var(--editor-font) !important;
+  font-size: var(--editor-font-size) !important;
+  line-height: 1.75 !important;
+  padding-top: 24px !important;
+  padding-bottom: 24px !important;
+  padding-left: max(32px, calc((100% - 800px) / 2)) !important;
+  padding-right: max(32px, calc((100% - 800px) / 2)) !important;
+}
+
+[data-theme="liquid-glass"] .vditor-sv span[data-type="newline"] {
+  color: #6e6e73;
+}
+
+/* ── 工具栏（隐藏） ── */
+[data-theme="liquid-glass"] .vditor-toolbar {
+  display: none !important;
+}
+
+/* ── 提示面板 ── */
+[data-theme="liquid-glass"] .vditor-hint {
+  background: rgba(255, 255, 255, 0.92) !important;
+  backdrop-filter: blur(28px) saturate(180%) !important;
+  -webkit-backdrop-filter: blur(28px) saturate(180%) !important;
+  border: 1px solid rgba(255, 255, 255, 0.7) !important;
+  color: #1d1d1f !important;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.08), inset 0 1px 0 rgba(255, 255, 255, 0.7);
+  border-radius: 12px !important;
+}
+
+[data-theme="liquid-glass"] .vditor-hint__item:hover,
+[data-theme="liquid-glass"] .vditor-hint__item--selected {
+  background: rgba(0, 122, 255, 0.12) !important;
+  color: #007AFF !important;
+}
+
+/* ── Popover 面板 ── */
+[data-theme="liquid-glass"] .vditor-panel {
+  background: rgba(255, 255, 255, 0.92) !important;
+  backdrop-filter: blur(28px) saturate(180%) !important;
+  -webkit-backdrop-filter: blur(28px) saturate(180%) !important;
+  border: 1px solid rgba(255, 255, 255, 0.7) !important;
+  color: #1d1d1f !important;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.08), inset 0 1px 0 rgba(255, 255, 255, 0.7);
+  border-radius: 12px !important;
+}
+
+[data-theme="liquid-glass"] .vditor-panel input,
+[data-theme="liquid-glass"] .vditor-panel select {
+  background: rgba(255, 255, 255, 0.7) !important;
+  border: 1px solid rgba(0, 0, 0, 0.08) !important;
+  color: #1d1d1f !important;
+  padding: 4px 8px;
+  border-radius: 6px;
+}
+
+/* ── 预览区 ── */
+[data-theme="liquid-glass"] .vditor-preview {
+  background: rgba(255, 255, 255, 0.72) !important;
+  color: #1d1d1f !important;
+}
+
+/* ── 滚动条 ── */
+[data-theme="liquid-glass"] .vditor ::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+[data-theme="liquid-glass"] .vditor ::-webkit-scrollbar-track {
+  background: transparent;
+}
+[data-theme="liquid-glass"] .vditor ::-webkit-scrollbar-thumb {
+  background: rgba(0, 0, 0, 0.12);
+  border-radius: 10px;
+}
+[data-theme="liquid-glass"] .vditor ::-webkit-scrollbar-thumb:hover {
+  background: rgba(0, 0, 0, 0.2);
+}
+
+/* ── WYSIWYG 代码块预览 ── */
+[data-theme="liquid-glass"] .vditor-wysiwyg__preview:has(.hljs) {
+  background: rgba(245, 245, 247, 0.6) !important;
+  border-radius: 10px;
+  padding: 0 !important;
+  overflow: hidden;
+}
+
+[data-theme="liquid-glass"] .vditor-wysiwyg__preview .hljs {
+  background: rgba(245, 245, 247, 0.6) !important;
+  padding: 16px 20px !important;
+  border-radius: 10px;
+}
+
+/* SVG/图表在白色背景上 */
+[data-theme="liquid-glass"] .vditor-wysiwyg__preview:has(svg) {
+  background: rgba(255, 255, 255, 0.8) !important;
+}
+
+[data-theme="liquid-glass"] .vditor-wysiwyg__preview:has(svg) svg {
+  background: rgba(255, 255, 255, 0.9) !important;
+  border-radius: 6px;
+  max-width: 100%;
+  height: auto;
+}
+
+[data-theme="liquid-glass"] .vditor-wysiwyg__preview:has(.mermaid) {
+  background: transparent !important;
+}
+
+[data-theme="liquid-glass"] .vditor-wysiwyg__preview:has(.mermaid) svg {
+  max-width: 100%;
+  height: auto;
+}
+
+[data-theme="liquid-glass"] .vditor-wysiwyg__preview:has(.echarts) {
+  background: transparent !important;
+}
+
+/* ── IR 模式 ── */
+[data-theme="liquid-glass"] .vditor-ir {
+  background: rgba(255, 255, 255, 0.82) !important;
+  color: #1d1d1f !important;
+}
+
+[data-theme="liquid-glass"] .vditor-ir .vditor-reset {
+  background: rgba(255, 255, 255, 0.82) !important;
+  color: #1d1d1f !important;
+  font-family: var(--editor-font);
+  font-size: var(--editor-font-size);
+  line-height: 1.75;
+  padding-top: 24px !important;
+  padding-bottom: 24px !important;
+  padding-left: max(32px, calc((100% - 800px) / 2)) !important;
+  padding-right: max(32px, calc((100% - 800px) / 2)) !important;
+}
+
+[data-theme="liquid-glass"] .vditor-ir .vditor-reset h1,
+[data-theme="liquid-glass"] .vditor-ir .vditor-reset h2,
+[data-theme="liquid-glass"] .vditor-ir .vditor-reset h3,
+[data-theme="liquid-glass"] .vditor-ir .vditor-reset h4,
+[data-theme="liquid-glass"] .vditor-ir .vditor-reset h5,
+[data-theme="liquid-glass"] .vditor-ir .vditor-reset h6,
+[data-theme="liquid-glass"] .vditor-ir .vditor-reset p,
+[data-theme="liquid-glass"] .vditor-ir .vditor-reset div,
+[data-theme="liquid-glass"] .vditor-ir .vditor-reset span:not(.hljs):not([class*="hljs-"]) {
+  color: #1d1d1f !important;
+}
+
+[data-theme="liquid-glass"] .vditor-ir .vditor-reset code:not(.hljs):not(.highlight-chroma) {
+  background: rgba(0, 122, 255, 0.08) !important;
+  color: #007AFF !important;
+  font-family: var(--font-mono);
+  padding: 2px 6px;
+  border-radius: 4px;
+}
+
+[data-theme="liquid-glass"] .vditor-ir .vditor-reset pre {
+  background: rgba(245, 245, 247, 0.6) !important;
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  border: 1px solid rgba(0, 0, 0, 0.06) !important;
+  border-radius: 10px;
+  padding: 16px 20px;
+}
+
+[data-theme="liquid-glass"] .vditor-ir .vditor-reset pre code {
+  background: transparent !important;
+  padding: 0;
+}
+
+[data-theme="liquid-glass"] .vditor-ir .vditor-reset blockquote {
+  border-left: 4px solid #007AFF !important;
+  background: rgba(0, 122, 255, 0.04) !important;
+  color: #86868b !important;
+  border-radius: 0 8px 8px 0;
+  padding: 8px 16px;
+}
+
+[data-theme="liquid-glass"] .vditor-ir .vditor-reset a,
+[data-theme="liquid-glass"] .vditor-ir .vditor-reset [data-type="a"],
+[data-theme="liquid-glass"] .vditor-ir .vditor-reset span[data-type="a"],
+[data-theme="liquid-glass"] .vditor-ir .vditor-reset .vditor-ir__link,
+[data-theme="liquid-glass"] .vditor-ir .vditor-reset .vditor-ir__marker--link {
+  color: #007AFF !important;
+}
+
+[data-theme="liquid-glass"] .vditor-ir .vditor-reset th,
+[data-theme="liquid-glass"] .vditor-ir .vditor-reset td {
+  color: #1d1d1f !important;
+  border: 1px solid rgba(0, 0, 0, 0.08) !important;
+  padding: 8px 14px;
+}
+
+[data-theme="liquid-glass"] .vditor-ir .vditor-reset th {
+  background: rgba(0, 0, 0, 0.03) !important;
+  font-weight: 600;
+}
+
+[data-theme="liquid-glass"] .vditor-ir .vditor-reset ul,
+[data-theme="liquid-glass"] .vditor-ir .vditor-reset ol {
+  color: #1d1d1f !important;
+}
+
+[data-theme="liquid-glass"] .vditor-ir .vditor-reset li {
+  color: #1d1d1f !important;
+}
+
+[data-theme="liquid-glass"] .vditor-ir .vditor-reset strong {
+  color: #1d1d1f !important;
+  font-weight: 700;
+}
+
+[data-theme="liquid-glass"] .vditor-ir .vditor-reset em {
+  color: #1d1d1f !important;
+  font-style: italic;
+}
+
+[data-theme="liquid-glass"] .vditor-ir .vditor-reset del {
+  color: #86868b !important;
+}
+
+[data-theme="liquid-glass"] .vditor-ir .vditor-reset hr {
+  border: none;
+  border-top: 1px solid rgba(0, 0, 0, 0.08);
+}
+
+/* ── IR 模式预览区域 ── */
+[data-theme="liquid-glass"] .vditor-ir__preview {
+  background: rgba(245, 245, 247, 0.6) !important;
+  color: #1d1d1f !important;
+}
+
+[data-theme="liquid-glass"] .vditor-ir__preview:has(.hljs) {
+  background: rgba(245, 245, 247, 0.6) !important;
+}
+
+[data-theme="liquid-glass"] .vditor-ir__preview .hljs {
+  background: rgba(245, 245, 247, 0.6) !important;
+}
+
+/* ── 任务列表 Checkbox ── */
+[data-theme="liquid-glass"] .vditor-wysiwyg .vditor-reset li input[type="checkbox"],
+[data-theme="liquid-glass"] .vditor-reset li input[type="checkbox"] {
+  border: 2px solid #007AFF;
+}
+
+[data-theme="liquid-glass"] .vditor-wysiwyg .vditor-reset li input[type="checkbox"]:checked,
+[data-theme="liquid-glass"] .vditor-reset li input[type="checkbox"]:checked {
+  background: #007AFF;
+  border-color: #007AFF;
+}
+
+[data-theme="liquid-glass"] .vditor-wysiwyg .vditor-reset li input[type="checkbox"]:hover,
+[data-theme="liquid-glass"] .vditor-reset li input[type="checkbox"]:hover {
+  border-color: #0056CC;
+  box-shadow: 0 0 0 3px rgba(0, 122, 255, 0.15);
+}
+
+[data-theme="liquid-glass"] .vditor-wysiwyg .vditor-reset li input[type="checkbox"]:checked:hover,
+[data-theme="liquid-glass"] .vditor-reset li input[type="checkbox"]:checked:hover {
+  background: #0056CC;
+  border-color: #0056CC;
+  box-shadow: 0 0 0 3px rgba(0, 122, 255, 0.15);
+}
+
+/* ── IR 模式代码块：点击展开时只显示语言输入框 ── */
+/* 用 content: none 去掉伪元素栅栏标记（```），避免干扰 */
+.vditor-ir .vditor-ir__node--expand[data-type="code-block"]::before,
+.vditor-ir .vditor-ir__node--expand[data-type="code-block"]::after {
+  content: none;
+}
+
+/* 不用 display:none（会让光标落入不可渲染元素导致 contenteditable 异常），
+   改用 visually-hidden 方式保持元素在布局中 */
+.vditor-ir .vditor-ir__node--expand[data-type="code-block"] .vditor-ir__marker--pre {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+.vditor-ir .vditor-ir__node--expand[data-type="code-block"] .vditor-ir__marker--info {
+  display: inline;
+}
+
+/* IR 模式代码块预览区阻止浏览器默认光标放置，
+   避免嵌套 <pre> 在 contenteditable 中触发 DOM 合并 */
+.vditor-ir .vditor-ir__node[data-type="code-block"] .vditor-ir__preview {
+  user-select: none;
+}

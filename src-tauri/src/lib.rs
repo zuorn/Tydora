@@ -37,9 +37,17 @@ fn get_app_version() -> String {
 /// 打开设置窗口
 #[tauri::command]
 async fn open_settings_window(app: tauri::AppHandle) -> Result<(), String> {
+    let label = "settings";
+
+    // Check if settings window already exists, if so just focus it
+    if let Some(existing) = app.get_webview_window(label) {
+        let _ = existing.set_focus();
+        return Ok(());
+    }
+
     let settings_window = WebviewWindowBuilder::new(
         &app,
-        "settings",
+        label,
         tauri::WebviewUrl::App("index.html?window=settings".into()),
     )
     .title("设置")

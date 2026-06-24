@@ -382,6 +382,7 @@ function App({ initialFilePath }: { initialFilePath?: string | null }) {
       if ((e.ctrlKey || e.metaKey) && e.key === "o") {
         e.preventDefault();
         if (activeVaultIndex >= 0) {
+          setCommandPaletteOpen(false);
           setQuickOpenOpen(true);
         }
       }
@@ -395,6 +396,7 @@ function App({ initialFilePath }: { initialFilePath?: string | null }) {
     const handler = (e: KeyboardEvent) => {
       if ((e.ctrlKey || e.metaKey) && e.key === "p") {
         e.preventDefault();
+        setQuickOpenOpen(false);
         setCommandPaletteOpen(true);
       }
     };
@@ -604,8 +606,8 @@ function App({ initialFilePath }: { initialFilePath?: string | null }) {
         editorHandleRef.current?.executeCommand("table");
       }
     };
-    window.addEventListener("keydown", handler);
-    return () => window.removeEventListener("keydown", handler);
+    window.addEventListener("keydown", handler, { capture: true });
+    return () => window.removeEventListener("keydown", handler, { capture: true });
   }, []);
 
   // Ctrl+M 打开思维导图
@@ -617,8 +619,8 @@ function App({ initialFilePath }: { initialFilePath?: string | null }) {
         invoke("open_mindmap_window");
       }
     };
-    window.addEventListener("keydown", handler);
-    return () => window.removeEventListener("keydown", handler);
+    window.addEventListener("keydown", handler, { capture: true });
+    return () => window.removeEventListener("keydown", handler, { capture: true });
   }, []);
 
   // ── 大纲点击跳转 ──

@@ -619,6 +619,14 @@
   padding: 24px 0 32px;
 }
 
+.settings-about-icon {
+  width: 72px;
+  height: 72px;
+  border-radius: 16px;
+  margin-bottom: 16px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+}
+
 .settings-about-title {
   font-size: 28px;
   font-weight: 700;

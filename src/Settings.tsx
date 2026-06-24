@@ -716,6 +716,7 @@ function AboutSettingsContent() {
   return (
     <div className="settings-section">
       <div className="settings-about-header">
+        <img src="/icon.png" alt="Tydora" className="settings-about-icon" />
         <h2 className="settings-about-title">Tydora</h2>
         <p className="settings-about-subtitle">一个现代化的 Markdown 编辑器</p>
       </div>

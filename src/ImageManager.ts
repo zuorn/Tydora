@@ -39,13 +39,13 @@ function pathSep(): string {
   return navigator.platform?.toLowerCase().includes("win") ? "\\" : "/";
 }
 
-function joinPath(parent: string, child: string): string {
+export function joinPath(parent: string, child: string): string {
   const sep = pathSep();
   const clean = parent.endsWith("/") || parent.endsWith("\\") ? parent.slice(0, -1) : parent;
   return `${clean}${sep}${child}`;
 }
 
-function dirName(filePath: string): string {
+export function dirName(filePath: string): string {
   const lastSep = Math.max(filePath.lastIndexOf("/"), filePath.lastIndexOf("\\"));
   return lastSep >= 0 ? filePath.substring(0, lastSep) : ".";
 }
@@ -66,7 +66,7 @@ function stripExt(filename: string): string {
   return ext ? filename.slice(0, -ext.length) : filename;
 }
 
-function relativePath(from: string, to: string): string {
+export function relativePath(from: string, to: string): string {
   const sep = pathSep();
   const fromParts = from.split(/[\\/]/).filter(Boolean);
   const toParts = to.split(/[\\/]/).filter(Boolean);
@@ -85,6 +85,35 @@ function relativePath(from: string, to: string): string {
 
   const parts = [...Array(ups).fill(".."), ...downs];
   return parts.length > 0 ? parts.join(sep) : ".";
+}
+
+/**
+ * 将相对路径解析为绝对路径
+ * @param baseDir 基准目录（绝对路径）
+ * @param relPath 相对路径，如 "../assets/image.png" 或 "./assets/image.png"
+ * @returns 解析后的绝对路径
+ */
+export function resolveRelativePath(baseDir: string, relPath: string): string {
+  const sep = pathSep();
+  // 拆分为路径段，过滤掉空段
+  const baseParts = baseDir.split(/[\\/]/).filter(Boolean);
+  // 统一用 / 分割，处理 ./ 和 ../
+  const relParts = relPath.replace(/\\/g, "/").split("/").filter(p => p !== "" && p !== ".");
+
+  for (const part of relParts) {
+    if (part === "..") {
+      baseParts.pop();
+    } else {
+      baseParts.push(part);
+    }
+  }
+
+  // Windows: 保留盘符+分隔符格式
+  if (baseParts.length > 0 && /^[a-zA-Z]:$/.test(baseParts[0])) {
+    baseParts[0] = baseParts[0] + sep;
+  }
+
+  return baseParts.join(sep);
 }
 
 export function isImageFile(filename: string): boolean {

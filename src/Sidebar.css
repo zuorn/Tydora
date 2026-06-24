@@ -409,7 +409,7 @@
 
 .sidebar-search-trigger {
   position: absolute;
-  left: 8px;
+  left: 20px;
   background: none;
   border: none;
   color: var(--text-secondary);
@@ -705,9 +705,8 @@
 .sidebar-search-tab {
   display: flex;
   flex-direction: column;
-  flex: 1;
-  min-height: 0;
-  overflow: hidden;
+  flex-shrink: 0;
+  border-bottom: 1px solid var(--border);
 }
 
 .sidebar-search-bar {

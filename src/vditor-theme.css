@@ -2,6 +2,7 @@
 
 /* ── 全局 ── */
 .vditor {
+  overflow: clip;
   --vditor-bg: #1e1e2e;
   --vditor-bg-secondary: #181825;
   --vditor-border: #45475a;

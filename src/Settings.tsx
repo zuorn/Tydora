@@ -163,6 +163,7 @@ function GeneralSettingsContent({
           onChange={(e) => onChange({ ...settings, editorFont: e.target.value })}
         >
           <option value="system-ui, -apple-system, sans-serif">系统默认</option>
+          <option value="'LXGW WenKai', system-ui, sans-serif">霞鹜文楷</option>
           <option value="'Inter', system-ui, sans-serif">Inter</option>
           <option value="'Noto Sans SC', system-ui, sans-serif">Noto Sans SC</option>
           <option value="ui-sans-serif, 'Segoe UI', system-ui, sans-serif">Segoe UI</option>

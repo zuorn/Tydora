@@ -6,6 +6,7 @@ interface Command {
   category: string;
   shortcut?: string;
   action: () => void;
+  aliases?: string[];
 }
 
 interface CommandPaletteProps {
@@ -98,7 +99,16 @@ export default function CommandPalette({ isOpen, onClose, commands }: CommandPal
   const filteredCommands = useMemo(() => {
     if (!query.trim()) return [];
     return commands
-      .map((cmd) => ({ command: cmd, score: fuzzyScore(cmd.label, query) }))
+      .map((cmd) => {
+        let score = fuzzyScore(cmd.label, query);
+        if (score === 0 && cmd.aliases) {
+          for (const alias of cmd.aliases) {
+            const aliasScore = fuzzyScore(alias, query);
+            if (aliasScore > score) score = aliasScore;
+          }
+        }
+        return { command: cmd, score };
+      })
       .filter(({ score }) => score > 0)
       .sort((a, b) => b.score - a.score)
       .map(({ command }) => command)

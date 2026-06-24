@@ -1,6 +1,27 @@
 use std::process::Command;
 use tauri::{Manager, WebviewWindowBuilder};
 
+/// URL 百分号解码，将 %XX 转换为对应字节，最终返回解码后的字符串
+fn percent_decode(s: &str) -> String {
+    let mut bytes = Vec::with_capacity(s.len());
+    let mut chars = s.chars();
+    while let Some(c) = chars.next() {
+        if c == '%' {
+            let hex: String = chars.by_ref().take(2).collect();
+            if let Ok(byte) = u8::from_str_radix(&hex, 16) {
+                bytes.push(byte);
+            } else {
+                bytes.push(b'%');
+                bytes.extend_from_slice(hex.as_bytes());
+            }
+        } else {
+            let mut buf = [0u8; 4];
+            bytes.extend_from_slice(c.encode_utf8(&mut buf).as_bytes());
+        }
+    }
+    String::from_utf8_lossy(&bytes).into_owned()
+}
+
 /// 返回 Markdown 文件的默认内容
 #[tauri::command]
 fn get_default_content() -> String {
@@ -149,6 +170,23 @@ pub fn run() {
         .plugin(tauri_plugin_fs::init())
         .plugin(tauri_plugin_dialog::init())
         .plugin(tauri_plugin_window_state::Builder::new().build())
+        .register_uri_scheme_protocol("local-file", |_ctx, request| {
+            // request.uri().path() 返回类似 "/D%3A%2Fpath%2Fto%2Ffile.png" 的路径
+            // 跳过开头的 "/" 并进行百分号解码
+            let encoded_path = &request.uri().path()[1..];
+            let path = percent_decode(encoded_path);
+            if let Ok(data) = std::fs::read(&path) {
+                tauri::http::Response::builder()
+                    .status(200)
+                    .body(data)
+                    .unwrap()
+            } else {
+                tauri::http::Response::builder()
+                    .status(404)
+                    .body(Vec::new())
+                    .unwrap()
+            }
+        })
         .invoke_handler(tauri::generate_handler![
             get_default_content,
             get_app_version,

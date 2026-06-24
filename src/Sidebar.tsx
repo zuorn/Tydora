@@ -359,12 +359,10 @@ function SearchBox({
   vaultPath,
   onSelectFile,
   onClose,
-  renderContent,
 }: {
   vaultPath: string;
   onSelectFile: (path: string, line?: number, query?: string) => void;
   onClose: () => void;
-  renderContent?: React.ReactNode;
 }) {
   const [query, setQuery] = useState("");
   const [results, setResults] = useState<SearchResult[]>([]);
@@ -435,7 +433,7 @@ function SearchBox({
           </button>
         )}
       </div>
-      {query.trim() ? (
+      {query.trim() && (
         <div className="sidebar-search-results">
           {searching && <div className="sidebar-search-status">搜索中...</div>}
           {!searching && results.length === 0 && (
@@ -459,8 +457,6 @@ function SearchBox({
             </div>
           ))}
         </div>
-      ) : (
-        renderContent
       )}
     </div>
   );
@@ -1182,7 +1178,6 @@ export default function Sidebar({
 
   const closeSearch = useCallback(() => {
     setSearchOpen(false);
-    setActiveTab("files");
   }, []);
 
   // Ctrl+Shift+F to toggle search
@@ -1190,14 +1185,7 @@ export default function Sidebar({
     const handler = (e: KeyboardEvent) => {
       if ((e.ctrlKey || e.metaKey) && e.shiftKey && e.key === "F") {
         e.preventDefault();
-        setSearchOpen((prev) => {
-          if (prev) {
-            setActiveTab("files");
-            return false;
-          }
-          setActiveTab("outline");
-          return true;
-        });
+        setSearchOpen((prev) => !prev);
       }
     };
     window.addEventListener("keydown", handler);
@@ -1264,7 +1252,6 @@ export default function Sidebar({
               closeSearch();
             } else {
               setSearchOpen(true);
-              setActiveTab("outline");
             }
           }}
         >
@@ -1291,14 +1278,23 @@ export default function Sidebar({
 
       {activeTab === "files" && (
         activeVault ? (
-          <FileTree
-            rootPath={activeVault.path}
-            activePath={currentFilePath}
-            onSelect={handleSelectFile}
-            refreshKey={refreshKey}
-            onNewWindow={onNewWindow}
-            onScrollToTop={() => { setSearchOpen(true); setActiveTab("outline"); }}
-          />
+          <>
+            {searchOpen && (
+              <SearchBox
+                vaultPath={activeVault.path}
+                onSelectFile={handleSelectFile}
+                onClose={closeSearch}
+              />
+            )}
+            <FileTree
+              rootPath={activeVault.path}
+              activePath={currentFilePath}
+              onSelect={handleSelectFile}
+              refreshKey={refreshKey}
+              onNewWindow={onNewWindow}
+              onScrollToTop={() => { setSearchOpen(true); }}
+            />
+          </>
         ) : (
           <div className="sidebar-tree">
             <div className="tree-empty">尚未打开仓库</div>
@@ -1307,32 +1303,8 @@ export default function Sidebar({
         )
       )}
 
-      {activeTab === "outline" && !searchOpen && (
+      {activeTab === "outline" && (
         <Outline content={content} onSelectHeading={onSelectHeading} />
-      )}
-
-      {activeTab === "outline" && searchOpen && (
-        activeVault ? (
-          <SearchBox
-            vaultPath={activeVault.path}
-            onSelectFile={handleSelectFile}
-            onClose={closeSearch}
-            renderContent={
-              <FileTree
-                rootPath={activeVault.path}
-                activePath={currentFilePath}
-                onSelect={handleSelectFile}
-                refreshKey={refreshKey}
-                onNewWindow={onNewWindow}
-              />
-            }
-          />
-        ) : (
-          <div className="sidebar-tree">
-            <div className="tree-empty">尚未打开仓库</div>
-            <div className="tree-empty-hint">请先打开一个仓库</div>
-          </div>
-        )
       )}
 
       <VaultSwitcher

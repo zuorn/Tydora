@@ -88,6 +88,14 @@ function App({ initialFilePath }: { initialFilePath?: string | null }) {
           const settings = JSON.parse(raw);
           if (settings.editorFont) {
             document.documentElement.style.setProperty("--editor-font", settings.editorFont);
+            // 按需加载 LXGW WenKai 字体
+            if (settings.editorFont.includes("LXGW WenKai") && !document.getElementById("lxgw-wenkai-font")) {
+              const link = document.createElement("link");
+              link.id = "lxgw-wenkai-font";
+              link.rel = "stylesheet";
+              link.href = "https://cdn.jsdelivr.net/npm/lxgw-wenkai-webfont@1.7.0/style.css";
+              document.head.appendChild(link);
+            }
           }
           if (settings.fontSize) {
             document.documentElement.style.setProperty("--editor-font-size", settings.fontSize + "px");
@@ -563,7 +571,7 @@ function App({ initialFilePath }: { initialFilePath?: string | null }) {
     return () => window.removeEventListener("keydown", handler);
   }, [toggleTypewriterMode]);
 
-  // 模式循环切换
+  // 模式循环切换（底部栏按钮用）
   const cycleMode = useCallback(() => {
     setViewMode((prev) => {
       if (prev === "ir") return "wysiwyg";
@@ -571,6 +579,22 @@ function App({ initialFilePath }: { initialFilePath?: string | null }) {
       return "ir";
     });
   }, []);
+
+  // Ctrl+/ 模式切换（wysiwyg ↔ sv）
+  const toggleWysiwygSv = useCallback(() => {
+    setViewMode((prev) => (prev === "wysiwyg" ? "sv" : "wysiwyg"));
+  }, []);
+
+  useEffect(() => {
+    const handler = (e: KeyboardEvent) => {
+      if ((e.ctrlKey || e.metaKey) && e.key === "/") {
+        e.preventDefault();
+        toggleWysiwygSv();
+      }
+    };
+    window.addEventListener("keydown", handler);
+    return () => window.removeEventListener("keydown", handler);
+  }, [toggleWysiwygSv]);
 
   // ── 大纲点击跳转 ──
   const handleSelectHeading = useCallback((_level: number, text: string, line: number) => {
@@ -599,7 +623,7 @@ function App({ initialFilePath }: { initialFilePath?: string | null }) {
 
     // 视图操作
     { id: "toggle-sidebar", label: "切换侧栏", category: "视图", shortcut: "Ctrl+B", action: handleSidebarToggle },
-    { id: "toggle-mode", label: "切换编辑模式", category: "视图", action: cycleMode },
+    { id: "toggle-mode", label: "切换编辑模式", category: "视图", shortcut: "Ctrl+/", action: cycleMode },
     { id: "toggle-typewriter", label: "切换打字机模式", category: "视图", shortcut: "Ctrl+Alt+T", action: toggleTypewriterMode },
     { id: "open-mindmap", label: "打开思维导图", category: "视图", action: () => {
       localStorage.setItem("zmd-mindmap-content", content);
@@ -607,9 +631,9 @@ function App({ initialFilePath }: { initialFilePath?: string | null }) {
     }},
 
     // 编辑模式
-    { id: "mode-wysiwyg", label: "切换到所见即所得模式", category: "模式", action: () => setViewMode("wysiwyg") },
-    { id: "mode-ir", label: "切换到即时渲染模式", category: "模式", action: () => setViewMode("ir") },
-    { id: "mode-sv", label: "切换到分屏预览模式", category: "模式", action: () => setViewMode("sv") },
+    { id: "mode-wysiwyg", label: viewMode === "wysiwyg" ? "所见即所得模式 ✓" : "切换到所见即所得模式", category: "模式", aliases: ["wysiwyg", "所见即所得", "编辑模式"], action: () => setViewMode("wysiwyg") },
+    { id: "mode-ir", label: viewMode === "ir" ? "即时渲染模式 ✓" : "切换到即时渲染模式", category: "模式", aliases: ["ir", "即时渲染", "编辑模式"], action: () => setViewMode("ir") },
+    { id: "mode-sv", label: viewMode === "sv" ? "分屏预览模式 ✓" : "切换到分屏预览模式", category: "模式", aliases: ["sv", "分屏预览", "源码", "source", "编辑模式"], action: () => setViewMode("sv") },
 
     // 格式化
     { id: "bold", label: "加粗", category: "格式", shortcut: "Ctrl+B", action: () => editorHandleRef.current?.executeCommand("bold") },
@@ -649,7 +673,7 @@ function App({ initialFilePath }: { initialFilePath?: string | null }) {
 
     // 设置
     { id: "open-settings", label: "打开设置", category: "设置", action: () => invoke("open_settings_window") },
-  ], [handleSave, activeVaultIndex, fileName, handleNewWindow, handleSidebarToggle, cycleMode, handleMinimize, handleToggleMaximize, handleClose, setViewMode]);
+  ], [handleSave, activeVaultIndex, fileName, handleNewWindow, handleSidebarToggle, cycleMode, handleMinimize, handleToggleMaximize, handleClose, setViewMode, viewMode]);
 
   return (
     <div className="app">

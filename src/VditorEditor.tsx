@@ -1,6 +1,8 @@
 import { useRef, useEffect, forwardRef, useImperativeHandle, useState, useCallback, useLayoutEffect } from "react";
 import Vditor from "vditor";
-import { saveImageToLocal, loadImageSettings, type ImageSettings } from "./ImageManager";
+import { open } from "@tauri-apps/plugin-dialog";
+import { convertFileSrc } from "@tauri-apps/api/core";
+import { saveImageToLocal, loadImageSettings, type ImageSettings, dirName, relativePath, resolveRelativePath } from "./ImageManager";
 import "./VditorEditor.css";
 import { SHORTCUTS_KEY, DEFAULT_SHORTCUTS } from "./Settings";
 
@@ -35,6 +37,62 @@ export const MODE_LABELS: Record<EditorMode, string> = {
 };
 
 export type { EditorMode };
+
+// ── 图片路径转换辅助函数 ──
+
+/** 百分号解码（用于 local-file:// URL 中的路径） */
+function percentDecode(s: string): string {
+  try {
+    return decodeURIComponent(s);
+  } catch {
+    return s.replace(/%([0-9A-Fa-f]{2})/g, (_, hex) =>
+      String.fromCharCode(parseInt(hex, 16)),
+    );
+  }
+}
+
+/**
+ * 将 markdown 中的相对图片路径转换为 local-file:// URL（供 Vditor 显示用）
+ * ./assets/img.png → http://local-file.localhost/D%3A%2F...img.png
+ * SV 模式下不做转换，保持相对路径显示
+ */
+function resolveImagePaths(markdown: string, currentFilePath: string | null, mode: EditorMode): string {
+  if (!currentFilePath || mode === "sv") return markdown;
+  const currentDir = dirName(currentFilePath);
+
+  return markdown.replace(
+    /!\[([^\]]*)\]\(([^)]+)\)/g,
+    (fullMatch, alt: string, url: string) => {
+      // 跳过外部链接、data URL、已有协议前缀的 URL
+      if (/^(https?:|data:|[a-z]+:\/\/)/i.test(url)) {
+        return fullMatch;
+      }
+      const absPath = resolveRelativePath(currentDir, url);
+      return `![${alt}](${convertFileSrc(absPath, 'local-file')})`;
+    },
+  );
+}
+
+/**
+ * 将 markdown 中的 local-file:// URL 还原为相对路径（供保存文件用）
+ * http://local-file.localhost/D%3A%2F...img.png → ./assets/img.png
+ * SV 模式下不做转换（SV 内容本身不含 local-file:// URL）
+ */
+function unresolveImagePaths(markdown: string, currentFilePath: string | null, mode: EditorMode): string {
+  if (!currentFilePath || mode === "sv") return markdown;
+  const currentDir = dirName(currentFilePath);
+  const PREFIX = "http://local-file.localhost/";
+
+  return markdown.replace(
+    /!\[([^\]]*)\]\((http:\/\/local-file\.localhost\/[^)]+)\)/g,
+    (_match, alt: string, url: string) => {
+      const encodedPath = url.slice(PREFIX.length);
+      const absPath = percentDecode(encodedPath);
+      const rel = relativePath(currentDir, absPath).replace(/\\/g, "/");
+      return `![${alt}](${rel.startsWith(".") ? rel : "./" + rel})`;
+    },
+  );
+}
 
 interface ContextMenuPosition {
   x: number;
@@ -487,9 +545,16 @@ const VditorEditor = forwardRef<VditorEditorHandle, VditorEditorProps>(
         const result = await saveImageToLocal(file, settings, currentFilePath || null, activeVaultPath || null);
         console.log("[ImageManager] 图片已保存:", result.savedPath, "引用:", result.markdownRef);
         vditor.focus();
-        vditor.insertValue(`![${file.name}](${result.markdownRef})`);
-        onChangeRef.current(vditor.getValue());
-        console.log("[ImageManager] 图片引用已插入编辑器");
+        // 插入相对路径（干净、可移植），但转为 local-file:// URL 让 Vditor 显示
+        const mdSnippet = resolveImagePaths(
+          `![${file.name}](${result.markdownRef})`,
+          currentFilePath || null,
+          modeRef.current,
+        );
+        vditor.insertValue(mdSnippet);
+        // getValue() 会返回含 local-file:// URL 的 markdown，还原为相对路径再同步 React 状态
+        onChangeRef.current(unresolveImagePaths(vditor.getValue(), currentFilePath || null, modeRef.current));
+        console.log("[ImageManager] 图片引用已插入编辑器:", result.markdownRef);
       } catch (e: any) {
         console.error("[ImageManager] save failed:", e);
         (vditor as any).tip?.show?.(e?.message || "图片保存失败", 3000);
@@ -507,7 +572,7 @@ const VditorEditor = forwardRef<VditorEditorHandle, VditorEditorProps>(
       const settings = imageSettings || loadImageSettings();
       if (settings.storageMode === "image-bed") {
         vditor.insertValue(`![](${url})`);
-        onChangeRef.current(vditor.getValue());
+        onChangeRef.current(unresolveImagePaths(vditor.getValue(), currentFilePathRef.current ?? null, modeRef.current));
         return;
       }
 
@@ -521,23 +586,32 @@ const VditorEditor = forwardRef<VditorEditorHandle, VditorEditorProps>(
       } catch (e: any) {
         console.error("[ImageManager] download image failed:", e);
         vditor.insertValue(`![](${url})`);
-        onChangeRef.current(vditor.getValue());
+        onChangeRef.current(unresolveImagePaths(vditor.getValue(), currentFilePathRef.current ?? null, modeRef.current));
       }
     }, [imageSettings]);
 
     handleImageUrlRef.current = handleImageUrl;
 
     onChangeRef.current = onChange;
+    const currentFilePathRef = useRef(currentFilePath);
+    currentFilePathRef.current = currentFilePath;
+    const modeRef = useRef(mode);
+    modeRef.current = mode;
 
     const isFileSwitchRef = useRef(false);
     const pendingHighlightRef = useRef<string | null>(null);
 
     useImperativeHandle(ref, () => ({
-      getValue: () => vditorRef.current?.getValue() ?? "",
+      // getValue: 将 Vditor 内部的 local-file:// URL 还原为相对路径
+      getValue: () => {
+        const raw = vditorRef.current?.getValue() ?? "";
+        return unresolveImagePaths(raw, currentFilePathRef.current ?? null, modeRef.current);
+      },
+      // setValue: 将相对路径转为 local-file:// URL 再设置到 Vditor
       setValue: (val: string) => {
         if (vditorRef.current) {
           isInternalRef.current = true;
-          vditorRef.current.setValue(val, true);
+          vditorRef.current.setValue(resolveImagePaths(val, currentFilePathRef.current ?? null, modeRef.current), true);
         }
       },
       markFileSwitch: () => {
@@ -777,9 +851,11 @@ const VditorEditor = forwardRef<VditorEditorHandle, VditorEditorProps>(
       document.addEventListener("paste", hookPaste, { capture: true });
 
       try {
+        // WYSIWYG/IR 模式下将相对路径转为 local-file:// URL，SV 模式保持原样
+        const initialValue = resolveImagePaths(value, currentFilePathRef.current ?? null, mode);
         const vditor = new Vditor(el, {
           mode,
-          value,
+          value: initialValue,
           cdn: "/vditor",
           icon: "ant",
           lang: "zh_CN",
@@ -878,7 +954,8 @@ const VditorEditor = forwardRef<VditorEditorHandle, VditorEditorProps>(
               isInternalRef.current = false;
               return;
             }
-            onChangeRef.current(val);
+            // 将 Vditor 内部的 local-file:// URL 还原为相对路径再同步到 React 状态
+            onChangeRef.current(unresolveImagePaths(val, currentFilePathRef.current ?? null, modeRef.current));
           },
           after: () => {
             clearTimeout(timeoutId);
@@ -1024,14 +1101,15 @@ const VditorEditor = forwardRef<VditorEditorHandle, VditorEditorProps>(
       vditor.setTheme(editorTheme, contentTheme, codeTheme, "/vditor/dist/css/content-theme");
     }, [theme, status]); // 移除 mode，避免模式切换时重复调用
 
-    // 外部 value 同步
+    // 外部 value 同步（value 含相对路径，需转为 local-file:// URL 后与 Vditor 内部比较）
     useEffect(() => {
       const vditor = vditorRef.current;
       if (!vditor || status !== "ready") return;
       const cur = vditor.getValue();
-      if (value !== cur) {
+      const resolvedValue = resolveImagePaths(value, currentFilePathRef.current ?? null, modeRef.current);
+      if (resolvedValue !== cur) {
         isInternalRef.current = true;
-        vditor.setValue(value, true);
+        vditor.setValue(resolvedValue, true);
       }
     }, [value, status]);
 
@@ -1054,7 +1132,8 @@ const VditorEditor = forwardRef<VditorEditorHandle, VditorEditorProps>(
       const internalVditor = (vditor as any).vditor;
       const syncInput = () => {
         // 直接通过 onChangeRef 更新 React 状态，绕过 Vditor 的 isInternalRef 检测
-        onChangeRef.current(vditor.getValue());
+        // 将 Vditor 内部的 local-file:// URL 还原为相对路径
+        onChangeRef.current(unresolveImagePaths(vditor.getValue(), currentFilePathRef.current ?? null, modeRef.current));
       };
 
       // 标题/段落命令：直接操作 DOM，不依赖隐藏的工具栏面板
@@ -1102,7 +1181,7 @@ const VditorEditor = forwardRef<VditorEditorHandle, VditorEditorProps>(
             wbr.remove();
           }
 
-          onChangeRef.current(vditor.getValue());
+          onChangeRef.current(unresolveImagePaths(vditor.getValue(), currentFilePathRef.current ?? null, modeRef.current));
         } else if (mode === "sv") {
           vditor.focus();
           const svEl = internalVditor?.sv?.element as HTMLElement;
@@ -1330,7 +1409,7 @@ const VditorEditor = forwardRef<VditorEditorHandle, VditorEditorProps>(
             wbr.remove();
           }
 
-          onChangeRef.current(vditor.getValue());
+          onChangeRef.current(unresolveImagePaths(vditor.getValue(), currentFilePathRef.current ?? null, modeRef.current));
           return;
         }
       }
@@ -1387,6 +1466,45 @@ const VditorEditor = forwardRef<VditorEditorHandle, VditorEditorProps>(
         }
         // 单行：走工具栏（弹窗）
         safeClick(name);
+        return;
+      }
+
+      // 插入图像：弹出文件选择器，选好后通过 handleImageFile 插入
+      if (name === "upload") {
+        vditor.focus();
+        // 直接弹出文件选择器，不预插入 ![]()，由 handleImageFile 统一处理插入
+        (async () => {
+          const selected = await open({
+            multiple: true,
+            filters: [{
+              name: "图片",
+              extensions: ["jpg", "jpeg", "png", "gif", "webp", "bmp", "svg", "avif", "ico"],
+            }],
+          });
+          if (!selected) return;
+
+          const filePaths = Array.isArray(selected) ? selected : [selected];
+          const { readFile } = await import("@tauri-apps/plugin-fs");
+          for (const filePath of filePaths) {
+            try {
+              const data = await readFile(filePath);
+              const parts = filePath.replace(/\\/g, "/").split("/");
+              const fullName = parts[parts.length - 1];
+              const ext = fullName.split(".").pop() || "png";
+              const mimeMap: Record<string, string> = {
+                jpg: "image/jpeg", jpeg: "image/jpeg", png: "image/png",
+                gif: "image/gif", webp: "image/webp", bmp: "image/bmp",
+                svg: "image/svg+xml", avif: "image/avif", ico: "image/x-icon",
+              };
+              const mime = mimeMap[ext] || "image/png";
+              const blob = new Blob([data], { type: mime });
+              const file = new File([blob], fullName, { type: mime });
+              await handleImageFileRef.current?.(file);
+            } catch (e) {
+              console.error("[Image] 文件读取失败:", e);
+            }
+          }
+        })();
         return;
       }
 

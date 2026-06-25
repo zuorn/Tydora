@@ -42,17 +42,6 @@ async function main() {
   console.log("   ✅ css/content-theme/");
   console.log("   ✅ images/");
 
-  // Copy theme fonts
-  const fontSrc = resolve(root, "themes/mint");
-  const fontDest = resolve(root, "public/themes/mint");
-  try {
-    await mkdir(fontDest, { recursive: true });
-    await cp(fontSrc, fontDest, { recursive: true, force: true });
-    console.log("   ✅ themes/mint/ (fonts)");
-  } catch (e) {
-    console.log("   ⚠ themes/mint/ not found, skipping fonts");
-  }
-
   console.log("Done! Vditor assets copied to public/vditor/");
 }
 

@@ -4,17 +4,90 @@ import { invoke } from "@tauri-apps/api/core";
 import { open } from "@tauri-apps/plugin-dialog";
 import { useTheme, type ThemeName } from "./themes";
 import { loadImageSettings, saveImageSettings, type ImageSettings, type StorageMode, type FilenameFormat } from "./ImageManager";
+import { checkForUpdate, downloadAndInstall, relaunchApp, type UpdateInfo } from "./Updater";
+import { getThemeDir, getUserThemes, type ThemeInfo } from "./ThemeManager";
 import "./Settings.css";
 
 // ── Types ────────────────────────────────────────────────────────────
 
-type SettingsTab = "general" | "theme" | "shortcuts" | "mindmap" | "image" | "about";
+type SettingsTab = "general" | "theme" | "shortcuts" | "editor" | "mindmap" | "image" | "about";
+
+// ── Editor Settings ─────────────────────────────────────────────
+
+export interface EditorSettings {
+  // 编辑模式
+  defaultMode: "wysiwyg" | "ir" | "sv";
+  typewriterMode: boolean;
+  // 编辑行为
+  cache: boolean;
+  counterType: "markdown" | "text";
+  resize: boolean;
+  // Markdown 渲染
+  autoSpace: boolean;
+  gfmAutoLink: boolean;
+  fixTermTypo: boolean;
+  footnotes: boolean;
+  toc: boolean;
+  paragraphBeginningSpace: boolean;
+  sanitize: boolean;
+  codeBlockPreview: boolean;
+  mathBlockPreview: boolean;
+  mark: boolean;
+  sup: boolean;
+  sub: boolean;
+  // 代码高亮
+  codeLineNumber: boolean;
+  codeTheme: "auto" | "github" | "atom-one-light" | "atom-one-dark" | "vs" | "nord" | "monokai" | "dracula" | "solarized-light" | "solarized-dark";
+  // 预览
+  previewMaxWidth: number;
+  // 数学公式
+  mathEngine: "KaTeX" | "MathJax";
+  // 链接行为
+  linkOpenNewTab: boolean;
+}
+
+export const DEFAULT_EDITOR_SETTINGS: EditorSettings = {
+  defaultMode: "ir",
+  typewriterMode: false,
+  cache: false,
+  counterType: "text",
+  resize: false,
+  autoSpace: false,
+  gfmAutoLink: true,
+  fixTermTypo: false,
+  footnotes: true,
+  toc: false,
+  paragraphBeginningSpace: false,
+  sanitize: true,
+  codeBlockPreview: true,
+  mathBlockPreview: true,
+  mark: false,
+  sup: false,
+  sub: false,
+  codeLineNumber: false,
+  codeTheme: "auto",
+  previewMaxWidth: 800,
+  mathEngine: "KaTeX",
+  linkOpenNewTab: true,
+};
+
+export const EDITOR_SETTINGS_KEY = "zmd-editor-settings";
+
+export function loadEditorSettings(): EditorSettings {
+  try {
+    const saved = localStorage.getItem(EDITOR_SETTINGS_KEY);
+    return saved ? { ...DEFAULT_EDITOR_SETTINGS, ...JSON.parse(saved) } : DEFAULT_EDITOR_SETTINGS;
+  } catch {
+    return DEFAULT_EDITOR_SETTINGS;
+  }
+}
 
 interface GeneralSettings {
   appearance: "system" | "light" | "dark";
   fontSize: number;
   editorFont: string;
   autoSave: boolean;
+  themeResourceDir: string;
 }
 
 interface ShortcutItem {
@@ -31,6 +104,7 @@ const DEFAULT_GENERAL: GeneralSettings = {
   fontSize: 14,
   editorFont: "-apple-system, BlinkMacSystemFont, \"Segoe UI\", Roboto, \"Helvetica Neue\", Arial, sans-serif",
   autoSave: true,
+  themeResourceDir: "",
 };
 
 interface MindmapSettings {
@@ -133,10 +207,36 @@ export { DEFAULT_SHORTCUTS, DEFAULT_MINDMAP };
 function GeneralSettingsContent({
   settings,
   onChange,
+  defaultThemeDir,
 }: {
   settings: GeneralSettings;
   onChange: (s: GeneralSettings) => void;
+  defaultThemeDir: string;
 }) {
+  const handleSelectThemeDir = async () => {
+    const selected = await open({ directory: true, multiple: false });
+    if (selected && typeof selected === "string") {
+      const oldDir = settings.themeResourceDir || defaultThemeDir;
+      if (oldDir && oldDir !== selected) {
+        await invoke("copy_themes", { fromDir: oldDir, toDir: selected });
+      }
+      onChange({ ...settings, themeResourceDir: selected });
+    }
+  };
+
+  const handleOpenThemeDir = async () => {
+    const dir = settings.themeResourceDir || defaultThemeDir;
+    if (dir) {
+      await invoke("open_directory", { dirPath: dir });
+    }
+  };
+
+  const handleResetThemeDir = () => {
+    onChange({ ...settings, themeResourceDir: "" });
+  };
+
+  const displayDir = settings.themeResourceDir || defaultThemeDir || "默认目录";
+
   return (
     <div className="settings-section">
       <h3 className="settings-section-title">外观</h3>
@@ -198,6 +298,30 @@ function GeneralSettingsContent({
           />
           <span className="settings-toggle-slider" />
         </label>
+      </div>
+
+      <h3 className="settings-section-title">主题资源</h3>
+      <div className="settings-item">
+        <label className="settings-item-label">主题目录</label>
+        <div className="settings-path-wrapper">
+          <input
+            type="text"
+            className="settings-input"
+            value={displayDir}
+            readOnly
+          />
+          <button className="settings-button" onClick={handleSelectThemeDir}>
+            更改
+          </button>
+          <button className="settings-button" onClick={handleOpenThemeDir}>
+            打开
+          </button>
+          {settings.themeResourceDir && (
+            <button className="settings-button" onClick={handleResetThemeDir}>
+              重置
+            </button>
+          )}
+        </div>
       </div>
     </div>
   );
@@ -326,7 +450,17 @@ function MindmapSettingsContent({
 }
 
 function ThemeSettingsContent({ theme, setTheme }: { theme: ThemeName; setTheme: (t: ThemeName) => void }) {
-  const themes: { value: ThemeName; label: string }[] = [
+  const [userThemes, setUserThemes] = useState<ThemeInfo[]>([]);
+  const [themeDir, setThemeDir] = useState("");
+
+  useEffect(() => {
+    getThemeDir().then((dir) => {
+      setThemeDir(dir);
+      return getUserThemes(dir);
+    }).then(setUserThemes).catch(() => {});
+  }, []);
+
+  const builtinThemes: { value: ThemeName; label: string }[] = [
     { value: "catppuccin-mocha", label: "Catppuccin Mocha" },
     { value: "white", label: "白色" },
     { value: "mint", label: "Mint" },
@@ -336,9 +470,9 @@ function ThemeSettingsContent({ theme, setTheme }: { theme: ThemeName; setTheme:
 
   return (
     <div className="settings-section">
-      <h3 className="settings-section-title">主题列表</h3>
+      <h3 className="settings-section-title">内置主题</h3>
       <div className="settings-theme-grid">
-        {themes.map((t) => (
+        {builtinThemes.map((t) => (
           <div
             key={t.value}
             className={`settings-theme-card${theme === t.value ? " active" : ""}`}
@@ -357,6 +491,41 @@ function ThemeSettingsContent({ theme, setTheme }: { theme: ThemeName; setTheme:
           </div>
         ))}
       </div>
+
+      {userThemes.length > 0 && (
+        <>
+          <h3 className="settings-section-title">Typora 主题</h3>
+          <div className="settings-theme-grid">
+            {userThemes.map((t) => (
+              <div
+                key={t.name}
+                className={`settings-theme-card${theme === t.name ? " active" : ""}`}
+                onClick={() => setTheme(t.name)}
+              >
+                <div className="settings-theme-preview settings-theme-preview-typora">
+                  {theme === t.name && (
+                    <div className="settings-theme-check">
+                      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
+                        <path d="M20 6L9 17l-5-5" />
+                      </svg>
+                    </div>
+                  )}
+                </div>
+                <span className="settings-theme-name">{t.name}</span>
+              </div>
+            ))}
+          </div>
+        </>
+      )}
+
+      {themeDir && (
+        <div className="settings-item" style={{ marginTop: 16 }}>
+          <label className="settings-item-label">主题目录</label>
+          <span className="settings-about-value" style={{ fontSize: 12, color: "var(--text-secondary)", wordBreak: "break-all" }}>
+            {themeDir}
+          </span>
+        </div>
+      )}
     </div>
   );
 }
@@ -696,22 +865,291 @@ function ImageSettingsContent({
   );
 }
 
+function EditorSettingsContent({
+  settings,
+  onChange,
+}: {
+  settings: EditorSettings;
+  onChange: (s: EditorSettings) => void;
+}) {
+  const update = <K extends keyof EditorSettings>(key: K, value: EditorSettings[K]) =>
+    onChange({ ...settings, [key]: value });
+
+  return (
+    <div className="settings-section">
+      {/* 编辑模式 */}
+      <h3 className="settings-section-title">编辑模式</h3>
+      <div className="settings-item">
+        <label className="settings-item-label">默认编辑模式</label>
+        <select
+          className="settings-select"
+          value={settings.defaultMode}
+          onChange={(e) => update("defaultMode", e.target.value as EditorSettings["defaultMode"])}
+        >
+          <option value="wysiwyg">所见即所得</option>
+          <option value="ir">即时渲染</option>
+          <option value="sv">源码</option>
+        </select>
+      </div>
+      <div className="settings-item">
+        <label className="settings-item-label">打字机模式</label>
+        <label className="settings-toggle">
+          <input
+            type="checkbox"
+            checked={settings.typewriterMode}
+            onChange={(e) => update("typewriterMode", e.target.checked)}
+          />
+          <span className="settings-toggle-slider" />
+        </label>
+      </div>
+
+      {/* 编辑行为 */}
+      <h3 className="settings-section-title">编辑行为</h3>
+      <div className="settings-item">
+        <label className="settings-item-label">启用缓存</label>
+        <label className="settings-toggle">
+          <input type="checkbox" checked={settings.cache} onChange={(e) => update("cache", e.target.checked)} />
+          <span className="settings-toggle-slider" />
+        </label>
+      </div>
+      <div className="settings-item">
+        <label className="settings-item-label">字数统计类型</label>
+        <select
+          className="settings-select"
+          value={settings.counterType}
+          onChange={(e) => update("counterType", e.target.value as EditorSettings["counterType"])}
+        >
+          <option value="markdown">Markdown（含语法符号）</option>
+          <option value="text">纯文本（仅文字）</option>
+        </select>
+      </div>
+      <div className="settings-item">
+        <label className="settings-item-label">大小拖拽</label>
+        <label className="settings-toggle">
+          <input type="checkbox" checked={settings.resize} onChange={(e) => update("resize", e.target.checked)} />
+          <span className="settings-toggle-slider" />
+        </label>
+      </div>
+
+      {/* Markdown 渲染 */}
+      <h3 className="settings-section-title">Markdown 渲染</h3>
+      <div className="settings-item">
+        <label className="settings-item-label">自动空格（中西文间）</label>
+        <label className="settings-toggle">
+          <input type="checkbox" checked={settings.autoSpace} onChange={(e) => update("autoSpace", e.target.checked)} />
+          <span className="settings-toggle-slider" />
+        </label>
+      </div>
+      <div className="settings-item">
+        <label className="settings-item-label">自动链接</label>
+        <label className="settings-toggle">
+          <input type="checkbox" checked={settings.gfmAutoLink} onChange={(e) => update("gfmAutoLink", e.target.checked)} />
+          <span className="settings-toggle-slider" />
+        </label>
+      </div>
+      <div className="settings-item">
+        <label className="settings-item-label">自动矫正术语</label>
+        <label className="settings-toggle">
+          <input type="checkbox" checked={settings.fixTermTypo} onChange={(e) => update("fixTermTypo", e.target.checked)} />
+          <span className="settings-toggle-slider" />
+        </label>
+      </div>
+      <div className="settings-item">
+        <label className="settings-item-label">脚注</label>
+        <label className="settings-toggle">
+          <input type="checkbox" checked={settings.footnotes} onChange={(e) => update("footnotes", e.target.checked)} />
+          <span className="settings-toggle-slider" />
+        </label>
+      </div>
+      <div className="settings-item">
+        <label className="settings-item-label">插入目录</label>
+        <label className="settings-toggle">
+          <input type="checkbox" checked={settings.toc} onChange={(e) => update("toc", e.target.checked)} />
+          <span className="settings-toggle-slider" />
+        </label>
+      </div>
+      <div className="settings-item">
+        <label className="settings-item-label">段落开头空两格</label>
+        <label className="settings-toggle">
+          <input type="checkbox" checked={settings.paragraphBeginningSpace} onChange={(e) => update("paragraphBeginningSpace", e.target.checked)} />
+          <span className="settings-toggle-slider" />
+        </label>
+      </div>
+      <div className="settings-item">
+        <label className="settings-item-label">
+          XSS 过滤
+          <span style={{ fontSize: 11, color: "var(--text-secondary)", marginLeft: 6 }}>
+            ⚠️ 关闭后有安全风险
+          </span>
+        </label>
+        <label className="settings-toggle">
+          <input type="checkbox" checked={settings.sanitize} onChange={(e) => update("sanitize", e.target.checked)} />
+          <span className="settings-toggle-slider" />
+        </label>
+      </div>
+      <div className="settings-item">
+        <label className="settings-item-label">代码块预览</label>
+        <label className="settings-toggle">
+          <input type="checkbox" checked={settings.codeBlockPreview} onChange={(e) => update("codeBlockPreview", e.target.checked)} />
+          <span className="settings-toggle-slider" />
+        </label>
+      </div>
+      <div className="settings-item">
+        <label className="settings-item-label">数学公式块预览</label>
+        <label className="settings-toggle">
+          <input type="checkbox" checked={settings.mathBlockPreview} onChange={(e) => update("mathBlockPreview", e.target.checked)} />
+          <span className="settings-toggle-slider" />
+        </label>
+      </div>
+      <div className="settings-item">
+        <label className="settings-item-label">
+          mark 标记
+          <span style={{ fontSize: 11, color: "var(--text-secondary)", marginLeft: 6 }}>==text==</span>
+        </label>
+        <label className="settings-toggle">
+          <input type="checkbox" checked={settings.mark} onChange={(e) => update("mark", e.target.checked)} />
+          <span className="settings-toggle-slider" />
+        </label>
+      </div>
+      <div className="settings-item">
+        <label className="settings-item-label">
+          上标
+          <span style={{ fontSize: 11, color: "var(--text-secondary)", marginLeft: 6 }}>^sup^</span>
+        </label>
+        <label className="settings-toggle">
+          <input type="checkbox" checked={settings.sup} onChange={(e) => update("sup", e.target.checked)} />
+          <span className="settings-toggle-slider" />
+        </label>
+      </div>
+      <div className="settings-item">
+        <label className="settings-item-label">
+          下标
+          <span style={{ fontSize: 11, color: "var(--text-secondary)", marginLeft: 6 }}>~sub~</span>
+        </label>
+        <label className="settings-toggle">
+          <input type="checkbox" checked={settings.sub} onChange={(e) => update("sub", e.target.checked)} />
+          <span className="settings-toggle-slider" />
+        </label>
+      </div>
+
+      {/* 代码高亮 */}
+      <h3 className="settings-section-title">代码高亮</h3>
+      <div className="settings-item">
+        <label className="settings-item-label">代码行号</label>
+        <label className="settings-toggle">
+          <input type="checkbox" checked={settings.codeLineNumber} onChange={(e) => update("codeLineNumber", e.target.checked)} />
+          <span className="settings-toggle-slider" />
+        </label>
+      </div>
+      <div className="settings-item">
+        <label className="settings-item-label">代码主题</label>
+        <select
+          className="settings-select"
+          value={settings.codeTheme}
+          onChange={(e) => update("codeTheme", e.target.value as EditorSettings["codeTheme"])}
+        >
+          <option value="auto">跟随应用主题</option>
+          <option value="github">GitHub</option>
+          <option value="atom-one-light">Atom One Light</option>
+          <option value="atom-one-dark">Atom One Dark</option>
+          <option value="vs">VS Code</option>
+          <option value="nord">Nord</option>
+          <option value="monokai">Monokai</option>
+          <option value="dracula">Dracula</option>
+          <option value="solarized-light">Solarized Light</option>
+          <option value="solarized-dark">Solarized Dark</option>
+        </select>
+      </div>
+
+      {/* 预览 */}
+      <h3 className="settings-section-title">预览</h3>
+      <div className="settings-item">
+        <label className="settings-item-label">预览区域最大宽度</label>
+        <div className="settings-range-wrapper">
+          <input
+            type="range"
+            className="settings-range"
+            min={600}
+            max={1200}
+            step={20}
+            value={settings.previewMaxWidth}
+            onChange={(e) => update("previewMaxWidth", Number(e.target.value))}
+          />
+          <span className="settings-range-value">{settings.previewMaxWidth}px</span>
+        </div>
+      </div>
+
+      {/* 数学公式 */}
+      <h3 className="settings-section-title">数学公式</h3>
+      <div className="settings-item">
+        <label className="settings-item-label">渲染引擎</label>
+        <select
+          className="settings-select"
+          value={settings.mathEngine}
+          onChange={(e) => update("mathEngine", e.target.value as EditorSettings["mathEngine"])}
+        >
+          <option value="KaTeX">KaTeX（更快）</option>
+          <option value="MathJax">MathJax（更全）</option>
+        </select>
+      </div>
+
+      {/* 链接行为 */}
+      <h3 className="settings-section-title">链接行为</h3>
+      <div className="settings-item">
+        <label className="settings-item-label">新窗口打开链接</label>
+        <label className="settings-toggle">
+          <input type="checkbox" checked={settings.linkOpenNewTab} onChange={(e) => update("linkOpenNewTab", e.target.checked)} />
+          <span className="settings-toggle-slider" />
+        </label>
+      </div>
+
+      {/* 提示 */}
+      <div className="settings-item" style={{ flexDirection: "column", alignItems: "flex-start", gap: 4 }}>
+        <p style={{ fontSize: 12, color: "var(--text-secondary)", margin: 0, lineHeight: 1.6 }}>
+          💡 大部分编辑器设置修改后需重新打开文件或切换编辑模式才会完全生效。
+        </p>
+      </div>
+    </div>
+  );
+}
+
 function AboutSettingsContent() {
   const [version, setVersion] = useState<string>("");
   const [checkingUpdate, setCheckingUpdate] = useState(false);
+  const [updateResult, setUpdateResult] = useState<{ available: boolean; info?: UpdateInfo } | null>(null);
+  const [downloading, setDownloading] = useState(false);
+  const [downloadProgress, setDownloadProgress] = useState<{ downloaded: number; total: number | null }>({ downloaded: 0, total: null });
 
-  // 获取版本号
   useEffect(() => {
     invoke<string>("get_app_version").then(setVersion).catch(() => setVersion("0.1.0"));
   }, []);
 
   const handleCheckUpdate = useCallback(async () => {
     setCheckingUpdate(true);
-    // 模拟检查更新
-    await new Promise((r) => setTimeout(r, 1000));
-    alert("当前已是最新版本");
+    setUpdateResult(null);
+    try {
+      const info = await checkForUpdate();
+      setUpdateResult(info ? { available: true, info } : { available: false });
+    } catch {
+      setUpdateResult({ available: false });
+    }
     setCheckingUpdate(false);
   }, []);
+
+  const handleDownload = useCallback(async () => {
+    if (!updateResult?.info) return;
+    setDownloading(true);
+    setDownloadProgress({ downloaded: 0, total: null });
+    try {
+      await downloadAndInstall((downloaded, total) => {
+        setDownloadProgress({ downloaded, total });
+      });
+      await relaunchApp();
+    } catch (e) {
+      console.error("更新失败:", e);
+      setDownloading(false);
+    }
+  }, [updateResult]);
 
   return (
     <div className="settings-section">
@@ -728,19 +1166,29 @@ function AboutSettingsContent() {
 
       <div className="settings-item">
         <label className="settings-item-label">检查更新</label>
-        <button
-          className="settings-button"
-          onClick={handleCheckUpdate}
-          disabled={checkingUpdate}
-        >
-          {checkingUpdate ? "检查中..." : "检查更新"}
-        </button>
+        {downloading ? (
+          <span className="settings-about-value">
+            下载中...{downloadProgress.total ? ` ${Math.round(downloadProgress.downloaded / downloadProgress.total * 100)}%` : ""}
+          </span>
+        ) : updateResult?.available && updateResult.info ? (
+          <button className="settings-button" onClick={handleDownload}>
+            更新到 v{updateResult.info.version}
+          </button>
+        ) : (
+          <button
+            className="settings-button"
+            onClick={handleCheckUpdate}
+            disabled={checkingUpdate}
+          >
+            {checkingUpdate ? "检查中..." : updateResult && !updateResult.available ? "已是最新版本" : "检查更新"}
+          </button>
+        )}
       </div>
 
       <div className="settings-item">
         <label className="settings-item-label">GitHub</label>
         <a
-          href="https://github.com/your-repo/tydora"
+          href="https://github.com/zuorn/Tydora"
           target="_blank"
           rel="noopener noreferrer"
           className="settings-link"
@@ -752,7 +1200,7 @@ function AboutSettingsContent() {
       <div className="settings-item">
         <label className="settings-item-label">问题反馈</label>
         <a
-          href="https://github.com/your-repo/tydora/issues"
+          href="https://github.com/zuorn/Tydora/issues"
           target="_blank"
           rel="noopener noreferrer"
           className="settings-link"
@@ -769,6 +1217,12 @@ function AboutSettingsContent() {
 export default function Settings() {
   const [activeTab, setActiveTab] = useState<SettingsTab>("general");
   const { theme, setTheme } = useTheme();
+  const [defaultThemeDir, setDefaultThemeDir] = useState("");
+
+  // 获取默认主题目录
+  useEffect(() => {
+    getThemeDir().then(setDefaultThemeDir).catch(() => {});
+  }, []);
 
   // 通用设置状态
   const [generalSettings, setGeneralSettings] = useState<GeneralSettings>(() => {
@@ -808,6 +1262,14 @@ export default function Settings() {
     saveImageSettings(imageSettings);
   }, [imageSettings]);
 
+  // 编辑器设置状态
+  const [editorSettings, setEditorSettings] = useState<EditorSettings>(() => loadEditorSettings());
+
+  // 保存编辑器设置到 localStorage
+  useEffect(() => {
+    localStorage.setItem(EDITOR_SETTINGS_KEY, JSON.stringify(editorSettings));
+  }, [editorSettings]);
+
   const handleClose = useCallback(async () => {
     const win = getCurrentWebviewWindow();
     await win.close();
@@ -822,6 +1284,7 @@ export default function Settings() {
     { id: "general", label: "通用" },
     { id: "theme", label: "主题" },
     { id: "shortcuts", label: "快捷键" },
+    { id: "editor", label: "编辑器" },
     { id: "mindmap", label: "思维导图" },
     { id: "image", label: "图像" },
     { id: "about", label: "关于" },
@@ -868,12 +1331,15 @@ export default function Settings() {
         {/* 右侧内容 */}
         <main className="settings-main">
           {activeTab === "general" && (
-            <GeneralSettingsContent settings={generalSettings} onChange={setGeneralSettings} />
+            <GeneralSettingsContent settings={generalSettings} onChange={setGeneralSettings} defaultThemeDir={defaultThemeDir} />
           )}
           {activeTab === "theme" && (
             <ThemeSettingsContent theme={theme} setTheme={setTheme} />
           )}
           {activeTab === "shortcuts" && <ShortcutsSettingsContent />}
+          {activeTab === "editor" && (
+            <EditorSettingsContent settings={editorSettings} onChange={setEditorSettings} />
+          )}
           {activeTab === "mindmap" && (
             <MindmapSettingsContent settings={mindmapSettings} onChange={setMindmapSettings} />
           )}

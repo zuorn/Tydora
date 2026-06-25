@@ -1,40 +1,3 @@
-/* ========== Mint 主题自定义字体 ========== */
-
-@font-face {
-  font-family: 'Lexend';
-  font-weight: normal;
-  font-style: normal;
-  src: url('/themes/mint/Lexend-Regular.ttf') format('truetype');
-}
-
-@font-face {
-  font-family: 'Lexend';
-  font-weight: bold;
-  font-style: normal;
-  src: url('/themes/mint/Lexend-Bold.ttf') format('truetype');
-}
-
-@font-face {
-  font-family: 'SourceCodePro';
-  font-weight: normal;
-  font-style: normal;
-  src: url('/themes/mint/SourceCodePro-Regular.ttf') format('truetype');
-}
-
-@font-face {
-  font-family: 'NotoSansSC';
-  font-weight: normal;
-  font-style: normal;
-  src: url('/themes/mint/NotoSansSC-Regular.otf') format('opentype');
-}
-
-@font-face {
-  font-family: 'NotoSansSC';
-  font-weight: bold;
-  font-style: normal;
-  src: url('/themes/mint/NotoSansSC-Bold.otf') format('opentype');
-}
-
 /* ========== 主题 CSS 变量 ========== */
 
 /* ── 暗色主题（默认） ── */
@@ -65,9 +28,9 @@
   --accent-hover: #1d4ed8;
   --border: #d1d9e6;
   --danger: #dc2626;
-  --font-mono: "SourceCodePro", "Cascadia Code", "JetBrains Mono", "Fira Code", monospace;
-  --font-ui: "Lexend", "NotoSansSC", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
-  --editor-font: "Lexend", "NotoSansSC", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  --font-mono: "Cascadia Code", "JetBrains Mono", "Fira Code", "Consolas", monospace;
+  --font-ui: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+  --editor-font: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
 }
 
 /* ── Mint 主题（浅色） ── */
@@ -81,9 +44,9 @@
   --accent-hover: #3a9e6e;
   --border: #d9ede5;
   --danger: #e06c75;
-  --font-mono: "SourceCodePro", "Cascadia Code", "JetBrains Mono", "Fira Code", monospace;
-  --font-ui: "Lexend", "NotoSansSC", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
-  --editor-font: "Lexend", "NotoSansSC", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  --font-mono: "Cascadia Code", "JetBrains Mono", "Fira Code", "Consolas", monospace;
+  --font-ui: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+  --editor-font: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
 }
 
 /* ── Mint Dark 主题（深色） ── */
@@ -97,9 +60,9 @@
   --accent-hover: #5fc99e;
   --border: #39393a;
   --danger: #e06c75;
-  --font-mono: "SourceCodePro", "Cascadia Code", "JetBrains Mono", "Fira Code", monospace;
-  --font-ui: "Lexend", "NotoSansSC", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
-  --editor-font: "Lexend", "NotoSansSC", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  --font-mono: "Cascadia Code", "JetBrains Mono", "Fira Code", "Consolas", monospace;
+  --font-ui: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+  --editor-font: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
 }
 
 /* ── Liquid Glass 主题（苹果液态玻璃风格） ── */

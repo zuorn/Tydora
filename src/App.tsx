@@ -13,6 +13,8 @@ import { useTheme } from "./themes";
 import { ConfirmDialog } from "./ConfirmDialog";
 import { emit } from "@tauri-apps/api/event";
 import { loadImageSettings, type ImageSettings } from "./ImageManager";
+import { loadEditorSettings, type EditorSettings, EDITOR_SETTINGS_KEY } from "./Settings";
+import { checkForUpdate, downloadAndInstall, relaunchApp, type UpdateInfo } from "./Updater";
 import "./App.css";
 import "./vditor-theme.css";
 import "./FilePreview.css";
@@ -76,8 +78,10 @@ function App({ initialFilePath }: { initialFilePath?: string | null }) {
   const [content, setContent] = useState(initialContent);
   const [fileName, setFileName] = useState<string | null>(null);
   const [modified, setModified] = useState(false);
-  const [viewMode, setViewMode] = useState<EditorMode>("ir");
-  const [typewriterMode, setTypewriterMode] = useState(false);
+  const [editorSettings, setEditorSettings] = useState<EditorSettings>(() => loadEditorSettings());
+  const [viewMode, setViewMode] = useState<EditorMode>(editorSettings.defaultMode);
+  const [typewriterMode, setTypewriterMode] = useState(editorSettings.typewriterMode);
+  const [wordCount, setWordCount] = useState(0);
 
   // 应用编辑器字体和字号设置
   useEffect(() => {
@@ -111,7 +115,19 @@ function App({ initialFilePath }: { initialFilePath?: string | null }) {
     return () => window.removeEventListener("storage", handleStorage);
   }, []);
 
-  // Sidebar / Vault state
+  // 监听编辑器设置变化（设置窗口保存后实时生效）
+  useEffect(() => {
+    const handleEditorStorage = (e: StorageEvent) => {
+      if (e.key === EDITOR_SETTINGS_KEY) {
+        const newSettings = loadEditorSettings();
+        setEditorSettings(newSettings);
+        setViewMode(newSettings.defaultMode);
+        setTypewriterMode(newSettings.typewriterMode);
+      }
+    };
+    window.addEventListener("storage", handleEditorStorage);
+    return () => window.removeEventListener("storage", handleEditorStorage);
+  }, []);
   const [vaults, setVaults] = useState<VaultInfo[]>(() => {
     try {
       const saved = localStorage.getItem(VAULTS_KEY);
@@ -152,6 +168,11 @@ function App({ initialFilePath }: { initialFilePath?: string | null }) {
   // 命令面板状态
   const [commandPaletteOpen, setCommandPaletteOpen] = useState(false);
 
+  // 更新状态
+  const [updateInfo, setUpdateInfo] = useState<UpdateInfo | null>(null);
+  const [updateDownloading, setUpdateDownloading] = useState(false);
+  const [updateProgress, setUpdateProgress] = useState<{ downloaded: number; total: number | null }>({ downloaded: 0, total: null });
+
   // 最近访问的文件列表（按仓库路径分组）
   const [recentFiles, setRecentFiles] = useState<Record<string, string[]>>(() => {
     try {
@@ -177,6 +198,13 @@ function App({ initialFilePath }: { initialFilePath?: string | null }) {
   useEffect(() => {
     localStorage.setItem(SIDEBAR_WIDTH_KEY, String(sidebarWidth));
   }, [sidebarWidth]);
+
+  // 启动时自动检查更新
+  useEffect(() => {
+    checkForUpdate().then((info) => {
+      if (info) setUpdateInfo(info);
+    }).catch(() => {});
+  }, []);
 
   // 新窗口：打开指定文件
   useEffect(() => {
@@ -297,6 +325,21 @@ function App({ initialFilePath }: { initialFilePath?: string | null }) {
       unlistenResize.then((fn) => fn()).catch(() => {});
     };
   }, []);
+
+  const handleUpdateDownload = useCallback(async () => {
+    if (!updateInfo) return;
+    setUpdateDownloading(true);
+    setUpdateProgress({ downloaded: 0, total: null });
+    try {
+      await downloadAndInstall((downloaded, contentLength) => {
+        setUpdateProgress({ downloaded, total: contentLength });
+      });
+      await relaunchApp();
+    } catch (e) {
+      console.error("更新失败:", e);
+      setUpdateDownloading(false);
+    }
+  }, [updateInfo]);
 
   // Debounced mindmap sync to avoid flooding IPC on every keystroke
   const mindmapSyncTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -764,6 +807,28 @@ function App({ initialFilePath }: { initialFilePath?: string | null }) {
                 </button>
               )}
             </div>
+            {updateInfo && !updateDownloading && (
+              <button className="update-btn" onClick={handleUpdateDownload} title={`有新版本 v${updateInfo.version}`}>
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
+                  <polyline points="7 10 12 15 17 10" />
+                  <line x1="12" y1="15" x2="12" y2="3" />
+                </svg>
+                <span>v{updateInfo.version}</span>
+              </button>
+            )}
+            {updateDownloading && (
+              <div className="update-progress">
+                <div className="update-progress-text">
+                  下载中...{updateProgress.total ? ` ${Math.round(updateProgress.downloaded / updateProgress.total * 100)}%` : ""}
+                </div>
+                {updateProgress.total && (
+                  <div className="update-progress-bar">
+                    <div className="update-progress-fill" style={{ width: `${Math.round(updateProgress.downloaded / updateProgress.total * 100)}%` }} />
+                  </div>
+                )}
+              </div>
+            )}
             <div className="window-controls">
               <button className="window-control-btn" onClick={handleMinimize} title="最小化">
                 <svg width="10" height="10" viewBox="0 0 10 10">
@@ -800,9 +865,11 @@ function App({ initialFilePath }: { initialFilePath?: string | null }) {
                   mode={viewMode}
                   theme={theme}
                   typewriterMode={typewriterMode}
+                  editorSettings={editorSettings}
                   imageSettings={imageSettings}
                   currentFilePath={fileName}
                   activeVaultPath={activeVaultIndex >= 0 ? vaults[activeVaultIndex]?.path : null}
+                  onWordCount={setWordCount}
                 />
                 {/* 欢迎提示 */}
                 {!fileName && content === initialContent && (
@@ -846,7 +913,7 @@ function App({ initialFilePath }: { initialFilePath?: string | null }) {
               </svg>
             </button>
             <span className="editor-word-count">
-              {content.length} 字
+              {wordCount} 字
             </span>
           </div>
         </main>

@@ -1,7 +1,7 @@
 {
   "name": "tydora",
   "private": true,
-  "version": "0.0.1",
+  "version": "0.1.0",
   "type": "module",
   "scripts": {
     "copy-vditor": "node scripts/copy-vditor-assets.mjs",
@@ -14,6 +14,8 @@
     "@tauri-apps/api": "^2.0.0",
     "@tauri-apps/plugin-dialog": "^2.0.0",
     "@tauri-apps/plugin-fs": "^2.0.0",
+    "@tauri-apps/plugin-process": "^2.3.1",
+    "@tauri-apps/plugin-updater": "^2.10.1",
     "@tauri-apps/plugin-window-state": "^2.4.1",
     "markmap-lib": "^0.18.12",
     "markmap-view": "^0.18.12",

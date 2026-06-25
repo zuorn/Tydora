@@ -15,6 +15,16 @@
   min-width: 0;
 }
 
+/* 隐藏 Vditor 自带字数统计，使用底部栏自定义显示 */
+.vditor-editor-container .vditor-counter {
+  display: none !important;
+}
+
+/* 隐藏 Vditor 底部拖拽调整大小手柄 */
+.vditor-editor-container .vditor-resize--bottom {
+  display: none !important;
+}
+
 /* 确保 .vditor 填满容器 */
 .vditor-editor-container > .vditor {
   height: 100% !important;

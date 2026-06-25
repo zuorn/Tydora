@@ -1,3 +1,10 @@
+
+#  Dotfiles
+.codebuddy/
+.workbuddy/
+.mimocode/
+
+
 # Dependencies
 node_modules/
 

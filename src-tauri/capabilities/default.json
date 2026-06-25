@@ -53,6 +53,8 @@
     "dialog:allow-save",
     "dialog:allow-ask",
     "dialog:allow-confirm",
-    "window-state:default"
+    "window-state:default",
+    "updater:default",
+    "process:default"
   ]
 }

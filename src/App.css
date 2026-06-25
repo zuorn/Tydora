@@ -962,6 +962,56 @@ body {
   color: var(--accent);
 }
 
+/* ── Update Button ── */
+.update-btn {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding: 3px 10px;
+  background: var(--accent);
+  border: none;
+  border-radius: 4px;
+  color: white;
+  font-size: 11px;
+  cursor: pointer;
+  -webkit-app-region: no-drag;
+  transition: opacity 0.15s, background 0.15s;
+  white-space: nowrap;
+}
+
+.update-btn:hover {
+  opacity: 0.85;
+}
+
+.update-progress {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  -webkit-app-region: no-drag;
+  padding: 0 8px;
+}
+
+.update-progress-text {
+  font-size: 11px;
+  color: var(--text-secondary);
+  white-space: nowrap;
+}
+
+.update-progress-bar {
+  width: 60px;
+  height: 3px;
+  background: var(--border);
+  border-radius: 2px;
+  overflow: hidden;
+}
+
+.update-progress-fill {
+  height: 100%;
+  background: var(--accent);
+  border-radius: 2px;
+  transition: width 0.2s;
+}
+
 /* ========== 打字机模式 ========== */
 
 .typewriter-mode .editor-panel {

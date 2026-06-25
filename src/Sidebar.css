@@ -169,7 +169,7 @@
 
 /* 没有打开过仓库时的按钮 */
 .vault-open-btn {
-  width: 100%;
+  flex: 1;
   display: flex;
   align-items: center;
   gap: 8px;
@@ -181,12 +181,20 @@
   padding: 8px 12px;
   cursor: pointer;
   transition: all 0.15s ease;
+  min-width: 0;
+  overflow: hidden;
 }
 
 .vault-open-btn:hover {
   background: var(--accent);
   color: var(--bg-primary);
   border-color: var(--accent);
+}
+
+.vault-empty-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
 }
 
 /* 已打开仓库：显示当前仓库名 + 齿轮 */
@@ -333,7 +341,7 @@
 /* ── Context Menu ── */
 .context-menu {
   position: fixed;
-  z-index: 200;
+  z-index: 9000;
   min-width: 200px;
   max-height: calc(100vh - 32px);
   overflow-y: auto;
@@ -897,11 +905,10 @@
 
 /* ── 右键菜单 ── */
 [data-theme="liquid-glass"] .context-menu {
-  background: rgba(255, 255, 255, 0.85);
-  backdrop-filter: blur(var(--glass-blur, 24px)) saturate(var(--glass-saturate, 200%));
-  -webkit-backdrop-filter: blur(var(--glass-blur, 24px)) saturate(var(--glass-saturate, 200%));
-  border: 1px solid rgba(255, 255, 255, 0.6);
-  box-shadow: 0 12px 40px rgba(0, 0, 0, 0.1), inset 0 1px 0 rgba(255, 255, 255, 0.6);
+  background: rgba(255, 255, 255, 0.95);
+  border: 1px solid rgba(0, 0, 0, 0.08);
+  box-shadow: 0 12px 40px rgba(0, 0, 0, 0.15);
+  z-index: 9000;
 }
 
 [data-theme="liquid-glass"] .context-menu-item:hover {

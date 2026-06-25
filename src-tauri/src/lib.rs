@@ -1,5 +1,6 @@
 use std::process::Command;
 use tauri::{Manager, WebviewWindowBuilder};
+use serde::Serialize;
 
 /// URL 百分号解码，将 %XX 转换为对应字节，最终返回解码后的字符串
 fn percent_decode(s: &str) -> String {
@@ -32,6 +33,53 @@ fn get_default_content() -> String {
 #[tauri::command]
 fn get_app_version() -> String {
     env!("CARGO_PKG_VERSION").to_string()
+}
+
+/// 主题信息
+#[derive(Serialize)]
+struct ThemeInfo {
+    name: String,
+    file_path: String,
+}
+
+/// 获取默认主题目录路径（%LOCALAPPDATA%/Tydora/themes）
+#[tauri::command]
+fn get_default_theme_dir(app: tauri::AppHandle) -> Result<String, String> {
+    let path = app
+        .path()
+        .app_local_data_dir()
+        .map(|p| p.join("themes"))
+        .map_err(|e| e.to_string())?;
+    std::fs::create_dir_all(&path).ok();
+    Ok(path.to_string_lossy().to_string())
+}
+
+/// 读取主题目录中的所有 CSS 文件（主题列表）
+#[tauri::command]
+fn list_themes(theme_dir: String) -> Result<Vec<ThemeInfo>, String> {
+    let dir = std::path::Path::new(&theme_dir);
+    if !dir.exists() {
+        return Ok(vec![]);
+    }
+
+    let mut themes = vec![];
+    for entry in std::fs::read_dir(dir).map_err(|e| e.to_string())? {
+        let entry = entry.map_err(|e| e.to_string())?;
+        let path = entry.path();
+
+        if path.extension().and_then(|e| e.to_str()) == Some("css") {
+            let name = path
+                .file_stem()
+                .and_then(|s| s.to_str())
+                .unwrap_or("unknown")
+                .to_string();
+            themes.push(ThemeInfo {
+                name,
+                file_path: path.to_string_lossy().to_string(),
+            });
+        }
+    }
+    Ok(themes)
 }
 
 /// 打开设置窗口
@@ -173,11 +221,71 @@ fn open_file_location(file_path: String) -> Result<(), String> {
     Ok(())
 }
 
+/// 在系统文件管理器中打开目录
+#[tauri::command]
+fn open_directory(dir_path: String) -> Result<(), String> {
+    let path = std::path::Path::new(&dir_path);
+    if !path.exists() {
+        std::fs::create_dir_all(path).map_err(|e| e.to_string())?;
+    }
+    #[cfg(target_os = "windows")]
+    {
+        Command::new("explorer.exe")
+            .arg(&dir_path)
+            .spawn()
+            .map_err(|e| e.to_string())?;
+    }
+    #[cfg(target_os = "macos")]
+    {
+        Command::new("open")
+            .arg(&dir_path)
+            .spawn()
+            .map_err(|e| e.to_string())?;
+    }
+    #[cfg(target_os = "linux")]
+    {
+        Command::new("xdg-open")
+            .arg(&dir_path)
+            .spawn()
+            .map_err(|e| e.to_string())?;
+    }
+    Ok(())
+}
+
+/// 将源目录中的所有主题 CSS 文件拷贝到目标目录
+#[tauri::command]
+fn copy_themes(from_dir: String, to_dir: String) -> Result<u32, String> {
+    let src = std::path::Path::new(&from_dir);
+    let dst = std::path::Path::new(&to_dir);
+
+    if !src.exists() {
+        return Ok(0);
+    }
+
+    std::fs::create_dir_all(dst).map_err(|e| e.to_string())?;
+
+    let mut count = 0u32;
+    for entry in std::fs::read_dir(src).map_err(|e| e.to_string())? {
+        let entry = entry.map_err(|e| e.to_string())?;
+        let path = entry.path();
+
+        if path.extension().and_then(|e| e.to_str()) == Some("css") {
+            let file_name = path.file_name().ok_or("invalid file name")?;
+            let dest_path = dst.join(file_name);
+            std::fs::copy(&path, &dest_path).map_err(|e| e.to_string())?;
+            count += 1;
+        }
+    }
+    Ok(count)
+}
+
 pub fn run() {
     tauri::Builder::default()
         .plugin(tauri_plugin_fs::init())
         .plugin(tauri_plugin_dialog::init())
         .plugin(tauri_plugin_window_state::Builder::new().build())
+        .plugin(tauri_plugin_updater::Builder::new().build())
+        .plugin(tauri_plugin_process::init())
         .register_uri_scheme_protocol("local-file", |_ctx, request| {
             // request.uri().path() 返回类似 "/D%3A%2Fpath%2Fto%2Ffile.png" 的路径
             // 跳过开头的 "/" 并进行百分号解码
@@ -198,9 +306,13 @@ pub fn run() {
         .invoke_handler(tauri::generate_handler![
             get_default_content,
             get_app_version,
+            get_default_theme_dir,
+            list_themes,
             open_settings_window,
             open_file_in_new_window,
             open_file_location,
+            open_directory,
+            copy_themes,
             open_mindmap_window,
         ])
         .setup(|_app| {

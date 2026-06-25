@@ -4,7 +4,7 @@ import { open } from "@tauri-apps/plugin-dialog";
 import { convertFileSrc } from "@tauri-apps/api/core";
 import { saveImageToLocal, loadImageSettings, type ImageSettings, dirName, relativePath, resolveRelativePath } from "./ImageManager";
 import "./VditorEditor.css";
-import { SHORTCUTS_KEY, DEFAULT_SHORTCUTS } from "./Settings";
+import { SHORTCUTS_KEY, DEFAULT_SHORTCUTS, DEFAULT_EDITOR_SETTINGS, type EditorSettings } from "./Settings";
 import type { ThemeName } from "./themes";
 
 type EditorMode = "wysiwyg" | "ir" | "sv";
@@ -15,9 +15,11 @@ interface VditorEditorProps {
   mode: EditorMode;
   theme: ThemeName;
   typewriterMode?: boolean;
+  editorSettings?: EditorSettings;
   imageSettings?: ImageSettings;
   currentFilePath?: string | null;
   activeVaultPath?: string | null;
+  onWordCount?: (count: number) => void;
 }
 
 export interface VditorEditorHandle {
@@ -496,11 +498,13 @@ const ContextMenu = forwardRef<HTMLDivElement, ContextMenuProps>(({ items, onCli
 });
 
 const VditorEditor = forwardRef<VditorEditorHandle, VditorEditorProps>(
-  ({ value, onChange, mode, theme, typewriterMode, imageSettings, currentFilePath, activeVaultPath }, ref) => {
+  ({ value, onChange, mode, theme, typewriterMode, editorSettings, imageSettings, currentFilePath, activeVaultPath, onWordCount }, ref) => {
     const elRef = useRef<HTMLDivElement>(null);
     const vditorRef = useRef<Vditor | null>(null);
     const menuRef = useRef<HTMLDivElement>(null);
     const onChangeRef = useRef(onChange);
+    const onWordCountRef = useRef(onWordCount);
+    onWordCountRef.current = onWordCount;
     const isInternalRef = useRef(false);
     const mountedRef = useRef(true);
     const savedRangeRef = useRef<Range | null>(null); // 保存右键菜单打开时的 range
@@ -759,7 +763,10 @@ const VditorEditor = forwardRef<VditorEditorHandle, VditorEditorProps>(
       },
     }));
 
-    // 初始化 Vditor（mode 变化时重建）
+    // 编辑器设置的 JSON key，变化时触发 Vditor 重建
+    const editorSettingsKey = JSON.stringify(editorSettings ?? DEFAULT_EDITOR_SETTINGS);
+
+    // 初始化 Vditor（mode / editorSettings 变化时重建）
     useEffect(() => {
       const el = elRef.current;
       if (!el) return;
@@ -775,6 +782,8 @@ const VditorEditor = forwardRef<VditorEditorHandle, VditorEditorProps>(
       el.innerHTML = "";
       setStatus("loading");
       setErrorMsg("");
+
+      const es = editorSettings ?? DEFAULT_EDITOR_SETTINGS;
 
       // 超时检测（Lute 加载失败时 after() 不会触发）
       const timeoutId = setTimeout(() => {
@@ -865,11 +874,11 @@ const VditorEditor = forwardRef<VditorEditorHandle, VditorEditorProps>(
           height: "100%",
           width: "100%",
           typewriterMode,
-          outline: { enable: false, position: "left" },
-          counter: { enable: false },
-          resize: { enable: false },
-          cache: { enable: false },
+          counter: { enable: true, type: es.counterType, after: (length: number) => { onWordCountRef.current?.(length); } },
+          resize: { enable: es.resize },
+          cache: { enable: es.cache },
           link: {
+            isOpen: es.linkOpenNewTab,
             click: (href: unknown) => {
               const hrefStr = String(href);
               if (hrefStr && (hrefStr.startsWith("http://") || hrefStr.startsWith("https://"))) {
@@ -968,20 +977,34 @@ const VditorEditor = forwardRef<VditorEditorHandle, VditorEditorProps>(
           // 禁用右侧预览分屏，WYSIWYG 本身就是所见即所得
           preview: {
             mode: "editor",
-            maxWidth: 800,
+            maxWidth: es.previewMaxWidth,
             theme: {
               current: theme === "white" || theme === "mint" || theme === "liquid-glass" ? "light" : "dark",
               path: "/vditor/dist/css/content-theme",
             },
             hljs: {
-              style: theme === "white" || theme === "mint" || theme === "liquid-glass" ? "atom-one-light" : "atom-one-dark",
+              style: es.codeTheme === "auto"
+                ? (theme === "white" || theme === "mint" || theme === "liquid-glass" ? "atom-one-light" : "atom-one-dark")
+                : es.codeTheme,
               enable: true,
+              lineNumber: es.codeLineNumber,
             },
             markdown: {
-              codeBlockPreview: true,
-              mathBlockPreview: true,
-              footnotes: true,
-              gfmAutoLink: true,
+              autoSpace: es.autoSpace,
+              gfmAutoLink: es.gfmAutoLink,
+              fixTermTypo: es.fixTermTypo,
+              footnotes: es.footnotes,
+              toc: es.toc,
+              paragraphBeginningSpace: es.paragraphBeginningSpace,
+              sanitize: es.sanitize,
+              codeBlockPreview: es.codeBlockPreview,
+              mathBlockPreview: es.mathBlockPreview,
+              mark: es.mark,
+              sup: es.sup,
+              sub: es.sub,
+            },
+            math: {
+              engine: es.mathEngine,
             },
           },
         } as any);
@@ -1110,7 +1133,7 @@ const VditorEditor = forwardRef<VditorEditorHandle, VditorEditorProps>(
           vditorRef.current = null;
         }
       };
-    }, [mode]); // theme 变化不再重建，而是通过下面的 useEffect 动态切换
+    }, [mode, editorSettingsKey]); // theme 变化不再重建，而是通过下面的 useEffect 动态切换
 
     // 主题变化时动态切换 Vditor 主题
     useEffect(() => {

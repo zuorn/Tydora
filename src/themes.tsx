@@ -1,7 +1,8 @@
 import { createContext, useContext, useState, useEffect, type ReactNode } from "react";
 import { emit, listen } from "@tauri-apps/api/event";
+import { applyTyporaTheme, removeTyporaTheme, isBuiltinTheme } from "./ThemeManager";
 
-export type ThemeName = "catppuccin-mocha" | "white" | "mint" | "mint-dark" | "liquid-glass";
+export type ThemeName = string;
 
 interface ThemeContextValue {
   theme: ThemeName;
@@ -16,24 +17,34 @@ const ThemeContext = createContext<ThemeContextValue>({
 const STORAGE_KEY = "zmd-theme";
 const EVENT_NAME = "theme-changed";
 
+const LIGHT_THEMES = new Set(["white", "mint", "liquid-glass"]);
+
 export function ThemeProvider({ children }: { children: ReactNode }) {
   const [theme, setThemeState] = useState<ThemeName>(() => {
     try {
       const saved = localStorage.getItem(STORAGE_KEY);
-      if (saved === "catppuccin-mocha" || saved === "white" || saved === "mint" || saved === "mint-dark" || saved === "liquid-glass") return saved;
-    } catch {}
-    return "mint";
+      return saved || "mint";
+    } catch {
+      return "mint";
+    }
   });
 
   // 应用主题到 DOM 和 localStorage
   useEffect(() => {
-    document.documentElement.dataset.theme = theme;
     localStorage.setItem(STORAGE_KEY, theme);
+
+    if (isBuiltinTheme(theme)) {
+      document.documentElement.dataset.theme = theme;
+      removeTyporaTheme();
+    } else {
+      delete document.documentElement.dataset.theme;
+      applyTyporaTheme(theme);
+    }
 
     // 切换 highlight.js 代码高亮主题
     const link = document.querySelector('link[data-highlight-theme]') as HTMLLinkElement | null;
     if (link) {
-      const style = theme === "white" || theme === "mint" || theme === "liquid-glass" ? "atom-one-light" : "atom-one-dark";
+      const style = LIGHT_THEMES.has(theme) || !isBuiltinTheme(theme) ? "atom-one-light" : "atom-one-dark";
       link.href = `/vditor/dist/js/highlight.js/styles/${style}.min.css`;
     }
   }, [theme]);

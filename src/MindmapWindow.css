@@ -21,6 +21,8 @@
   font-size: 13px;
   color: var(--text-secondary);
   font-weight: 500;
+  display: flex;
+  align-items: center;
 }
 
 .mindmap-window-controls {

@@ -17,7 +17,7 @@ const ThemeContext = createContext<ThemeContextValue>({
 const STORAGE_KEY = "zmd-theme";
 const EVENT_NAME = "theme-changed";
 
-const LIGHT_THEMES = new Set(["white", "mint", "liquid-glass"]);
+const LIGHT_THEMES = new Set(["white", "mint", "liquid-glass", "claude-code", "purple", "hermes"]);
 
 export function ThemeProvider({ children }: { children: ReactNode }) {
   const [theme, setThemeState] = useState<ThemeName>(() => {

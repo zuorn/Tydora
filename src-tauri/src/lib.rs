@@ -2,6 +2,9 @@ use std::process::Command;
 use tauri::{Manager, WebviewWindowBuilder};
 use serde::Serialize;
 
+mod commands;
+use commands::watcher_commands::{watch_vault, unwatch_vault, WatcherState};
+
 /// URL 百分号解码，将 %XX 转换为对应字节，最终返回解码后的字符串
 fn percent_decode(s: &str) -> String {
     let mut bytes = Vec::with_capacity(s.len());
@@ -180,6 +183,40 @@ async fn open_mindmap_window(
     .title("思维导图 - Tydora")
     .inner_size(900.0, 600.0)
     .min_inner_size(400.0, 300.0)
+    .visible(false)
+    .decorations(false)
+    .resizable(true)
+    .build();
+
+    match window {
+        Ok(_win) => Ok(()),
+        Err(e) => Err(e.to_string()),
+    }
+}
+
+/// 打开关系图谱窗口
+#[tauri::command]
+async fn open_graph_window(
+    app: tauri::AppHandle,
+) -> Result<(), String> {
+    let label = "graph";
+
+    if let Some(existing) = app.get_webview_window(label) {
+        let _ = existing.set_focus();
+        return Ok(());
+    }
+
+    let url = "index.html?window=graph";
+
+    let window = WebviewWindowBuilder::new(
+        &app,
+        label,
+        tauri::WebviewUrl::App(url.into()),
+    )
+    .title("关系图谱 - Tydora")
+    .inner_size(1000.0, 700.0)
+    .min_inner_size(500.0, 400.0)
+    .visible(false)
     .decorations(false)
     .resizable(true)
     .build();
@@ -314,11 +351,17 @@ pub fn run() {
             open_directory,
             copy_themes,
             open_mindmap_window,
+            open_graph_window,
+            watch_vault,
+            unwatch_vault,
         ])
-        .setup(|_app| {
+        .setup(|app| {
+            // 初始化文件监听器状态
+            app.manage(WatcherState(std::sync::Mutex::new(None)));
+
             #[cfg(debug_assertions)]
             {
-                let window = _app.get_webview_window("main").unwrap();
+                let window = app.get_webview_window("main").unwrap();
                 window.open_devtools();
             }
             Ok(())

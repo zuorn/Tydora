@@ -11,7 +11,7 @@
   --bg-primary: #1e1e2e;
   --bg-secondary: #181825;
   --bg-surface: #313244;
-  --text-primary: #cdd6f4;
+  --text-primary: #000000;
   --text-secondary: #a6adc8;
   --accent: #89b4fa;
   --accent-hover: #74c7ec;
@@ -143,6 +143,15 @@ body {
 .window-controls {
   display: flex;
   gap: 2px;
+  align-items: center;
+}
+
+.window-controls-divider {
+  width: 1px;
+  height: 16px;
+  background: var(--border);
+  margin: 0 4px;
+  flex-shrink: 0;
 }
 
 .window-control-btn {

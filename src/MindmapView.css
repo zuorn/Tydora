@@ -8,6 +8,13 @@
 .mindmap-svg {
   width: 100%;
   height: 100%;
+  outline: none;
+}
+
+.markmap-node-selected circle {
+  stroke: var(--accent) !important;
+  stroke-width: 2.5 !important;
+  filter: drop-shadow(0 0 3px var(--accent));
 }
 
 .mindmap-toolbar {

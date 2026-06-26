@@ -5,7 +5,7 @@
   --bg-primary: #1e1e2e;
   --bg-secondary: #181825;
   --bg-surface: #313244;
-  --text-primary: #cdd6f4;
+  --text-primary: #000000;
   --text-secondary: #a6adc8;
   --accent: #89b4fa;
   --accent-hover: #74c7ec;
@@ -86,4 +86,55 @@
   --glass-inner-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.6), inset 0 -1px 0 rgba(0, 0, 0, 0.03);
   --glass-border: 1px solid rgba(255, 255, 255, 0.6);
   --glass-highlight: linear-gradient(180deg, rgba(255,255,255,0.6) 0%, rgba(255,255,255,0) 40%);
+}
+
+/* ── Claude Code 主题（浅色，Anthropic 风格） ── */
+[data-theme="claude-code"] {
+  --bg-primary: #faf8f5;
+  --bg-secondary: #f0ece6;
+  --bg-surface: #f5f1eb;
+  --text-primary: #1a1a1a;
+  --text-secondary: #6b6560;
+  --accent: #c47a2a;
+  --accent-hover: #a86420;
+  --border: #ddd6cc;
+  --danger: #c94432;
+  --font-mono: "Cascadia Code", "JetBrains Mono", "Fira Code", "Consolas", monospace;
+  --font-ui: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+  --editor-font: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+  --editor-font-size: 15px;
+}
+
+/* ── Purple 主题（浅色） ── */
+[data-theme="purple"] {
+  --bg-primary: #faf5ff;
+  --bg-secondary: #f3e8ff;
+  --bg-surface: #f5f0ff;
+  --text-primary: #1e1b2e;
+  --text-secondary: #6b6580;
+  --accent: #7c3aed;
+  --accent-hover: #6d28d9;
+  --border: #ddd6ee;
+  --danger: #dc2626;
+  --font-mono: "Cascadia Code", "JetBrains Mono", "Fira Code", "Consolas", monospace;
+  --font-ui: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+  --editor-font: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+  --editor-font-size: 15px;
+}
+
+/* ── Hermes 主题（浅色，Nous Research 风格） ── */
+[data-theme="hermes"] {
+  --bg-primary: #f0f1ff;
+  --bg-secondary: #e4e6ff;
+  --bg-surface: #eaeaFF;
+  --text-primary: #1a1a4e;
+  --text-secondary: #5a5a8a;
+  --accent: #0000f2;
+  --accent-hover: #2020ff;
+  --border: rgba(0, 0, 242, 0.12);
+  --danger: #dc2626;
+  --font-mono: "Cascadia Code", "JetBrains Mono", "Fira Code", "Consolas", monospace;
+  --font-ui: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+  --editor-font: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+  --editor-font-size: 15px;
 }

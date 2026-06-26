@@ -11,13 +11,18 @@ import QuickOpen from "./QuickOpen";
 import CommandPalette from "./CommandPalette";
 import { useTheme } from "./themes";
 import { ConfirmDialog } from "./ConfirmDialog";
-import { emit } from "@tauri-apps/api/event";
+import { emit, listen } from "@tauri-apps/api/event";
 import { loadImageSettings, type ImageSettings } from "./ImageManager";
 import { loadEditorSettings, type EditorSettings, EDITOR_SETTINGS_KEY } from "./Settings";
 import { checkForUpdate, downloadAndInstall, relaunchApp, type UpdateInfo } from "./Updater";
+import { LinkIndexService } from "./LinkIndexService";
+import { WikiLinkAutocomplete } from "./WikiLinkAutocomplete";
+import { GraphView } from "./GraphView";
+import { useVaultWatcher } from "./useVaultWatcher";
 import "./App.css";
 import "./vditor-theme.css";
 import "./FilePreview.css";
+import "./WikiLink.css";
 
 // 错误边界：防止编辑器错误导致整个页面空白
 class EditorErrorBoundary extends Component<
@@ -168,6 +173,14 @@ function App({ initialFilePath }: { initialFilePath?: string | null }) {
   // 命令面板状态
   const [commandPaletteOpen, setCommandPaletteOpen] = useState(false);
 
+  // WikiLink 自动补全状态
+  const [wikiAutocompleteVisible, setWikiAutocompleteVisible] = useState(false);
+  const [wikiAutocompleteQuery, setWikiAutocompleteQuery] = useState('');
+  const [wikiAutocompletePosition, setWikiAutocompletePosition] = useState<{ x: number; y: number } | null>(null);
+
+  // 知识图谱状态
+  const [graphViewOpen, setGraphViewOpen] = useState(false);
+
   // 更新状态
   const [updateInfo, setUpdateInfo] = useState<UpdateInfo | null>(null);
   const [updateDownloading, setUpdateDownloading] = useState(false);
@@ -195,6 +208,26 @@ function App({ initialFilePath }: { initialFilePath?: string | null }) {
   useEffect(() => {
     localStorage.setItem(ACTIVE_VAULT_KEY, String(activeVaultIndex));
   }, [activeVaultIndex]);
+
+  // 构建链接索引
+  useEffect(() => {
+    if (activeVaultIndex >= 0) {
+      const vaultPath = vaults[activeVaultIndex]?.path;
+      if (vaultPath) {
+        LinkIndexService.buildIndex(vaultPath).then(() => {
+          try {
+            localStorage.setItem("zmd-link-index", LinkIndexService.serialize());
+          } catch { /* 忽略存储错误 */ }
+        });
+      }
+    }
+  }, [activeVaultIndex, vaults]);
+
+  // 文件监听：外部文件变化时自动更新索引
+  const [, forceIndexRerender] = useState(0);
+  const vaultPath = activeVaultIndex >= 0 ? vaults[activeVaultIndex]?.path : null;
+  useVaultWatcher(vaultPath, useCallback(() => forceIndexRerender(n => n + 1), []));
+
   useEffect(() => {
     localStorage.setItem(SIDEBAR_WIDTH_KEY, String(sidebarWidth));
   }, [sidebarWidth]);
@@ -381,6 +414,12 @@ function App({ initialFilePath }: { initialFilePath?: string | null }) {
       await writeTextFile(path, contentRef.current);
       savedContentRef.current = contentRef.current;
       setModified(false);
+      // 更新链接索引
+      const activeVault = activeVaultIndex >= 0 ? vaults[activeVaultIndex] : null;
+      if (activeVault) {
+        LinkIndexService.updateFileLinks(path, activeVault.path);
+        try { localStorage.setItem("zmd-link-index", LinkIndexService.serialize()); } catch {}
+      }
     } catch (e) {
       console.error("保存失败:", e);
     }
@@ -412,6 +451,12 @@ function App({ initialFilePath }: { initialFilePath?: string | null }) {
         await writeTextFile(path, contentRef.current);
         savedContentRef.current = contentRef.current;
         setModified(false);
+        // 更新链接索引
+        const activeVault = activeVaultIndex >= 0 ? vaults[activeVaultIndex] : null;
+        if (activeVault) {
+          LinkIndexService.updateFileLinks(path, activeVault.path);
+          try { localStorage.setItem("zmd-link-index", LinkIndexService.serialize()); } catch {}
+        }
       } catch (e) {
         console.error("自动保存失败:", e);
       }
@@ -441,6 +486,18 @@ function App({ initialFilePath }: { initialFilePath?: string | null }) {
         e.preventDefault();
         setQuickOpenOpen(false);
         setCommandPaletteOpen(true);
+      }
+    };
+    window.addEventListener("keydown", handler);
+    return () => window.removeEventListener("keydown", handler);
+  }, []);
+
+  // Ctrl+G 知识图谱
+  useEffect(() => {
+    const handler = (e: KeyboardEvent) => {
+      if ((e.ctrlKey || e.metaKey) && e.key === "g") {
+        e.preventDefault();
+        setGraphViewOpen(prev => !prev);
       }
     };
     window.addEventListener("keydown", handler);
@@ -511,6 +568,13 @@ function App({ initialFilePath }: { initialFilePath?: string | null }) {
         if (line != null) {
           setTimeout(() => editorHandleRef.current?.scrollToLine(line), 350);
         }
+      }
+
+      // 跳转到指定标题
+      const heading = pendingHeadingRef.current;
+      if (heading) {
+        pendingHeadingRef.current = null;
+        setTimeout(() => editorHandleRef.current?.scrollToHeading(heading, 0), 350);
       }
 
       // 更新最近访问文件列表
@@ -600,6 +664,24 @@ function App({ initialFilePath }: { initialFilePath?: string | null }) {
     getCurrentWindow().close();
   }, []);
 
+  // Ctrl+W 关闭窗口
+  useEffect(() => {
+    const handler = (e: KeyboardEvent) => {
+      if ((e.ctrlKey || e.metaKey) && e.key === "w") {
+        e.preventDefault();
+        const win = getCurrentWindow();
+        const label = win.label;
+        if (label === "settings" || label === "mindmap") {
+          win.close();
+        } else {
+          handleClose();
+        }
+      }
+    };
+    window.addEventListener("keydown", handler);
+    return () => window.removeEventListener("keydown", handler);
+  }, [handleClose]);
+
   const toggleTypewriterMode = useCallback(() => {
     setTypewriterMode((prev) => !prev);
   }, []);
@@ -666,6 +748,106 @@ function App({ initialFilePath }: { initialFilePath?: string | null }) {
     return () => window.removeEventListener("keydown", handler, { capture: true });
   }, []);
 
+  // 监听 wikilink 点击
+  useEffect(() => {
+    const handleWikiLinkClick = (e: Event) => {
+      const customEvent = e as CustomEvent<{ noteName: string; heading?: string }>;
+      const { noteName, heading } = customEvent.detail;
+
+      // 查找目标文件
+      const targetPath = LinkIndexService.findFileByNoteName(noteName);
+
+      if (targetPath) {
+        // 文件存在，跳转
+        if (heading) {
+          pendingHeadingRef.current = heading;
+        }
+        handleSelectFile(targetPath);
+      } else {
+        // 占位链接：创建新笔记
+        const activeVault = activeVaultIndex >= 0 ? vaults[activeVaultIndex] : null;
+        if (activeVault) {
+          const newPath = `${activeVault.path}/${noteName}.md`;
+          writeTextFile(newPath, `# ${noteName}\n`).then(() => {
+            LinkIndexService.updateFileLinks(newPath, activeVault.path);
+            handleSelectFile(newPath);
+          });
+        }
+      }
+    };
+
+    window.addEventListener('wiki-link-click', handleWikiLinkClick);
+    return () => window.removeEventListener('wiki-link-click', handleWikiLinkClick);
+  }, [activeVaultIndex, vaults]);
+
+  // 监听其他窗口的打开文件请求（如关系图谱窗口点击节点）
+  useEffect(() => {
+    const unlisten = listen<{ path: string }>("open-file", (event) => {
+      handleSelectFile(event.payload.path);
+    });
+    return () => { unlisten.then(fn => fn()); };
+  }, [handleSelectFile]);
+
+  // 监听 wikilink 自动补全触发
+  useEffect(() => {
+    const handleWikiLinkTrigger = (e: Event) => {
+      const customEvent = e as CustomEvent<{ query: string; position: { x: number; y: number } }>;
+      const { query, position } = customEvent.detail;
+      setWikiAutocompleteQuery(query);
+      setWikiAutocompletePosition(position);
+      setWikiAutocompleteVisible(true);
+    };
+
+    window.addEventListener('wiki-link-trigger', handleWikiLinkTrigger);
+    return () => window.removeEventListener('wiki-link-trigger', handleWikiLinkTrigger);
+  }, []);
+
+  // WikiLink 自动补全选中回调
+  const handleWikiAutocompleteSelect = useCallback((noteName: string) => {
+    setWikiAutocompleteVisible(false);
+    // 使用 Selection API 在编辑器中直接替换文本，避免 setValue 滚动到顶部
+    const sel = window.getSelection();
+    if (!sel || sel.rangeCount === 0) return;
+    const range = sel.getRangeAt(0);
+    const node = range.startContainer;
+    if (node.nodeType !== Node.TEXT_NODE) return;
+
+    const text = node.textContent || '';
+    const offset = range.startOffset;
+    // 向前找到 [[
+    const before = text.slice(0, offset);
+    const lastOpen = before.lastIndexOf('[[');
+    if (lastOpen < 0) return;
+
+    // 选中从 [[ 开始到光标位置的文本
+    const startNode = node;
+    const startOffset = lastOpen;
+    const endNode = node;
+    const endOffset = offset;
+
+    // 删除选区内容并插入完整的 [[noteName]]
+    range.setStart(startNode, startOffset);
+    range.setEnd(endNode, endOffset);
+    range.deleteContents();
+    range.insertNode(document.createTextNode(`[[${noteName}]]`));
+
+    // 移动光标到插入文本之后
+    range.setStartAfter(range.endContainer);
+    range.setEndAfter(range.endContainer);
+    sel.removeAllRanges();
+    sel.addRange(range);
+
+    // 触发 input 事件让 Vditor 同步内容
+    const editorEl = document.querySelector('.vditor-wysiwyg, .vditor-ir, .vditor-sv');
+    if (editorEl) {
+      editorEl.dispatchEvent(new InputEvent('input', { bubbles: true }));
+    }
+  }, []);
+
+  const handleWikiAutocompleteClose = useCallback(() => {
+    setWikiAutocompleteVisible(false);
+  }, []);
+
   // ── 大纲点击跳转 ──
   const handleSelectHeading = useCallback((_level: number, text: string, line: number) => {
     editorHandleRef.current?.scrollToHeading(text, line);
@@ -678,6 +860,7 @@ function App({ initialFilePath }: { initialFilePath?: string | null }) {
   const savedContentRef = useRef<string>(initialContent);
   const pendingLineRef = useRef<number | null>(null);
   const pendingQueryRef = useRef<string | null>(null);
+  const pendingHeadingRef = useRef<string | null>(null);
   const title = fileName ? fileName.split(/[/\\]/).pop() || "untitled.md" : "Tydora";
 
   // ── 命令面板命令列表 ──
@@ -699,6 +882,7 @@ function App({ initialFilePath }: { initialFilePath?: string | null }) {
       localStorage.setItem("zmd-mindmap-content", content);
       invoke("open_mindmap_window");
     }},
+    { id: "open-graph", label: "打开知识图谱", category: "视图", action: () => setGraphViewOpen(true) },
 
     // 编辑模式
     { id: "mode-wysiwyg", label: viewMode === "wysiwyg" ? "所见即所得模式 ✓" : "切换到所见即所得模式", category: "模式", aliases: ["wysiwyg", "所见即所得", "编辑模式"], action: () => setViewMode("wysiwyg") },
@@ -792,20 +976,6 @@ function App({ initialFilePath }: { initialFilePath?: string | null }) {
                 {title}
                 {modified && <span className="editor-modified-dot">●</span>}
               </span>
-              {fileName && (
-                <button
-                  className="mindmap-open-btn"
-                  title="打开思维导图"
-                  onClick={() => {
-                    localStorage.setItem("zmd-mindmap-content", content);
-                    invoke("open_mindmap_window");
-                  }}
-                >
-                  <svg width="14" height="14" viewBox="0 0 1024 1024" fill="currentColor">
-                    <path d="M768 166.4a38.4 38.4 0 0 1 0 76.8h-102.4a268.8 268.8 0 0 0-265.984 230.4H768l3.9424 0.1536a38.4 38.4 0 0 1 0 76.4416l-3.9424 0.1536H399.616A268.8 268.8 0 0 0 665.6 780.8h80.896l3.84 0.2048a38.4 38.4 0 0 1 0 76.4416l-3.8912 0.2048H665.6a345.5488 345.5488 0 0 1-343.3984-307.2H204.8a38.4 38.4 0 0 1 0-76.8h117.4016a345.6 345.6 0 0 1 343.3984-307.2h102.4z" />
-                  </svg>
-                </button>
-              )}
             </div>
             {updateInfo && !updateDownloading && (
               <button className="update-btn" onClick={handleUpdateDownload} title={`有新版本 v${updateInfo.version}`}>
@@ -830,6 +1000,25 @@ function App({ initialFilePath }: { initialFilePath?: string | null }) {
               </div>
             )}
             <div className="window-controls">
+              <button className="window-control-btn" title="打开思维导图" onClick={() => {
+                localStorage.setItem("zmd-mindmap-content", content);
+                invoke("open_mindmap_window");
+              }}>
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor">
+                  <path d="M20 4a1 1 0 0 1 0 2h-2.7a7.4 7.4 0 0 0-7.2 6H20a1 1 0 0 1 0 2h-9.9a7.4 7.4 0 0 0 7.2 6H20a1 1 0 0 1 0 2h-2.7a9.4 9.4 0 0 1-9.2-8H4a1 1 0 0 1 0-2h4.1a9.4 9.4 0 0 1 9.2-8H20z" />
+                </svg>
+              </button>
+              <button className="window-control-btn" title="打开关系图谱" onClick={() => invoke("open_graph_window")}>
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <circle cx="12" cy="5" r="3" />
+                  <circle cx="4" cy="19" r="3" />
+                  <circle cx="20" cy="19" r="3" />
+                  <line x1="9.5" y1="6.5" x2="5.5" y2="16.5" />
+                  <line x1="14.5" y1="6.5" x2="18.5" y2="16.5" />
+                  <line x1="7" y1="19" x2="17" y2="19" />
+                </svg>
+              </button>
+              <div className="window-controls-divider" />
               <button className="window-control-btn" onClick={handleMinimize} title="最小化">
                 <svg width="10" height="10" viewBox="0 0 10 10">
                   <line x1="1" y1="5" x2="9" y2="5" stroke="currentColor" strokeWidth="1.2" />
@@ -950,6 +1139,25 @@ function App({ initialFilePath }: { initialFilePath?: string | null }) {
         onConfirm={handleSaveConfirm}
         onCancel={handleSaveCancel}
       />
+
+      {/* WikiLink 自动补全 */}
+      {wikiAutocompleteVisible && (
+        <WikiLinkAutocomplete
+          query={wikiAutocompleteQuery}
+          position={wikiAutocompletePosition}
+          onSelect={handleWikiAutocompleteSelect}
+          onClose={handleWikiAutocompleteClose}
+        />
+      )}
+
+      {/* 知识图谱 */}
+      {graphViewOpen && (
+        <GraphView
+          vaultPath={activeVaultIndex >= 0 ? vaults[activeVaultIndex]?.path : null}
+          onSelectNote={handleSelectFile}
+          onClose={() => setGraphViewOpen(false)}
+        />
+      )}
     </div>
   );
 }

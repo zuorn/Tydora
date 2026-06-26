@@ -33,6 +33,7 @@ export default function MindmapView({ content }: MindmapViewProps) {
   const dragRef = useRef<{ startX: number; startY: number; startTx: number; startTy: number } | null>(null);
   const [expandLevel, setExpandLevel] = useState(() => getMindmapSettings().initialExpandLevel);
   const effectiveExpandLevelRef = useRef<number>(getMindmapSettings().initialExpandLevel);
+  const selectedNodeRef = useRef<any>(null);
 
   const renderMindmap = useCallback(async (markdown: string) => {
     if (!svgRef.current) return;
@@ -119,7 +120,9 @@ export default function MindmapView({ content }: MindmapViewProps) {
   useEffect(() => {
     if (debounceRef.current) clearTimeout(debounceRef.current);
     debounceRef.current = setTimeout(() => {
-      renderMindmap(content);
+      renderMindmap(content).then(() => {
+        svgRef.current?.focus();
+      });
     }, 300);
     return () => {
       if (debounceRef.current) clearTimeout(debounceRef.current);
@@ -204,6 +207,121 @@ export default function MindmapView({ content }: MindmapViewProps) {
       window.removeEventListener("mousemove", handleMouseMove);
       window.removeEventListener("mouseup", handleMouseUp);
       svg.removeEventListener("contextmenu", handleContextMenu);
+    };
+  }, []);
+
+  // Keyboard navigation
+  useEffect(() => {
+    const svg = svgRef.current;
+    if (!svg) return;
+
+    const highlightNode = (node: any) => {
+      selectedNodeRef.current = node;
+      // Remove old highlight
+      svg.querySelectorAll(".markmap-node-selected").forEach(el => el.classList.remove("markmap-node-selected"));
+      if (!node) return;
+      // Find the <g> element for this node and highlight it
+      const circles = svg.querySelectorAll("circle");
+      circles.forEach(circle => {
+        const d = (circle as any).__data__;
+        if (d && d === node) {
+          circle.classList.add("markmap-node-selected");
+          circle.closest("g")?.classList.add("markmap-node-selected");
+        }
+      });
+    };
+
+    const getSiblings = (node: any): any[] => {
+      if (!node?.parent) return [];
+      return node.parent.children || [];
+    };
+
+    const handleKeyDown = (e: KeyboardEvent) => {
+      const mm = mmRef.current;
+      if (!mm) return;
+
+      const data = mm.state?.data;
+      if (!data) return;
+
+      // If no node selected, select root
+      if (!selectedNodeRef.current) {
+        highlightNode(data);
+        return;
+      }
+
+      const node = selectedNodeRef.current;
+      let newNode: any = null;
+
+      switch (e.key) {
+        case "ArrowUp": {
+          e.preventDefault();
+          // Previous sibling
+          const siblings = getSiblings(node);
+          const idx = siblings.indexOf(node);
+          if (idx > 0) newNode = siblings[idx - 1];
+          break;
+        }
+        case "ArrowDown": {
+          e.preventDefault();
+          // Next sibling
+          const siblings = getSiblings(node);
+          const idx = siblings.indexOf(node);
+          if (idx < siblings.length - 1) newNode = siblings[idx + 1];
+          break;
+        }
+        case "ArrowLeft": {
+          e.preventDefault();
+          // Parent
+          if (node.parent) newNode = node.parent;
+          break;
+        }
+        case "ArrowRight": {
+          e.preventDefault();
+          // First child
+          if (node.children?.length) {
+            newNode = node.children[0];
+          }
+          break;
+        }
+        case "Enter":
+        case " ": {
+          e.preventDefault();
+          // Toggle fold
+          if (node.payload) {
+            node.payload.fold = node.payload.fold ? 0 : 1;
+          } else {
+            node.payload = { fold: 1 };
+          }
+          mm.renderData(data);
+          break;
+        }
+        default:
+          return;
+      }
+
+      if (newNode) {
+        highlightNode(newNode);
+      }
+    };
+
+    // Handle click to select node
+    const handleClick = (e: MouseEvent) => {
+      const target = e.target as SVGElement;
+      const circle = target.closest("circle");
+      if (circle) {
+        const d = (circle as any).__data__;
+        if (d) highlightNode(d);
+      } else {
+        highlightNode(null);
+      }
+    };
+
+    svg.addEventListener("keydown", handleKeyDown);
+    svg.addEventListener("click", handleClick);
+
+    return () => {
+      svg.removeEventListener("keydown", handleKeyDown);
+      svg.removeEventListener("click", handleClick);
     };
   }, []);
 
@@ -293,6 +411,7 @@ export default function MindmapView({ content }: MindmapViewProps) {
       <svg
         ref={svgRef}
         className="mindmap-svg"
+        tabIndex={0}
       />
     </div>
   );

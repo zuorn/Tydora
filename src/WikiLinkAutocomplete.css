@@ -1,0 +1,33 @@
+/* 自动补全 */
+.wiki-autocomplete {
+  position: fixed;
+  background: var(--bg-secondary);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.3);
+  max-height: 200px;
+  overflow-y: auto;
+  z-index: 1000;
+  min-width: 200px;
+}
+
+.wiki-autocomplete-item {
+  padding: 8px 12px;
+  cursor: pointer;
+  font-size: 13px;
+  color: var(--text-primary);
+  transition: background 0.1s ease;
+}
+
+.wiki-autocomplete-item:hover,
+.wiki-autocomplete-item.selected {
+  background: var(--accent);
+  color: white;
+}
+
+.wiki-autocomplete-empty {
+  padding: 8px 12px;
+  font-size: 12px;
+  color: var(--text-secondary);
+  text-align: center;
+}

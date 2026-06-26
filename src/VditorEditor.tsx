@@ -2,10 +2,13 @@ import { useRef, useEffect, forwardRef, useImperativeHandle, useState, useCallba
 import Vditor from "vditor";
 import { open } from "@tauri-apps/plugin-dialog";
 import { convertFileSrc } from "@tauri-apps/api/core";
+import { readTextFile } from "@tauri-apps/plugin-fs";
 import { saveImageToLocal, loadImageSettings, type ImageSettings, dirName, relativePath, resolveRelativePath } from "./ImageManager";
 import "./VditorEditor.css";
 import { SHORTCUTS_KEY, DEFAULT_SHORTCUTS, DEFAULT_EDITOR_SETTINGS, type EditorSettings } from "./Settings";
 import type { ThemeName } from "./themes";
+import { processWikiLinksInDOM, markLinkExistence, loadEmbeds } from "./WikiLinkProcessor";
+import { LinkIndexService } from "./LinkIndexService";
 
 type EditorMode = "wysiwyg" | "ir" | "sv";
 
@@ -25,12 +28,14 @@ interface VditorEditorProps {
 export interface VditorEditorHandle {
   getValue: () => string;
   setValue: (value: string) => void;
+  insertTextAtCursor: (text: string) => void;
   resize: () => void;
   highlightSearch: (query: string) => void;
   clearHighlight: () => void;
   executeCommand: (name: string) => void;
   scrollToHeading: (text: string, line: number) => void;
   scrollToLine: (line: number) => void;
+  getCursorOffset: () => number;
 }
 
 export const MODE_LABELS: Record<EditorMode, string> = {
@@ -604,6 +609,7 @@ const VditorEditor = forwardRef<VditorEditorHandle, VditorEditorProps>(
     modeRef.current = mode;
 
     const isFileSwitchRef = useRef(false);
+    const isUserInputRef = useRef(false);
     const pendingHighlightRef = useRef<string | null>(null);
 
     useImperativeHandle(ref, () => ({
@@ -618,6 +624,19 @@ const VditorEditor = forwardRef<VditorEditorHandle, VditorEditorProps>(
           isInternalRef.current = true;
           vditorRef.current.setValue(resolveImagePaths(val, currentFilePathRef.current ?? null, modeRef.current), true);
         }
+      },
+      // insertTextAtCursor: 在光标位置插入文本，不替换整个内容
+      insertTextAtCursor: (text: string) => {
+        const sel = window.getSelection();
+        if (!sel || sel.rangeCount === 0) return;
+        const range = sel.getRangeAt(0);
+        range.deleteContents();
+        range.insertNode(document.createTextNode(text));
+        // 移动光标到插入文本之后
+        range.setStartAfter(range.endContainer);
+        range.setEndAfter(range.endContainer);
+        sel.removeAllRanges();
+        sel.addRange(range);
       },
       markFileSwitch: () => {
         isFileSwitchRef.current = true;
@@ -761,6 +780,18 @@ const VditorEditor = forwardRef<VditorEditorHandle, VditorEditorProps>(
         const ratio = Math.min((line - 1) / Math.max(lineCount - 1, 1), 1);
         scrollContainer.scrollTop = ratio * (scrollContainer.scrollHeight - scrollContainer.clientHeight);
       },
+      getCursorOffset: () => {
+        const sel = window.getSelection();
+        if (!sel || sel.rangeCount === 0) return -1;
+        const range = sel.getRangeAt(0);
+        const node = range.startContainer;
+        if (node.nodeType !== Node.TEXT_NODE) return -1;
+        const text = node.textContent || '';
+        const before = text.slice(0, range.startOffset);
+        const lastOpen = before.lastIndexOf('[[');
+        if (lastOpen < 0) return -1;
+        return lastOpen + 2;
+      },
     }));
 
     // 编辑器设置的 JSON key，变化时触发 Vditor 重建
@@ -870,7 +901,7 @@ const VditorEditor = forwardRef<VditorEditorHandle, VditorEditorProps>(
           icon: "ant",
           lang: "zh_CN",
           placeholder: "开始输入 Markdown... ✍️",
-          theme: theme === "white" || theme === "mint" || theme === "liquid-glass" ? "classic" : "dark",
+          theme: theme === "white" || theme === "mint" || theme === "liquid-glass" || theme === "claude-code" || theme === "purple" || theme === "hermes" ? "classic" : "dark",
           height: "100%",
           width: "100%",
           typewriterMode,
@@ -964,8 +995,38 @@ const VditorEditor = forwardRef<VditorEditorHandle, VditorEditorProps>(
               isInternalRef.current = false;
               return;
             }
+            isUserInputRef.current = true;
             // 将 Vditor 内部的 local-file:// URL 还原为相对路径再同步到 React 状态
             onChangeRef.current(unresolveImagePaths(val, currentFilePathRef.current ?? null, modeRef.current));
+
+            // 检测 [[ 自动补全触发
+            const sel = window.getSelection();
+            if (sel && sel.rangeCount > 0) {
+              const range = sel.getRangeAt(0);
+              const node = range.startContainer;
+              if (node.nodeType === Node.TEXT_NODE) {
+                const text = node.textContent || '';
+                const offset = range.startOffset;
+                // 向前搜索最近的 [[
+                const before = text.slice(0, offset);
+                const lastOpen = before.lastIndexOf('[[');
+                if (lastOpen >= 0) {
+                  // 检查 [[ 和光标之间没有 ]]
+                  const between = before.slice(lastOpen + 2);
+                  if (!between.includes(']]')) {
+                    const query = between;
+                    // 计算光标在屏幕上的位置
+                    const rect = range.getBoundingClientRect();
+                    window.dispatchEvent(new CustomEvent('wiki-link-trigger', {
+                      detail: {
+                        query,
+                        position: { x: rect.left, y: rect.bottom + 4 }
+                      }
+                    }));
+                  }
+                }
+              }
+            }
           },
           after: () => {
             clearTimeout(timeoutId);
@@ -973,18 +1034,73 @@ const VditorEditor = forwardRef<VditorEditorHandle, VditorEditorProps>(
             if ((el as any).__zmd_init_tag !== tag) return;
             if (!mountedRef.current) return;
             setStatus("ready");
+            
+            // 处理初始内容中的 wiki 链接（轮询直到全部处理完）
+            let wikiProcessCount = 0;
+            const processInitialWikiLinks = () => {
+              const resetEl = el.querySelector('.vditor-wysiwyg, .vditor-ir, .vditor-reset') as HTMLElement | null;
+              if (!resetEl) return;
+              processWikiLinksInDOM(resetEl);
+              markLinkExistence(resetEl, (name) => LinkIndexService.findFileByNoteName(name));
+              loadEmbeds(resetEl, (name) => LinkIndexService.findFileByNoteName(name), readTextFile);
+              // 检查是否还有未处理的 [[ 文本
+              const hasUnprocessed = resetEl.textContent?.includes('[[') &&
+                !resetEl.querySelector('a.wiki-link, span.wiki-link-pending');
+              wikiProcessCount++;
+              if (hasUnprocessed && wikiProcessCount < 30) {
+                requestAnimationFrame(processInitialWikiLinks);
+              }
+            };
+            requestAnimationFrame(processInitialWikiLinks);
+
+            // 设置 MutationObserver 监听 DOM 变化，处理新输入的 wiki 链接
+            const observer = new MutationObserver((mutations) => {
+              let needsProcess = false;
+              for (const mutation of mutations) {
+                if (mutation.type === 'characterData' && mutation.target.textContent?.includes('[[')) {
+                  needsProcess = true;
+                  break;
+                }
+                if (mutation.type === 'childList') {
+                  for (const node of Array.from(mutation.addedNodes)) {
+                    if ((node.nodeType === Node.TEXT_NODE && node.textContent?.includes('[[')) ||
+                        (node.nodeType === Node.ELEMENT_NODE && (node as HTMLElement).textContent?.includes('[['))) {
+                      needsProcess = true;
+                      break;
+                    }
+                  }
+                }
+                if (needsProcess) break;
+              }
+              if (needsProcess) {
+                const resetEl = el.querySelector('.vditor-wysiwyg, .vditor-ir, .vditor-reset') as HTMLElement | null;
+                if (resetEl) {
+                  processWikiLinksInDOM(resetEl);
+                  markLinkExistence(resetEl, (name) => LinkIndexService.findFileByNoteName(name));
+                }
+              }
+            });
+            
+            observer.observe(el, {
+              childList: true,
+              subtree: true,
+              characterData: true,
+            });
+            
+            // 存储 observer 以便清理
+            (vditor as any).__zmd_wiki_observer = observer;
           },
           // 禁用右侧预览分屏，WYSIWYG 本身就是所见即所得
           preview: {
             mode: "editor",
             maxWidth: es.previewMaxWidth,
             theme: {
-              current: theme === "white" || theme === "mint" || theme === "liquid-glass" ? "light" : "dark",
+              current: theme === "white" || theme === "mint" || theme === "liquid-glass" || theme === "claude-code" || theme === "purple" || theme === "hermes" ? "light" : "dark",
               path: "/vditor/dist/css/content-theme",
             },
             hljs: {
               style: es.codeTheme === "auto"
-                ? (theme === "white" || theme === "mint" || theme === "liquid-glass" ? "atom-one-light" : "atom-one-dark")
+                ? (theme === "white" || theme === "mint" || theme === "liquid-glass" || theme === "claude-code" || theme === "purple" || theme === "hermes" ? "atom-one-light" : "atom-one-dark")
                 : es.codeTheme,
               enable: true,
               lineNumber: es.codeLineNumber,
@@ -1011,27 +1127,294 @@ const VditorEditor = forwardRef<VditorEditorHandle, VditorEditorProps>(
 
         vditorRef.current = vditor;
 
-        // IR 模式：阻止 mousedown 在代码块预览区（嵌套 <pre>）放置光标，
-        // 否则 contenteditable 会尝试合并相邻 DOM 导致下方内容被吸入代码块
+        // IR 模式：阻止 Vditor 给代码块添加 --expand 类（会导致布局偏移），
+        // 改用自定义类 vditor-ir__code-editing 控制覆盖层编辑态。
+        const codeBlockExpandObserver = new MutationObserver((mutations) => {
+          for (const m of mutations) {
+            if (m.type === "attributes" && m.attributeName === "class") {
+              const t = m.target as HTMLElement;
+              if (
+                t.classList.contains("vditor-ir__node--expand") &&
+                t.getAttribute("data-type") === "code-block"
+              ) {
+                t.classList.remove("vditor-ir__node--expand");
+              }
+            }
+          }
+        });
+        codeBlockExpandObserver.observe(el, {
+          attributes: true,
+          attributeFilter: ["class"],
+          subtree: true,
+        });
+
+        // 标记：当前 mousedown 是否命中代码块预览区，
+        // 用于在 capture 阶段 click 中拦截 Vditor 的 expandMarker 调用。
+        let codeBlockPreviewHit = false;
+
+        // IR 模式：点击代码块预览区时进入覆盖层编辑态
         const hookIRCodeBlockMousedown = (e: MouseEvent) => {
+          codeBlockPreviewHit = false;
           const previewInCodeBlock = (e.target as HTMLElement).closest(
             '.vditor-ir__node[data-type="code-block"] .vditor-ir__preview',
           );
           if (previewInCodeBlock) {
+            codeBlockPreviewHit = true;
             e.preventDefault();
+            const codeBlockNode = (previewInCodeBlock as HTMLElement).closest(
+              '.vditor-ir__node[data-type="code-block"]',
+            ) as HTMLElement | null;
+            if (codeBlockNode) {
+              el.querySelectorAll(".vditor-ir__code-editing").forEach((n) =>
+                n.classList.remove("vditor-ir__code-editing"),
+              );
+              codeBlockNode.classList.add("vditor-ir__code-editing");
+              const editablePre = codeBlockNode.querySelector(
+                "pre.vditor-ir__marker--pre",
+              ) as HTMLElement | null;
+              if (editablePre) {
+                // 用 preview <pre> 的坐标（包含 padding 和完整尺寸）
+                const preview = codeBlockNode.querySelector(
+                  ".vditor-ir__preview",
+                ) as HTMLElement | null;
+                if (preview) {
+                  const rect = preview.getBoundingClientRect();
+                  editablePre.style.top = `${rect.top}px`;
+                  editablePre.style.left = `${rect.left}px`;
+                  editablePre.style.width = `${rect.width}px`;
+                  editablePre.style.minHeight = `${rect.height}px`;
+                }
+                // 语言信息定位到 editable pre 右上角
+                const infoMarker = codeBlockNode.querySelector(
+                  ".vditor-ir__marker--info",
+                ) as HTMLElement | null;
+                if (infoMarker && preview) {
+                  const rect = preview.getBoundingClientRect();
+                  infoMarker.style.top = `${rect.top + 2}px`;
+                  infoMarker.style.left = `${rect.right - 80}px`;
+                }
+                const sel = window.getSelection();
+                const range = document.createRange();
+                range.selectNodeContents(editablePre);
+                range.collapse(false);
+                sel?.removeAllRanges();
+                sel?.addRange(range);
+                editablePre.focus();
+              }
+            }
           }
         };
         el.addEventListener("mousedown", hookIRCodeBlockMousedown);
 
+        // 拦截 click：如果 mousedown 命中了代码块预览，阻止 Vditor 的
+        // click handler 运行（它会调用 expandMarker 导致布局偏移）
+        const hookIRCodeBlockClickBlock = (e: MouseEvent) => {
+          if (codeBlockPreviewHit) {
+            e.stopImmediatePropagation();
+            e.preventDefault();
+            codeBlockPreviewHit = false;
+          }
+        };
+        el.addEventListener("click", hookIRCodeBlockClickBlock, true);
+
+        // 点击编辑器外部时退出覆盖层编辑态
+        const hookDocMousedown = (e: MouseEvent) => {
+          const editingBlocks = el.querySelectorAll(".vditor-ir__code-editing");
+          if (editingBlocks.length === 0) return;
+          const target = e.target as HTMLElement;
+          for (const block of editingBlocks) {
+            if (!block.contains(target)) {
+              const pre = block.querySelector(
+                "pre.vditor-ir__marker--pre",
+              ) as HTMLElement | null;
+              if (pre) {
+                pre.style.top = "";
+                pre.style.left = "";
+                pre.style.width = "";
+                pre.style.minHeight = "";
+              }
+              const info = block.querySelector(
+                ".vditor-ir__marker--info",
+              ) as HTMLElement | null;
+              if (info) {
+                info.style.top = "";
+                info.style.left = "";
+              }
+              block.classList.remove("vditor-ir__code-editing");
+            }
+          }
+        };
+        document.addEventListener("mousedown", hookDocMousedown);
+
+        // 滚动时退出编辑态（监听多种滚动源）
+        const clearCodeEditing = () => {
+          const editingBlocks = el.querySelectorAll(".vditor-ir__code-editing");
+          for (const block of editingBlocks) {
+            const pre = block.querySelector(
+              "pre.vditor-ir__marker--pre",
+            ) as HTMLElement | null;
+            if (pre) {
+              pre.style.top = "";
+              pre.style.left = "";
+              pre.style.width = "";
+              pre.style.minHeight = "";
+            }
+            const info = block.querySelector(
+              ".vditor-ir__marker--info",
+            ) as HTMLElement | null;
+            if (info) {
+              info.style.top = "";
+              info.style.left = "";
+            }
+            block.classList.remove("vditor-ir__code-editing");
+          }
+        };
+        el.addEventListener("scroll", clearCodeEditing, true);
+        window.addEventListener("scroll", clearCodeEditing, true);
+        document.addEventListener("scroll", clearCodeEditing, true);
+        el.addEventListener("wheel", clearCodeEditing, { passive: true });
+        window.addEventListener("wheel", clearCodeEditing, { passive: true });
+
         // 监听链接点击，Ctrl+点击时在浏览器打开
         const hookClick = (e: MouseEvent) => {
           const origin = (e.target as HTMLElement).closest("a");
-          if (origin && origin.href) {
+          if (origin && origin.href && !origin.classList.contains('wiki-link')) {
             e.preventDefault();
             location.href = origin.href;
           }
         };
         el.addEventListener("click", hookClick, { capture: true });
+
+        // 处理 wikilink 点击
+        const hookWikiLinkClick = (e: MouseEvent) => {
+          const target = e.target as HTMLElement;
+
+          // 检查点击位置是否在 [[ 或 ]] 括号上（不跳转）
+          const isOnBracket = (el: HTMLElement): boolean => {
+            const text = el.textContent || '';
+            if (text.length < 4) return false;
+            const range = document.caretRangeFromPoint(e.clientX, e.clientY);
+            if (!range || range.startContainer.nodeType !== Node.TEXT_NODE) return false;
+            const offset = range.startOffset;
+            // 前两个字符是 [[，最后两个字符是 ]]
+            return offset <= 1 || offset >= text.length - 2;
+          };
+
+          // 优先查找已处理的 <a class="wiki-link"> 元素
+          const link = target.closest('a.wiki-link') as HTMLAnchorElement;
+          if (link) {
+            if (isOnBracket(link)) return;
+            e.preventDefault();
+            e.stopPropagation();
+            const noteName = link.dataset.note;
+            const heading = link.dataset.heading;
+            if (noteName) {
+              window.dispatchEvent(new CustomEvent('wiki-link-click', {
+                detail: { noteName, heading }
+              }));
+            }
+            return;
+          }
+
+          // IR 模式着色的 span 元素
+          const pending = target.closest('span.wiki-link-pending') as HTMLElement;
+          if (pending) {
+            if (isOnBracket(pending)) return;
+            e.preventDefault();
+            e.stopPropagation();
+            const noteName = pending.dataset.note;
+            const heading = pending.dataset.heading;
+            if (noteName) {
+              window.dispatchEvent(new CustomEvent('wiki-link-click', {
+                detail: { noteName, heading }
+              }));
+            }
+            return;
+          }
+
+          // 兜底：IR 模式下 Vditor 可能用 <span> 包裹 [[...]] 的各部分，
+          // processWikiLinksInDOM 无法将它们合并为一个 <a>。
+          // 策略：从点击位置向上找到最近的段落级容器，
+          // 收集其全部文本内容，用正则匹配 [[...]]，
+          // 再通过 comparePoint 判断点击落在哪个匹配范围内。
+          const sel = window.getSelection();
+          if (!sel || sel.rangeCount === 0) return;
+
+          // 向上找到段落级容器
+          let block: HTMLElement | null = target;
+          while (block && block !== el) {
+            const tag = block.tagName;
+            if (tag === 'P' || tag === 'DIV' || tag === 'LI' || tag === 'H1'
+              || tag === 'H2' || tag === 'H3' || tag === 'H4'
+              || tag === 'H5' || tag === 'H6' || tag === 'BLOCKQUOTE'
+              || tag === 'TD' || tag === 'TH') break;
+            block = block.parentElement;
+          }
+          if (!block || block === el) return;
+
+          // 收集该容器的全部文本
+          const fullText = block.textContent || '';
+          if (!fullText.includes('[[')) return;
+
+          // 构建文本节点到偏移量的映射
+          const textNodes: { node: Text; start: number }[] = [];
+          let pos = 0;
+          const tw = document.createTreeWalker(block, NodeFilter.SHOW_TEXT);
+          let tn: Text | null;
+          while ((tn = tw.nextNode() as Text | null)) {
+            textNodes.push({ node: tn, start: pos });
+            pos += tn.textContent!.length;
+          }
+
+          // 正则匹配所有 [[...]]
+          const re = /\[\[([^\]]+)\]\]/g;
+          let m: RegExpExecArray | null;
+          while ((m = re.exec(fullText)) !== null) {
+            const matchStart = m.index;
+            const matchEnd = m.index + m[0].length;
+
+            // 用 Range.comparePoint 判断点击是否在此匹配范围内
+            // 找到 matchStart 和 matchEnd 对应的 DOM 位置
+            const startInfo = textNodes.find(n => n.start + (n.node.textContent?.length || 0) > matchStart);
+            const endInfo = textNodes.find(n => n.start + (n.node.textContent?.length || 0) >= matchEnd);
+            if (!startInfo || !endInfo) continue;
+
+            const startOffset = matchStart - startInfo.start;
+            const endOffset = matchEnd - endInfo.start;
+
+            try {
+              const r = document.createRange();
+              r.setStart(startInfo.node, Math.min(startOffset, startInfo.node.textContent?.length || 0));
+              r.setEnd(endInfo.node, Math.min(endOffset, endInfo.node.textContent?.length || 0));
+
+              // 检查点击位置是否在此范围内
+              const clickRange = sel.getRangeAt(0);
+              const clickNode = clickRange.startContainer;
+              const clickOffset = clickRange.startOffset;
+              if (r.comparePoint(clickNode, clickOffset) === 0) {
+                // 命中！解析并跳转
+                const inner = m[1];
+                const pipeIdx = inner.indexOf('|');
+                const notePart = pipeIdx >= 0 ? inner.slice(0, pipeIdx) : inner;
+                const hashIdx = notePart.indexOf('#');
+                const noteName = hashIdx >= 0 ? notePart.slice(0, hashIdx) : notePart;
+                const heading = hashIdx >= 0 ? notePart.slice(hashIdx + 1) : undefined;
+
+                if (noteName) {
+                  e.preventDefault();
+                  e.stopPropagation();
+                  window.dispatchEvent(new CustomEvent('wiki-link-click', {
+                    detail: { noteName, heading }
+                  }));
+                }
+                return;
+              }
+            } catch {
+              // Range 操作可能因 DOM 变化失败，忽略
+            }
+          }
+        };
+        el.addEventListener('click', hookWikiLinkClick, { capture: true });
 
         // 拦截 Ctrl+M / Ctrl+T，阻止 Vditor 内置快捷键，交给 App.tsx 处理
         const hookKeydown = (e: KeyboardEvent) => {
@@ -1108,11 +1491,23 @@ const VditorEditor = forwardRef<VditorEditorHandle, VditorEditorProps>(
         const cleanup = () => {
           document.removeEventListener("paste", hookPaste, { capture: true });
           el.removeEventListener("mousedown", hookIRCodeBlockMousedown);
+          el.removeEventListener("click", hookIRCodeBlockClickBlock, true);
+          document.removeEventListener("mousedown", hookDocMousedown);
           el.removeEventListener("click", hookClick, { capture: true });
+          el.removeEventListener("click", hookWikiLinkClick, { capture: true });
           el.removeEventListener("keydown", hookKeydown, { capture: true });
           el.removeEventListener("dragover", hookDragOver);
           el.removeEventListener("dragleave", hookDragLeave);
           el.removeEventListener("drop", hookDrop);
+          el.removeEventListener("scroll", clearCodeEditing, true);
+          window.removeEventListener("scroll", clearCodeEditing, true);
+          document.removeEventListener("scroll", clearCodeEditing, true);
+          el.removeEventListener("wheel", clearCodeEditing);
+          window.removeEventListener("wheel", clearCodeEditing);
+          codeBlockExpandObserver.disconnect();
+          // 清理 wiki 链接观察器
+          const observer = (vditor as any).__zmd_wiki_observer;
+          if (observer) observer.disconnect();
         };
         (vditor as any).__zmd_cleanup = cleanup;
       } catch (e: any) {
@@ -1140,9 +1535,9 @@ const VditorEditor = forwardRef<VditorEditorHandle, VditorEditorProps>(
       const vditor = vditorRef.current;
       if (!vditor || status !== "ready") return;
 
-      const editorTheme = theme === "white" || theme === "mint" || theme === "liquid-glass" ? "classic" : "dark";
-      const contentTheme = theme === "white" || theme === "mint" || theme === "liquid-glass" ? "light" : "dark";
-      const codeTheme = theme === "white" || theme === "mint" || theme === "liquid-glass" ? "atom-one-light" : "atom-one-dark";
+      const editorTheme = theme === "white" || theme === "mint" || theme === "liquid-glass" || theme === "claude-code" || theme === "purple" || theme === "hermes" ? "classic" : "dark";
+      const contentTheme = theme === "white" || theme === "mint" || theme === "liquid-glass" || theme === "claude-code" || theme === "purple" || theme === "hermes" ? "light" : "dark";
+      const codeTheme = theme === "white" || theme === "mint" || theme === "liquid-glass" || theme === "claude-code" || theme === "purple" || theme === "hermes" ? "atom-one-light" : "atom-one-dark";
 
       vditor.setTheme(editorTheme, contentTheme, codeTheme, "/vditor/dist/css/content-theme");
     }, [theme, status]); // 移除 mode，避免模式切换时重复调用
@@ -1151,6 +1546,10 @@ const VditorEditor = forwardRef<VditorEditorHandle, VditorEditorProps>(
     useEffect(() => {
       const vditor = vditorRef.current;
       if (!vditor || status !== "ready") return;
+      if (isUserInputRef.current) {
+        isUserInputRef.current = false;
+        return;
+      }
       const cur = vditor.getValue();
       const resolvedValue = resolveImagePaths(value, currentFilePathRef.current ?? null, modeRef.current);
       if (resolvedValue !== cur) {

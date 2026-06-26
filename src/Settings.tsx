@@ -1,5 +1,7 @@
-import { useState, useCallback, useEffect } from "react";
+import { useState, useCallback, useEffect, useRef } from "react";
 import { getCurrentWebviewWindow } from "@tauri-apps/api/webviewWindow";
+import { LogicalSize, LogicalPosition } from "@tauri-apps/api/dpi";
+import { availableMonitors, type Monitor } from "@tauri-apps/api/window";
 import { invoke } from "@tauri-apps/api/core";
 import { open } from "@tauri-apps/plugin-dialog";
 import { useTheme, type ThemeName } from "./themes";
@@ -466,6 +468,9 @@ function ThemeSettingsContent({ theme, setTheme }: { theme: ThemeName; setTheme:
     { value: "mint", label: "Mint" },
     { value: "mint-dark", label: "Mint Dark" },
     { value: "liquid-glass", label: "Liquid Glass" },
+    { value: "claude-code", label: "Claude Code" },
+    { value: "purple", label: "Purple" },
+    { value: "hermes", label: "Hermes" },
   ];
 
   return (
@@ -1214,6 +1219,8 @@ function AboutSettingsContent() {
 
 // ── Main Settings Component ─────────────────────────────────────────
 
+const SETTINGS_WINDOW_STATE_KEY = "zmd-settings-window-state";
+
 export default function Settings() {
   const [activeTab, setActiveTab] = useState<SettingsTab>("general");
   const { theme, setTheme } = useTheme();
@@ -1222,6 +1229,84 @@ export default function Settings() {
   // 获取默认主题目录
   useEffect(() => {
     getThemeDir().then(setDefaultThemeDir).catch(() => {});
+  }, []);
+
+  // ── 窗口位置/大小记忆 ──
+  const saveWindowStateRef = useRef<() => Promise<void>>(async () => {});
+  useEffect(() => {
+    const win = getCurrentWebviewWindow();
+
+    const saveWindowState = async () => {
+      try {
+        const maximized = await win.isMaximized();
+        const state: Record<string, unknown> = { maximized };
+        if (!maximized) {
+          const pos = await win.outerPosition();
+          const size = await win.outerSize();
+          state.x = pos.x;
+          state.y = pos.y;
+          state.width = size.width;
+          state.height = size.height;
+        }
+        localStorage.setItem(SETTINGS_WINDOW_STATE_KEY, JSON.stringify(state));
+      } catch {}
+    };
+    saveWindowStateRef.current = saveWindowState;
+
+    (async () => {
+      try {
+        const saved = localStorage.getItem(SETTINGS_WINDOW_STATE_KEY);
+        if (!saved) return;
+        const state = JSON.parse(saved) as {
+          x: number; y: number; width: number; height: number; maximized: boolean;
+        };
+
+        const monitors = await availableMonitors();
+        if (monitors && monitors.length > 0) {
+          const posValid = monitors.some((m: Monitor) => {
+            const { x: mx, y: my } = m.position;
+            const { width: mw, height: mh } = m.size;
+            return (
+              state.x + state.width > mx + 80 &&
+              state.x < mx + mw - 80 &&
+              state.y + 40 > my &&
+              state.y < my + mh
+            );
+          });
+          if (!posValid) return;
+        }
+
+        if (state.width && state.height) {
+          await win.setSize(new LogicalSize(state.width, state.height));
+        }
+        if (state.x !== undefined && state.y !== undefined) {
+          await win.setPosition(new LogicalPosition(state.x, state.y));
+        }
+        if (state.maximized) {
+          await win.maximize();
+        }
+      } catch {}
+    })();
+
+    let moveTimer: ReturnType<typeof setTimeout>;
+    let resizeTimer: ReturnType<typeof setTimeout>;
+
+    const unlistenMove = win.onMoved(() => {
+      clearTimeout(moveTimer);
+      moveTimer = setTimeout(saveWindowState, 300);
+    });
+
+    const unlistenResize = win.onResized(() => {
+      clearTimeout(resizeTimer);
+      resizeTimer = setTimeout(saveWindowState, 300);
+    });
+
+    return () => {
+      clearTimeout(moveTimer);
+      clearTimeout(resizeTimer);
+      unlistenMove.then((fn) => fn()).catch(() => {});
+      unlistenResize.then((fn) => fn()).catch(() => {});
+    };
   }, []);
 
   // 通用设置状态
@@ -1274,6 +1359,18 @@ export default function Settings() {
     const win = getCurrentWebviewWindow();
     await win.close();
   }, []);
+
+  // Ctrl+W 关闭设置窗口
+  useEffect(() => {
+    const handler = (e: KeyboardEvent) => {
+      if ((e.ctrlKey || e.metaKey) && e.key === "w") {
+        e.preventDefault();
+        handleClose();
+      }
+    };
+    window.addEventListener("keydown", handler);
+    return () => window.removeEventListener("keydown", handler);
+  }, [handleClose]);
 
   const handleMinimize = useCallback(async () => {
     const win = getCurrentWebviewWindow();

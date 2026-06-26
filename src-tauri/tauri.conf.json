@@ -1,7 +1,7 @@
 {
   "$schema": "https://raw.githubusercontent.com/tauri-apps/tauri/dev/crates/tauri-config-schema/schema.json",
   "productName": "Tydora",
-  "version": "0.1.0",
+  "version": "0.0.5",
   "identifier": "com.tydora.editor",
   "build": {
     "frontendDist": "../dist",
@@ -28,7 +28,9 @@
   "bundle": {
     "active": true,
     "createUpdaterArtifacts": true,
-    "targets": ["nsis"],
+    "targets": [
+      "nsis"
+    ],
     "icon": [
       "icons/32x32.png",
       "icons/128x128.png",
@@ -47,7 +49,7 @@
   },
   "plugins": {
     "updater": {
-      "pubkey": "PLACEHOLDER_PUBLIC_KEY",
+      "pubkey": "dW50cnVzdGVkIGNvbW1lbnQ6IG1pbmlzaWduIHB1YmxpYyBrZXk6IEZBREFFQjM3RkRCQUI2NzQKUldSMHRycjlOK3ZhK3ZzcmFjWFhnbkhpM2pzNGVIc1Q1NHFxcWZMb3RPeXdvRk5GMUxBQWZrTWQK",
       "endpoints": [
         "https://github.com/zuorn/Tydora/releases/latest/download/latest.json"
       ],

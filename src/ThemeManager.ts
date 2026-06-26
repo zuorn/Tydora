@@ -11,6 +11,9 @@ export const BUILTIN_THEMES = [
   "mint",
   "mint-dark",
   "liquid-glass",
+  "claude-code",
+  "purple",
+  "hermes",
 ] as const;
 
 export type BuiltinThemeName = (typeof BUILTIN_THEMES)[number];

@@ -1,0 +1,93 @@
+/* 反向链接面板（独立可折叠） */
+.backlinks-panel {
+  background: var(--bg-secondary);
+  border-top: 1px solid var(--border);
+  user-select: none;
+}
+
+.backlinks-panel.collapsed {
+  border-bottom: none;
+}
+
+.backlinks-header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 12px;
+  cursor: pointer;
+  transition: background 0.15s ease;
+}
+
+.backlinks-header:hover {
+  background: var(--bg-surface);
+}
+
+.backlinks-toggle {
+  transition: transform 0.2s ease;
+}
+
+.backlinks-toggle.expanded {
+  transform: rotate(90deg);
+}
+
+.backlinks-title {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text-secondary);
+  text-transform: uppercase;
+  flex: 1;
+}
+
+.backlinks-count {
+  font-size: 11px;
+  color: var(--text-secondary);
+  background: var(--bg-surface);
+  padding: 2px 6px;
+  border-radius: 10px;
+}
+
+.backlinks-list {
+  max-height: 300px;
+  overflow-y: auto;
+}
+
+.backlinks-item {
+  padding: 8px 12px;
+  cursor: pointer;
+  transition: background 0.15s ease;
+}
+
+.backlinks-item:hover {
+  background: var(--bg-surface);
+}
+
+.backlinks-filename {
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--accent);
+  margin-bottom: 4px;
+}
+
+.backlinks-context {
+  font-size: 12px;
+  color: var(--text-secondary);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.backlinks-section {
+  border-top: 1px solid var(--border);
+}
+
+.backlinks-section:first-child {
+  border-top: none;
+}
+
+.backlinks-section-title {
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--text-secondary);
+  padding: 8px 12px 4px;
+  text-transform: uppercase;
+}

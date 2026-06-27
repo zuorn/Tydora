@@ -927,6 +927,14 @@ function App({ initialFilePath }: { initialFilePath?: string | null }) {
 
     // 设置
     { id: "open-settings", label: "打开设置", category: "设置", action: () => invoke("open_settings_window") },
+    { id: "settings-general", label: "通用设置", category: "设置", aliases: ["通用", "general"], action: () => { localStorage.setItem("zmd-settings-initial-tab", "general"); invoke("open_settings_window"); } },
+    { id: "settings-theme", label: "主题设置", category: "设置", aliases: ["主题", "theme", "颜色", "外观"], action: () => { localStorage.setItem("zmd-settings-initial-tab", "theme"); invoke("open_settings_window"); } },
+    { id: "settings-shortcuts", label: "快捷键设置", category: "设置", aliases: ["快捷键", "shortcuts", "键盘"], action: () => { localStorage.setItem("zmd-settings-initial-tab", "shortcuts"); invoke("open_settings_window"); } },
+    { id: "settings-editor", label: "编辑器设置", category: "设置", aliases: ["编辑器", "editor"], action: () => { localStorage.setItem("zmd-settings-initial-tab", "editor"); invoke("open_settings_window"); } },
+    { id: "settings-mindmap", label: "思维导图设置", category: "设置", aliases: ["思维导图", "mindmap"], action: () => { localStorage.setItem("zmd-settings-initial-tab", "mindmap"); invoke("open_settings_window"); } },
+    { id: "settings-graph", label: "关系图谱设置", category: "设置", aliases: ["图谱", "graph", "关系"], action: () => { localStorage.setItem("zmd-settings-initial-tab", "graph"); invoke("open_settings_window"); } },
+    { id: "settings-image", label: "图像设置", category: "设置", aliases: ["图像", "image", "图片"], action: () => { localStorage.setItem("zmd-settings-initial-tab", "image"); invoke("open_settings_window"); } },
+    { id: "settings-about", label: "关于", category: "设置", aliases: ["about", "版本"], action: () => { localStorage.setItem("zmd-settings-initial-tab", "about"); invoke("open_settings_window"); } },
   ], [handleSave, activeVaultIndex, fileName, handleNewWindow, handleSidebarToggle, cycleMode, handleMinimize, handleToggleMaximize, handleClose, setViewMode, viewMode]);
 
   return (

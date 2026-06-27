@@ -12,7 +12,7 @@ import "./Settings.css";
 
 // ── Types ────────────────────────────────────────────────────────────
 
-type SettingsTab = "general" | "theme" | "shortcuts" | "editor" | "mindmap" | "image" | "about";
+type SettingsTab = "general" | "theme" | "shortcuts" | "editor" | "mindmap" | "graph" | "image" | "about";
 
 // ── Editor Settings ─────────────────────────────────────────────
 
@@ -129,6 +129,22 @@ const DEFAULT_MINDMAP: MindmapSettings = {
   colorFreezeLevel: 0,
 };
 
+interface GraphSettings {
+  nodeSize: number;
+  linkDistance: number;
+  chargeStrength: number;
+  edgeOpacity: number;
+  labelFontSize: number;
+}
+
+const DEFAULT_GRAPH: GraphSettings = {
+  nodeSize: 15,
+  linkDistance: 160,
+  chargeStrength: -200,
+  edgeOpacity: 0.8,
+  labelFontSize: 11,
+};
+
 const DEFAULT_SHORTCUTS: ShortcutItem[] = [
   // Vditor 编辑器快捷键
   { id: "bold", label: "加粗", keys: ["Ctrl", "B"], group: "格式" },
@@ -200,9 +216,10 @@ const DEFAULT_SHORTCUTS: ShortcutItem[] = [
 const GENERAL_SETTINGS_KEY = "zmd-general-settings";
 export const SHORTCUTS_KEY = "zmd-shortcuts";
 export const MINDMAP_SETTINGS_KEY = "zmd-mindmap-settings";
-export type { MindmapSettings };
+export const GRAPH_SETTINGS_KEY = "zmd-graph-settings";
+export type { MindmapSettings, GraphSettings };
 
-export { DEFAULT_SHORTCUTS, DEFAULT_MINDMAP };
+export { DEFAULT_SHORTCUTS, DEFAULT_MINDMAP, DEFAULT_GRAPH };
 
 // ── Components ──────────────────────────────────────────────────────
 
@@ -451,16 +468,141 @@ function MindmapSettingsContent({
   );
 }
 
-function ThemeSettingsContent({ theme, setTheme }: { theme: ThemeName; setTheme: (t: ThemeName) => void }) {
+function GraphSettingsContent({
+  settings,
+  onChange,
+}: {
+  settings: GraphSettings;
+  onChange: (s: GraphSettings) => void;
+}) {
+  return (
+    <div className="settings-section">
+      <h3 className="settings-section-title">节点</h3>
+      <div className="settings-item">
+        <label className="settings-item-label">最大节点大小</label>
+        <div className="settings-range-wrapper">
+          <input
+            type="range"
+            className="settings-range"
+            min="5"
+            max="30"
+            value={settings.nodeSize}
+            onChange={(e) => onChange({ ...settings, nodeSize: Number(e.target.value) })}
+          />
+          <span className="settings-range-value">{settings.nodeSize}px</span>
+        </div>
+      </div>
+      <div className="settings-item">
+        <label className="settings-item-label">标签字号</label>
+        <div className="settings-range-wrapper">
+          <input
+            type="range"
+            className="settings-range"
+            min="8"
+            max="18"
+            value={settings.labelFontSize}
+            onChange={(e) => onChange({ ...settings, labelFontSize: Number(e.target.value) })}
+          />
+          <span className="settings-range-value">{settings.labelFontSize}px</span>
+        </div>
+      </div>
+
+      <h3 className="settings-section-title">布局</h3>
+      <div className="settings-item">
+        <label className="settings-item-label">连线距离</label>
+        <div className="settings-range-wrapper">
+          <input
+            type="range"
+            className="settings-range"
+            min="60"
+            max="300"
+            step="10"
+            value={settings.linkDistance}
+            onChange={(e) => onChange({ ...settings, linkDistance: Number(e.target.value) })}
+          />
+          <span className="settings-range-value">{settings.linkDistance}px</span>
+        </div>
+      </div>
+      <div className="settings-item">
+        <label className="settings-item-label">斥力强度</label>
+        <div className="settings-range-wrapper">
+          <input
+            type="range"
+            className="settings-range"
+            min="-500"
+            max="-50"
+            step="10"
+            value={settings.chargeStrength}
+            onChange={(e) => onChange({ ...settings, chargeStrength: Number(e.target.value) })}
+          />
+          <span className="settings-range-value">{settings.chargeStrength}</span>
+        </div>
+      </div>
+
+      <h3 className="settings-section-title">外观</h3>
+      <div className="settings-item">
+        <label className="settings-item-label">边线透明度</label>
+        <div className="settings-range-wrapper">
+          <input
+            type="range"
+            className="settings-range"
+            min="0.1"
+            max="1"
+            step="0.05"
+            value={settings.edgeOpacity}
+            onChange={(e) => onChange({ ...settings, edgeOpacity: Number(e.target.value) })}
+          />
+          <span className="settings-range-value">{Math.round(settings.edgeOpacity * 100)}%</span>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function ThemeSettingsContent({
+  theme,
+  setTheme,
+  generalSettings,
+  onChangeGeneral,
+  defaultThemeDir,
+}: {
+  theme: ThemeName;
+  setTheme: (t: ThemeName) => void;
+  generalSettings: GeneralSettings;
+  onChangeGeneral: (s: GeneralSettings) => void;
+  defaultThemeDir: string;
+}) {
   const [userThemes, setUserThemes] = useState<ThemeInfo[]>([]);
-  const [themeDir, setThemeDir] = useState("");
+
+  const themeDir = generalSettings.themeResourceDir || defaultThemeDir;
 
   useEffect(() => {
-    getThemeDir().then((dir) => {
-      setThemeDir(dir);
-      return getUserThemes(dir);
-    }).then(setUserThemes).catch(() => {});
-  }, []);
+    if (!themeDir) return;
+    getUserThemes(themeDir).then(setUserThemes).catch(() => {});
+  }, [themeDir]);
+
+  const handleSelectThemeDir = async () => {
+    const selected = await open({ directory: true, multiple: false });
+    if (selected && typeof selected === "string") {
+      const oldDir = generalSettings.themeResourceDir || defaultThemeDir;
+      if (oldDir && oldDir !== selected) {
+        await invoke("copy_themes", { fromDir: oldDir, toDir: selected });
+      }
+      onChangeGeneral({ ...generalSettings, themeResourceDir: selected });
+    }
+  };
+
+  const handleOpenThemeDir = async () => {
+    if (themeDir) {
+      await invoke("open_directory", { dirPath: themeDir });
+    }
+  };
+
+  const handleResetThemeDir = () => {
+    onChangeGeneral({ ...generalSettings, themeResourceDir: "" });
+  };
+
+  const displayDir = generalSettings.themeResourceDir || defaultThemeDir || "默认目录";
 
   const builtinThemes: { value: ThemeName; label: string }[] = [
     { value: "catppuccin-mocha", label: "Catppuccin Mocha" },
@@ -523,14 +665,29 @@ function ThemeSettingsContent({ theme, setTheme }: { theme: ThemeName; setTheme:
         </>
       )}
 
-      {themeDir && (
-        <div className="settings-item" style={{ marginTop: 16 }}>
-          <label className="settings-item-label">主题目录</label>
-          <span className="settings-about-value" style={{ fontSize: 12, color: "var(--text-secondary)", wordBreak: "break-all" }}>
-            {themeDir}
-          </span>
+      <h3 className="settings-section-title" style={{ marginTop: 16 }}>主题资源</h3>
+      <div className="settings-item">
+        <label className="settings-item-label">主题目录</label>
+        <div className="settings-path-wrapper">
+          <input
+            type="text"
+            className="settings-input"
+            value={displayDir}
+            readOnly
+          />
+          <button className="settings-button" onClick={handleSelectThemeDir}>
+            更改
+          </button>
+          <button className="settings-button" onClick={handleOpenThemeDir}>
+            打开
+          </button>
+          {generalSettings.themeResourceDir && (
+            <button className="settings-button" onClick={handleResetThemeDir}>
+              重置
+            </button>
+          )}
         </div>
-      )}
+      </div>
     </div>
   );
 }
@@ -1222,7 +1379,16 @@ function AboutSettingsContent() {
 const SETTINGS_WINDOW_STATE_KEY = "zmd-settings-window-state";
 
 export default function Settings() {
-  const [activeTab, setActiveTab] = useState<SettingsTab>("general");
+  const [activeTab, setActiveTab] = useState<SettingsTab>(() => {
+    try {
+      const saved = localStorage.getItem("zmd-settings-initial-tab") as SettingsTab | null;
+      if (saved && ["general", "theme", "shortcuts", "editor", "mindmap", "graph", "image", "about"].includes(saved)) {
+        localStorage.removeItem("zmd-settings-initial-tab");
+        return saved;
+      }
+    } catch {}
+    return "general";
+  });
   const { theme, setTheme } = useTheme();
   const [defaultThemeDir, setDefaultThemeDir] = useState("");
 
@@ -1339,6 +1505,21 @@ export default function Settings() {
     localStorage.setItem(MINDMAP_SETTINGS_KEY, JSON.stringify(mindmapSettings));
   }, [mindmapSettings]);
 
+  // 关系图谱设置状态
+  const [graphSettings, setGraphSettings] = useState<GraphSettings>(() => {
+    try {
+      const saved = localStorage.getItem(GRAPH_SETTINGS_KEY);
+      return saved ? { ...DEFAULT_GRAPH, ...JSON.parse(saved) } : DEFAULT_GRAPH;
+    } catch {
+      return DEFAULT_GRAPH;
+    }
+  });
+
+  // 保存关系图谱设置到 localStorage
+  useEffect(() => {
+    localStorage.setItem(GRAPH_SETTINGS_KEY, JSON.stringify(graphSettings));
+  }, [graphSettings]);
+
   // 图像设置状态
   const [imageSettings, setImageSettings] = useState<ImageSettings>(() => loadImageSettings());
 
@@ -1383,6 +1564,7 @@ export default function Settings() {
     { id: "shortcuts", label: "快捷键" },
     { id: "editor", label: "编辑器" },
     { id: "mindmap", label: "思维导图" },
+    { id: "graph", label: "关系图谱" },
     { id: "image", label: "图像" },
     { id: "about", label: "关于" },
   ];
@@ -1431,7 +1613,13 @@ export default function Settings() {
             <GeneralSettingsContent settings={generalSettings} onChange={setGeneralSettings} defaultThemeDir={defaultThemeDir} />
           )}
           {activeTab === "theme" && (
-            <ThemeSettingsContent theme={theme} setTheme={setTheme} />
+            <ThemeSettingsContent
+              theme={theme}
+              setTheme={setTheme}
+              generalSettings={generalSettings}
+              onChangeGeneral={setGeneralSettings}
+              defaultThemeDir={defaultThemeDir}
+            />
           )}
           {activeTab === "shortcuts" && <ShortcutsSettingsContent />}
           {activeTab === "editor" && (
@@ -1439,6 +1627,9 @@ export default function Settings() {
           )}
           {activeTab === "mindmap" && (
             <MindmapSettingsContent settings={mindmapSettings} onChange={setMindmapSettings} />
+          )}
+          {activeTab === "graph" && (
+            <GraphSettingsContent settings={graphSettings} onChange={setGraphSettings} />
           )}
           {activeTab === "image" && (
             <ImageSettingsContent settings={imageSettings} onChange={setImageSettings} />

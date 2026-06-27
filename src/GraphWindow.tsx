@@ -57,6 +57,18 @@ export default function GraphWindow() {
     getCurrentWindow().close();
   }, []);
 
+  // Ctrl+W 关闭窗口
+  useEffect(() => {
+    const handler = (e: KeyboardEvent) => {
+      if (e.ctrlKey && e.key === "w") {
+        e.preventDefault();
+        handleClose();
+      }
+    };
+    window.addEventListener("keydown", handler);
+    return () => window.removeEventListener("keydown", handler);
+  }, [handleClose]);
+
   const handleMinimize = useCallback(() => {
     getCurrentWindow().minimize();
   }, []);

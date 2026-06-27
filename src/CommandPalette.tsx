@@ -264,7 +264,7 @@ export default function CommandPalette({ isOpen, onClose, commands }: CommandPal
         onKeyDown={handleKeyDown}
       >
         <div className="command-palette-header">
-          <span className="command-palette-icon"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg></span>
+          <span className="command-palette-icon"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="4 17 10 11 4 5"/><line x1="12" y1="19" x2="20" y2="19"/></svg></span>
           <input
             ref={inputRef}
             type="text"

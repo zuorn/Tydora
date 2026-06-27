@@ -1289,15 +1289,16 @@ const VditorEditor = forwardRef<VditorEditorHandle, VditorEditorProps>(
         const hookWikiLinkClick = (e: MouseEvent) => {
           const target = e.target as HTMLElement;
 
-          // 检查点击位置是否在 [[ 或 ]] 括号上（不跳转）
+          // 检查点击位置是否在 [[ 或 ]] 括号区域（不跳转）
           const isOnBracket = (el: HTMLElement): boolean => {
             const text = el.textContent || '';
             if (text.length < 4) return false;
-            const range = document.caretRangeFromPoint(e.clientX, e.clientY);
-            if (!range || range.startContainer.nodeType !== Node.TEXT_NODE) return false;
-            const offset = range.startOffset;
-            // 前两个字符是 [[，最后两个字符是 ]]
-            return offset <= 1 || offset >= text.length - 2;
+            const rect = el.getBoundingClientRect();
+            if (rect.width === 0) return false;
+            const relX = (e.clientX - rect.left) / rect.width;
+            const charRatio = 2 / text.length;
+            // 点击在前 2 个字符或后 2 个字符的范围内
+            return relX <= charRatio * 1.2 || relX >= 1 - charRatio * 1.2;
           };
 
           // 优先查找已处理的 <a class="wiki-link"> 元素

@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState, useMemo } from "react";
 import * as d3 from "d3";
 import { LinkIndexService } from "./LinkIndexService";
-import { useTheme } from "./themes";
+import { GRAPH_SETTINGS_KEY, DEFAULT_GRAPH, type GraphSettings } from "./Settings";
 import "./GraphView.css";
 
 interface GraphNode extends d3.SimulationNodeDatum {
@@ -33,8 +33,20 @@ interface Tooltip {
 export function GraphView({ vaultPath, onSelectNote, onClose, standalone = false, refreshKey = 0 }: GraphViewProps) {
   const svgRef = useRef<SVGSVGElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
+
+  // ESC 关闭图谱覆盖层
+  useEffect(() => {
+    if (standalone || !onClose) return;
+    const handler = (e: KeyboardEvent) => {
+      if (e.key === "Escape") {
+        e.preventDefault();
+        onClose();
+      }
+    };
+    window.addEventListener("keydown", handler);
+    return () => window.removeEventListener("keydown", handler);
+  }, [standalone, onClose]);
   const [tooltip, setTooltip] = useState<Tooltip | null>(null);
-  const { theme } = useTheme();
 
   const { nodes, edges } = useMemo(() => {
     if (!vaultPath) return { nodes: [], edges: [] };
@@ -105,6 +117,13 @@ export function GraphView({ vaultPath, onSelectNote, onClose, standalone = false
     let simulation: d3.Simulation<GraphNode, GraphEdge> | null = null;
 
     const init = (width: number, height: number) => {
+      // 读取图谱设置
+      let gs: GraphSettings = DEFAULT_GRAPH;
+      try {
+        const saved = localStorage.getItem(GRAPH_SETTINGS_KEY);
+        if (saved) gs = { ...DEFAULT_GRAPH, ...JSON.parse(saved) };
+      } catch {}
+
       const css = getComputedStyle(document.documentElement);
       const colorText = css.getPropertyValue("--text-primary").trim() || '#cdd6f4';
       const colorBorder = css.getPropertyValue("--border").trim() || '#45475a';
@@ -134,8 +153,8 @@ export function GraphView({ vaultPath, onSelectNote, onClose, standalone = false
         .forceSimulation<GraphNode>(simNodes)
         .alpha(0.3)
         .alphaDecay(0.05)
-        .force("link", d3.forceLink<GraphNode, GraphEdge>(simEdges).id((d) => d.id).distance(160))
-        .force("charge", d3.forceManyBody().strength(-200).distanceMax(250))
+        .force("link", d3.forceLink<GraphNode, GraphEdge>(simEdges).id((d) => d.id).distance(gs.linkDistance))
+        .force("charge", d3.forceManyBody().strength(gs.chargeStrength).distanceMax(250))
         .force("center", d3.forceCenter(width / 2, height / 2).strength(0.1))
         .force("collision", d3.forceCollide(30))
         .force("x", d3.forceX(width / 2).strength(0.08))
@@ -148,10 +167,10 @@ export function GraphView({ vaultPath, onSelectNote, onClose, standalone = false
         .join("line")
         .attr("stroke", colorBorder)
         .attr("stroke-width", 1.5)
-        .attr("stroke-opacity", 0.8);
+        .attr("stroke-opacity", gs.edgeOpacity);
 
       const maxLinks = Math.max(1, ...nodes.map((n) => n.linkCount));
-      const radius = (d: GraphNode) => 5 + (d.linkCount / maxLinks) * 10;
+      const radius = (d: GraphNode) => 3 + (d.linkCount / maxLinks) * (gs.nodeSize - 3);
 
       const node = g
         .append("g")
@@ -189,7 +208,7 @@ export function GraphView({ vaultPath, onSelectNote, onClose, standalone = false
         .text((d) => d.label)
         .attr("x", (d) => radius(d) + 4)
         .attr("y", 4)
-        .attr("font-size", 11)
+        .attr("font-size", gs.labelFontSize)
         .attr("fill", colorText)
         .style("pointer-events", "none");
 
@@ -289,7 +308,7 @@ export function GraphView({ vaultPath, onSelectNote, onClose, standalone = false
       simulation?.stop();
       setTooltip(null);
     };
-  }, [nodes, edges, onSelectNote, theme]);
+  }, [nodes, edges, onSelectNote]);
 
   return (
     <div
@@ -298,7 +317,12 @@ export function GraphView({ vaultPath, onSelectNote, onClose, standalone = false
       style={{ width: '100%', height: '100%' }}
     >
       {!standalone && onClose && (
-        <button className="graph-view-close-btn" onClick={onClose}>✕</button>
+        <button className="graph-view-close-btn" onClick={onClose} title="返回">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+            <line x1="19" y1="12" x2="5" y2="12" />
+            <polyline points="12 19 5 12 12 5" />
+          </svg>
+        </button>
       )}
       <div className="graph-view-container" style={{ position: 'relative' }}>
         <svg

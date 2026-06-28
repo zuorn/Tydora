@@ -3,7 +3,6 @@ import re
 import os
 import json
 
-# Wiki link name -> relative path from docs root (without .md)
 WIKI_MAP = {
     "快速开始": "快速开始",
     "编辑模式": "编辑器/编辑模式",
@@ -159,15 +158,23 @@ def on_page_markdown(markdown, page, config, files):
 
 
 def on_post_page(output, page, config):
-    """Inject graph data script tag into the final HTML."""
+    """Inject graph data into the final HTML."""
     docs_dir = config['docs_dir']
     graph_data = _build_graph_data(docs_dir)
     graph_json = json.dumps(graph_data, ensure_ascii=False)
 
-    script_tag = f'<script>window.__GRAPH_DATA__ = {graph_json};</script>'
+    # Inject script that sets data AND triggers init
+    script = f"""<script>
+window.__GRAPH_DATA__ = {graph_json};
+(function() {{
+  if (typeof window.__initKnowledgeGraph === 'function') {{
+    window.__initKnowledgeGraph();
+  }}
+}})();
+</script>"""
 
     # Insert before </body>
     if '</body>' in output:
-        output = output.replace('</body>', script_tag + '\n</body>')
+        output = output.replace('</body>', script + '\n</body>')
 
     return output

@@ -2,8 +2,7 @@
 
 #knowledge-graph {
   width: 100%;
-  min-height: 300px;
-  max-height: 350px;
+  aspect-ratio: 1 / 1;
   margin-bottom: 16px;
   border: 1px solid var(--md-typeset-table-color, #e0e0e0);
   border-radius: 8px;
@@ -15,16 +14,6 @@
 [data-md-color-scheme="slate"] #knowledge-graph {
   border-color: #424242;
   background: #1e1e2e;
-}
-
-#knowledge-graph::before {
-  content: '知识图谱';
-  display: block;
-  padding: 8px 12px;
-  font-size: 12px;
-  font-weight: 600;
-  background: var(--md-accent-fg-color, #26a69a);
-  color: #fff;
 }
 
 #knowledge-graph svg {
@@ -52,6 +41,19 @@
 
 .kg-links line {
   stroke-linecap: round;
+  stroke: var(--md-typeset-table-color, #ccc);
+}
+
+[data-md-color-scheme="slate"] .kg-links line {
+  stroke: #555 !important;
+}
+
+[data-md-color-scheme="slate"] .kg-node text {
+  fill: #cdd6f4 !important;
+}
+
+[data-md-color-scheme="slate"] .kg-node circle {
+  stroke: #1e1e2e !important;
 }
 
 /* Tooltip */
@@ -96,35 +98,142 @@
   color: #a6adc8;
 }
 
-/* Toggle */
-.kg-toggle {
+.kg-graph-wrapper {
+  width: 100%;
+  height: 100%;
+}
+
+/* Expand button */
+.kg-expand-btn {
+  position: absolute;
+  top: 6px;
+  right: 6px;
+  z-index: 10;
+  width: 28px;
+  height: 28px;
+  border: none;
+  border-radius: 6px;
+  background: rgba(255, 255, 255, 0.9);
+  color: #333;
+  cursor: pointer;
   display: flex;
   align-items: center;
-  justify-content: space-between;
-  padding: 8px 12px;
+  justify-content: center;
+  transition: all 0.15s ease;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+}
+
+.kg-expand-btn:hover {
+  background: #fff;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.15);
+}
+
+[data-md-color-scheme="slate"] .kg-expand-btn {
+  background: rgba(42, 42, 62, 0.9);
+  color: #cdd6f4;
+}
+
+[data-md-color-scheme="slate"] .kg-expand-btn:hover {
+  background: #2a2a3e;
+}
+
+/* Modal */
+.kg-modal {
+  position: fixed;
+  inset: 0;
+  z-index: 10000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  opacity: 0;
+  transition: opacity 0.3s ease;
+  pointer-events: none;
+}
+
+.kg-modal-open {
+  opacity: 1;
+  pointer-events: auto;
+}
+
+.kg-modal-backdrop {
+  position: absolute;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.5);
+}
+
+.kg-modal-dialog {
+  position: relative;
+  width: 80vw;
+  height: 80vh;
+  max-width: 1200px;
+  max-height: 900px;
+  background: var(--md-default-bg-color, #fff);
+  border-radius: 12px;
+  overflow: hidden;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.2);
+  transform: scale(0.9);
+  transition: transform 0.3s ease;
+}
+
+.kg-modal-open .kg-modal-dialog {
+  transform: scale(1);
+}
+
+[data-md-color-scheme="slate"] .kg-modal-dialog {
+  background: #1e1e2e;
+}
+
+.kg-modal-close {
+  position: absolute;
+  top: 10px;
+  right: 10px;
+  z-index: 10;
+  width: 32px;
+  height: 32px;
+  border: none;
+  border-radius: 6px;
+  background: rgba(255, 255, 255, 0.9);
+  color: #333;
   cursor: pointer;
-  user-select: none;
-  font-size: 12px;
-  font-weight: 600;
-  background: var(--md-accent-fg-color, #26a69a);
-  color: #fff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: background 0.15s;
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.15);
 }
 
-.kg-toggle:hover {
-  opacity: 0.9;
+.kg-modal-close:hover {
+  background: #fff;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
 }
 
-.kg-toggle-arrow {
-  transition: transform 0.2s;
+[data-md-color-scheme="slate"] .kg-modal-close {
+  background: rgba(42, 42, 62, 0.9);
+  color: #cdd6f4;
 }
 
-.kg-toggle.collapsed .kg-toggle-arrow {
-  transform: rotate(-90deg);
+[data-md-color-scheme="slate"] .kg-modal-close:hover {
+  background: #2a2a3e;
+}
+
+.kg-modal-body {
+  width: 100%;
+  height: 100%;
+  overflow: hidden;
+  background: var(--md-default-bg-color, #fff);
+}
+
+[data-md-color-scheme="slate"] .kg-modal-body {
+  background: #1e1e2e;
 }
 
 @media (max-width: 768px) {
   #knowledge-graph {
-    min-height: 200px;
-    max-height: 250px;
+    aspect-ratio: 1 / 1;
+    max-width: 280px;
+  }
+  .kg-modal-dialog {
+    width: 95vw;
+    height: 85vh;
   }
 }

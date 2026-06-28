@@ -68,7 +68,7 @@ extra:
       link: https://github.com/tydora/tydora
 
 nav:
-  - 首页: _index.md
+  - 首页: index.html
   - 快速开始: 快速开始.md
   - 编辑器:
     - 编辑模式: 编辑器/编辑模式.md

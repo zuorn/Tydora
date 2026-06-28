@@ -1,0 +1,559 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+
+  <!-- SEO -->
+  <title>Tydora — 指尖上的礼物 | A Gift at Your Fingertips</title>
+  <meta name="description" content="Tydora 是一款现代的 Markdown 桌面编辑器，致敬 Typora，延续所见即所得的极简理念。Tydora is a modern Markdown desktop editor — a tribute to Typora." />
+  <meta name="keywords" content="Tydora, Markdown, Markdown Editor, Typora, Tauri, Vditor, 桌面编辑器, 写作工具" />
+  <meta name="author" content="Tydora" />
+  <meta name="theme-color" content="#4eb289" />
+
+  <!-- Open Graph -->
+  <meta property="og:type" content="website" />
+  <meta property="og:title" content="Tydora — 指尖上的礼物" />
+  <meta property="og:description" content="现代 Markdown 桌面编辑器，致敬 Typora。现代创作者的礼物。" />
+  <meta property="og:image" content="./assets/images/icon.png" />
+  <meta property="og:url" content="https://github.com/zuorn/Tydora" />
+
+  <!-- Twitter Card -->
+  <meta name="twitter:card" content="summary_large_image" />
+  <meta name="twitter:title" content="Tydora — 指尖上的礼物" />
+  <meta name="twitter:description" content="现代 Markdown 桌面编辑器，致敬 Typora。" />
+  <meta name="twitter:image" content="./assets/images/icon.png" />
+
+  <!-- Favicon -->
+  <link rel="icon" type="image/png" href="./assets/images/icon-128.png" />
+
+  <!-- Fonts: Lexend (self-host) + Noto Sans SC (Google Fonts) + Source Code Pro (Google Fonts) -->
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+SC:wght@400;500;700&family=Source+Code+Pro:wght@400;500&display=swap" rel="stylesheet" />
+
+  <link rel="stylesheet" href="./styles.css" />
+
+  <!-- JSON-LD: SoftwareApplication -->
+  <script type="application/ld+json">
+  {
+    "@context": "https://schema.org",
+    "@type": "SoftwareApplication",
+    "name": "Tydora",
+    "alternateName": "Tydora Markdown Editor",
+    "description": "现代 Markdown 桌面编辑器，致敬 Typora，延续所见即所得的极简理念。",
+    "applicationCategory": "ProductivityApplication",
+    "operatingSystem": "Windows 10, Windows 11",
+    "softwareVersion": "0.1.0",
+    "url": "https://github.com/zuorn/Tydora",
+    "downloadUrl": "https://github.com/zuorn/Tydora/releases",
+    "license": "https://github.com/zuorn/Tydora/blob/main/LICENSE",
+    "offers": {
+      "@type": "Offer",
+      "price": "0",
+      "priceCurrency": "USD"
+    },
+    "author": {
+      "@type": "Organization",
+      "name": "Tydora",
+      "url": "https://github.com/zuorn/Tydora"
+    }
+  }
+  </script>
+</head>
+<body>
+  <!-- ====================== Navbar ====================== -->
+  <header class="navbar" id="navbar">
+    <div class="container navbar-inner">
+      <a class="brand" href="#top" aria-label="Tydora home">
+        <img src="./assets/images/icon-128.png" alt="Tydora logo" class="brand-logo" width="32" height="32" />
+        <span class="brand-name">Tydora</span>
+      </a>
+
+      <nav class="nav-links" aria-label="Primary">
+        <a href="#features" data-i18n="nav.features">功能</a>
+        <a href="#themes" data-i18n="nav.themes">主题</a>
+        <a href="#preview" data-i18n="nav.preview">预览</a>
+        <a href="#download" data-i18n="nav.download">下载</a>
+        <a href="#faq" data-i18n="nav.faq">FAQ</a>
+      </nav>
+
+      <div class="nav-actions">
+        <button class="lang-toggle" id="langToggle" type="button" aria-label="Toggle language">
+          <span class="lang-option active" data-lang="cn">CN</span>
+          <span class="lang-divider">/</span>
+          <span class="lang-option" data-lang="en">EN</span>
+        </button>
+        <button class="hamburger" id="hamburger" type="button" aria-label="Toggle menu" aria-expanded="false">
+          <span></span><span></span><span></span>
+        </button>
+      </div>
+    </div>
+  </header>
+
+  <main id="top">
+    <!-- ====================== Hero ====================== -->
+    <section class="hero">
+      <div class="container hero-inner">
+        <div class="hero-text animate-on-scroll">
+          <span class="version-badge" data-i18n="hero.version">v0.1.0</span>
+          <h1 class="hero-title" data-i18n="hero.title">指尖上的礼物</h1>
+          <p class="hero-tagline" data-i18n="hero.tagline">A Gift at Your Fingertips</p>
+          <p class="hero-subtitle" data-i18n="hero.subtitle">现代 Markdown 桌面编辑器 — 致敬 Typora，将沉浸式写作的体验化作一份礼物，献给每一位热爱文字的人。</p>
+
+          <div class="hero-cta">
+            <a class="btn btn-primary" href="https://github.com/zuorn/Tydora/releases" target="_blank" rel="noopener">
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+                <polyline points="7 10 12 15 17 10"/>
+                <line x1="12" y1="15" x2="12" y2="3"/>
+              </svg>
+              <span data-i18n="hero.ctaDownload">Download for Windows</span>
+            </a>
+            <a class="btn btn-outline" href="https://github.com/zuorn/Tydora" target="_blank" rel="noopener">
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+                <path d="M12 .297c-6.63 0-12 5.373-12 12 0 5.303 3.438 9.8 8.205 11.385.6.111.82-.261.82-.577 0-.285-.01-1.04-.015-2.04-3.338.724-4.042-1.61-4.042-1.61C4.422 18.07 3.633 17.7 3.633 17.7c-1.087-.744.084-.729.084-.729 1.205.084 1.838 1.236 1.838 1.236 1.07 1.835 2.809 1.305 3.495.998.108-.776.417-1.305.76-1.605-2.665-.3-5.466-1.332-5.466-5.93 0-1.31.465-2.38 1.235-3.22-.135-.303-.54-1.523.105-3.176 0 0 1.005-.322 3.3 1.23.96-.267 1.98-.399 3-.405 1.02.006 2.04.138 3 .405 2.28-1.552 3.285-1.23 3.285-1.23.645 1.653.24 2.873.12 3.176.765.84 1.23 1.91 1.23 3.22 0 4.61-2.805 5.625-5.475 5.92.42.36.81 1.096.81 2.22 0 1.606-.015 2.896-.015 3.286 0 .315.21.69.825.57C20.565 22.092 24 17.592 24 12.297c0-6.627-5.373-12-12-12"/>
+              </svg>
+              <span data-i18n="hero.ctaGithub">View on GitHub</span>
+            </a>
+          </div>
+
+          <div class="hero-meta">
+            <span class="meta-item">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 7L9 18l-5-5"/></svg>
+              <span data-i18n="hero.metaFree">完全免费</span>
+            </span>
+            <span class="meta-item">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 7L9 18l-5-5"/></svg>
+              <span data-i18n="hero.metaOss">开源 MIT</span>
+            </span>
+            <span class="meta-item">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 7L9 18l-5-5"/></svg>
+              <span data-i18n="hero.metaWin">Windows 10+</span>
+            </span>
+          </div>
+        </div>
+
+        <div class="hero-visual animate-on-scroll" aria-hidden="true">
+          <div class="hero-app-frame">
+            <div class="app-titlebar">
+              <span class="dot dot-red"></span>
+              <span class="dot dot-yellow"></span>
+              <span class="dot dot-green"></span>
+              <span class="app-title" data-i18n="mock.title">Tydora — 灵感.md</span>
+            </div>
+            <div class="app-body">
+              <aside class="app-sidebar">
+                <div class="sb-item sb-folder open" data-i18n="mock.sb.folder1">📁 我的笔记</div>
+                <div class="sb-item sb-file active" data-i18n="mock.sb.file1">📄 灵感.md</div>
+                <div class="sb-item sb-file" data-i18n="mock.sb.file2">📄 草稿.md</div>
+                <div class="sb-item sb-file" data-i18n="mock.sb.file3">📄 TODO.md</div>
+                <div class="sb-item sb-folder" data-i18n="mock.sb.folder2">📁 项目</div>
+                <div class="sb-item sb-file indent" data-i18n="mock.sb.file4">📄 设计稿.md</div>
+                <div class="sb-item sb-file indent" data-i18n="mock.sb.file5">📄 周报.md</div>
+              </aside>
+              <section class="app-editor">
+                <h1 class="md-h1" data-i18n="mock.editor.h1"># 灵感</h1>
+                <p class="md-p" data-i18n="mock.editor.p1">在这里开始你的<strong>写作</strong>...</p>
+                <h2 class="md-h2" data-i18n="mock.editor.h2">## 想法</h2>
+                <ul class="md-ul">
+                  <li data-i18n="mock.editor.li1">用 <em>Markdown</em> 让结构清晰</li>
+                  <li data-i18n="mock.editor.li2">让 <code>代码</code> 优雅</li>
+                </ul>
+                <blockquote class="md-quote" data-i18n="mock.editor.quote">"工具不应成为思考的阻碍。"</blockquote>
+              </section>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ====================== Features ====================== -->
+    <section class="section" id="features">
+      <div class="container">
+        <header class="section-header animate-on-scroll">
+          <h2 class="section-title" data-i18n="features.title">核心功能</h2>
+          <p class="section-subtitle" data-i18n="features.subtitle">为热爱文字的人打造，每一项都围绕流畅写作体验。</p>
+        </header>
+
+        <div class="features-grid">
+          <article class="feature-card animate-on-scroll">
+            <div class="feature-icon" style="--icon-bg: #ecf6f2; --icon-color: #4eb289;">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9"/><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"/></svg>
+            </div>
+            <h3 class="feature-title" data-i18n="features.f1Title">三模式编辑器</h3>
+            <p class="feature-desc" data-i18n="features.f1Desc">基于 Vditor，支持所见即所得、即时渲染、分屏预览三种模式，所思即所写。</p>
+          </article>
+
+          <article class="feature-card animate-on-scroll">
+            <div class="feature-icon" style="--icon-bg: #eef4ff; --icon-color: #2563eb;">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 7h18M3 12h18M3 17h12"/></svg>
+            </div>
+            <h3 class="feature-title" data-i18n="features.f2Title">仓库管理</h3>
+            <p class="feature-desc" data-i18n="features.f2Desc">类 Obsidian 的多文件夹仓库，文件树浏览、新建重命名拖拽，一切井然有序。</p>
+          </article>
+
+          <article class="feature-card animate-on-scroll">
+            <div class="feature-icon" style="--icon-bg: #fef3e6; --icon-color: #f59e0b;">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 11 12 14 22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/></svg>
+            </div>
+            <h3 class="feature-title" data-i18n="features.f3Title">命令面板</h3>
+            <p class="feature-desc" data-i18n="features.f3Desc">Ctrl+P 唤出，模糊搜索所有命令，最近使用智能排序，所想即可达。</p>
+          </article>
+
+          <article class="feature-card animate-on-scroll">
+            <div class="feature-icon" style="--icon-bg: #fdf2f8; --icon-color: #ec4899;">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+            </div>
+            <h3 class="feature-title" data-i18n="features.f4Title">快速打开</h3>
+            <p class="feature-desc" data-i18n="features.f4Desc">Ctrl+O 即可在仓库内模糊搜索任何文件，跳转只在弹指之间。</p>
+          </article>
+
+          <article class="feature-card animate-on-scroll">
+            <div class="feature-icon" style="--icon-bg: #f0fdf4; --icon-color: #16a34a;">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M12 1v6m0 10v6M4.22 4.22l4.24 4.24m7.08 7.08l4.24 4.24M1 12h6m10 0h6M4.22 19.78l4.24-4.24m7.08-7.08l4.24-4.24"/></svg>
+            </div>
+            <h3 class="feature-title" data-i18n="features.f5Title">思维导图</h3>
+            <p class="feature-desc" data-i18n="features.f5Desc">Ctrl+M 基于 markmap，独立窗口自由缩放层级，让结构化思考一目了然。</p>
+          </article>
+
+          <article class="feature-card animate-on-scroll">
+            <div class="feature-icon" style="--icon-bg: #f5f3ff; --icon-color: #8b5cf6;">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg>
+            </div>
+            <h3 class="feature-title" data-i18n="features.f6Title">多媒体预览</h3>
+            <p class="feature-desc" data-i18n="features.f6Desc">内置图片缩放、视频、音频、PDF 预览，无须切换应用，专注不受打断。</p>
+          </article>
+
+          <article class="feature-card animate-on-scroll">
+            <div class="feature-icon" style="--icon-bg: #fff1f2; --icon-color: #f43f5e;">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="13.5" cy="6.5" r=".5"/><circle cx="17.5" cy="10.5" r=".5"/><circle cx="8.5" cy="7.5" r=".5"/><circle cx="6.5" cy="12.5" r=".5"/><path d="M12 2C6.5 2 2 6.5 2 12s4.5 10 10 10c.926 0 1.648-.746 1.648-1.688 0-.437-.18-.835-.437-1.125-.29-.289-.438-.652-.438-1.125a1.64 1.64 0 0 1 1.668-1.668h1.996c3.051 0 5.555-2.503 5.555-5.554C21.965 6.012 17.461 2 12 2z"/></svg>
+            </div>
+            <h3 class="feature-title" data-i18n="features.f7Title">多主题系统</h3>
+            <p class="feature-desc" data-i18n="features.f7Desc">5 款精心打磨的内置主题，并兼容导入 Typora 主题文件，所见即所爱。</p>
+          </article>
+
+          <article class="feature-card animate-on-scroll">
+            <div class="feature-icon" style="--icon-bg: #ecfeff; --icon-color: #06b6d4;">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="23 4 23 10 17 10"/><polyline points="1 20 1 14 7 14"/><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"/></svg>
+            </div>
+            <h3 class="feature-title" data-i18n="features.f8Title">自动更新</h3>
+            <p class="feature-desc" data-i18n="features.f8Desc">基于 GitHub Releases 自动检测与安装，永远用上最新版本。</p>
+          </article>
+
+          <article class="feature-card animate-on-scroll">
+            <div class="feature-icon" style="--icon-bg: #f0f9ff; --icon-color: #3b82f6;">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 3a3 3 0 0 0-3 3v12a3 3 0 0 0 3 3 3 3 0 0 0 3-3 3 3 0 0 0-3-3H6a3 3 0 0 0-3 3 3 3 0 0 0 3 3 3 3 0 0 0 3-3V6a3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3h12a3 3 0 0 0 3-3 3 3 0 0 0-3-3z"/></svg>
+            </div>
+            <h3 class="feature-title" data-i18n="features.f9Title">自定义快捷键</h3>
+            <p class="feature-desc" data-i18n="features.f9Desc">所有常用操作都可通过快捷键触发，按你的节奏工作。</p>
+          </article>
+
+          <article class="feature-card animate-on-scroll">
+            <div class="feature-icon" style="--icon-bg: #fefce8; --icon-color: #ca8a04;">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="18" x2="15" y2="18"/></svg>
+            </div>
+            <h3 class="feature-title" data-i18n="features.f10Title">大纲与统计</h3>
+            <p class="feature-desc" data-i18n="features.f10Desc">实时大纲面板跳转，字数统计、打字机模式，让长文写作井然有序。</p>
+          </article>
+
+          <article class="feature-card animate-on-scroll">
+            <div class="feature-icon" style="--icon-bg: #f1f5f9; --icon-color: #475569;">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="14 2 14 8 20 8"/><path d="M16 13H8M16 17H8M10 9H8"/><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/></svg>
+            </div>
+            <h3 class="feature-title" data-i18n="features.f11Title">数学公式</h3>
+            <p class="feature-desc" data-i18n="features.f11Desc">支持 KaTeX 与 MathJax 双引擎，学术写作同样优雅。</p>
+          </article>
+
+          <article class="feature-card animate-on-scroll">
+            <div class="feature-icon" style="--icon-bg: #fff7ed; --icon-color: #ea580c;">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="16 18 22 12 16 6"/><polyline points="8 6 2 12 8 18"/></svg>
+            </div>
+            <h3 class="feature-title" data-i18n="features.f12Title">代码高亮</h3>
+            <p class="feature-desc" data-i18n="features.f12Desc">多款高亮主题、行号显示，为开发者而生的写作体验。</p>
+          </article>
+        </div>
+      </div>
+    </section>
+
+    <!-- ====================== Themes ====================== -->
+    <section class="section section-alt" id="themes">
+      <div class="container">
+        <header class="section-header animate-on-scroll">
+          <h2 class="section-title" data-i18n="themes.title">4 款内置主题</h2>
+          <p class="section-subtitle" data-i18n="themes.subtitle">从清新薄荷到深沉稳重，匹配你的每一次心境。</p>
+        </header>
+
+        <div class="themes-grid">
+          <article class="theme-card animate-on-scroll" data-theme="white">
+            <div class="theme-preview" style="--theme-bg: #ffffff; --theme-fg: #1e293b; --theme-accent: #2563eb; --theme-muted: #94a3b8; --theme-border: #e2e8f0;">
+              <div class="tp-titlebar light"><span class="tp-dot"></span><span class="tp-dot"></span><span class="tp-dot"></span></div>
+              <div class="tp-body">
+                <h4 class="tp-h1">White</h4>
+                <p class="tp-p"><span class="tp-accent">#</span> 经典纯白主题</p>
+                <p class="tp-p"><span class="tp-accent">##</span> 简洁即美</p>
+                <span class="tp-tag" style="background: #2563eb; color: #ffffff;">亮色</span>
+              </div>
+            </div>
+            <h3 class="theme-name">White</h3>
+          </article>
+
+          <article class="theme-card animate-on-scroll" data-theme="mint">
+            <div class="theme-preview theme-preview-mint" style="--theme-bg: #ffffff; --theme-fg: #1e293b; --theme-accent: #4eb289; --theme-muted: #94a3b8; --theme-border: #d9ede5;">
+              <div class="tp-titlebar light"><span class="tp-dot"></span><span class="tp-dot"></span><span class="tp-dot"></span></div>
+              <div class="tp-body">
+                <h4 class="tp-h1">Mint</h4>
+                <p class="tp-p"><span class="tp-accent">#</span> 默认薄荷主题</p>
+                <p class="tp-p"><span class="tp-accent">##</span> 清新的小确幸</p>
+                <span class="tp-tag" style="background: #4eb289; color: #ffffff;">默认</span>
+              </div>
+            </div>
+            <h3 class="theme-name">Mint</h3>
+          </article>
+
+          <article class="theme-card animate-on-scroll" data-theme="mint-dark">
+            <div class="theme-preview" style="--theme-bg: #272729; --theme-fg: #cccccc; --theme-accent: #4eb289; --theme-muted: #717171; --theme-border: #39393b;">
+              <div class="tp-titlebar"><span class="tp-dot"></span><span class="tp-dot"></span><span class="tp-dot"></span></div>
+              <div class="tp-body">
+                <h4 class="tp-h1">Mint Dark</h4>
+                <p class="tp-p"><span class="tp-accent">#</span> 暗色薄荷主题</p>
+                <p class="tp-p"><span class="tp-accent">##</span> 静谧而专注</p>
+                <span class="tp-tag" style="background: #4eb289; color: #272729;">暗色</span>
+              </div>
+            </div>
+            <h3 class="theme-name">Mint Dark</h3>
+          </article>
+
+          <article class="theme-card animate-on-scroll" data-theme="liquid">
+            <div class="theme-preview theme-preview-liquid" style="--theme-bg: rgba(255,255,255,0.82); --theme-fg: #1d1d1f; --theme-accent: #007AFF; --theme-muted: #86868b; --theme-border: rgba(0,0,0,0.08);">
+              <div class="tp-titlebar light"><span class="tp-dot"></span><span class="tp-dot"></span><span class="tp-dot"></span></div>
+              <div class="tp-body">
+                <h4 class="tp-h1">Liquid Glass</h4>
+                <p class="tp-p"><span class="tp-accent">#</span> 苹果风毛玻璃</p>
+                <p class="tp-p"><span class="tp-accent">##</span> 优雅通透</p>
+                <span class="tp-tag" style="background: #007AFF; color: #ffffff;">亮色</span>
+              </div>
+            </div>
+            <h3 class="theme-name">Liquid Glass</h3>
+          </article>
+        </div>
+      </div>
+    </section>
+
+    <!-- ====================== Preview / Screenshots ====================== -->
+    <section class="section" id="preview">
+      <div class="container">
+        <header class="section-header animate-on-scroll">
+          <h2 class="section-title" data-i18n="preview.title">预览</h2>
+          <p class="section-subtitle" data-i18n="preview.subtitle">距离精美截图登场还有一点点时间，敬请期待。</p>
+        </header>
+
+        <div class="preview-grid">
+          <div class="preview-placeholder animate-on-scroll">
+            <svg viewBox="0 0 400 225" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+              <rect x="2" y="2" width="396" height="221" rx="12" fill="none" stroke="#4eb289" stroke-width="2" stroke-dasharray="8 4" opacity="0.5"/>
+              <g transform="translate(200,112.5)" fill="#4eb289" opacity="0.7">
+                <path d="M-22 -10 a4 4 0 0 1 4-4 h36 a4 4 0 0 1 4 4 v18 a4 4 0 0 1 -4 4 h-36 a4 4 0 0 1 -4 -4 z M-12 -4 h12 v12 h-12 z M-8 -22 h16 v8 h-16 z" stroke="currentColor" stroke-width="1.5" fill="none"/>
+              </g>
+            </svg>
+            <p class="preview-label" data-i18n="preview.p1">编辑器主界面</p>
+          </div>
+
+          <div class="preview-placeholder animate-on-scroll">
+            <svg viewBox="0 0 400 225" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+              <rect x="2" y="2" width="396" height="221" rx="12" fill="none" stroke="#4eb289" stroke-width="2" stroke-dasharray="8 4" opacity="0.5"/>
+              <g transform="translate(200,112.5)" fill="#4eb289" opacity="0.7">
+                <circle cx="-12" cy="0" r="8" stroke="currentColor" stroke-width="1.5" fill="none"/>
+                <circle cx="0" cy="0" r="8" stroke="currentColor" stroke-width="1.5" fill="none"/>
+                <circle cx="12" cy="0" r="8" stroke="currentColor" stroke-width="1.5" fill="none"/>
+              </g>
+            </svg>
+            <p class="preview-label" data-i18n="preview.p2">主题切换</p>
+          </div>
+
+          <div class="preview-placeholder animate-on-scroll">
+            <svg viewBox="0 0 400 225" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+              <rect x="2" y="2" width="396" height="221" rx="12" fill="none" stroke="#4eb289" stroke-width="2" stroke-dasharray="8 4" opacity="0.5"/>
+              <g transform="translate(200,112.5)" fill="#4eb289" opacity="0.7">
+                <path d="M-16 8 h32 M-12 -4 h24 M-8 -16 h16" stroke="currentColor" stroke-width="2" stroke-linecap="round" fill="none"/>
+              </g>
+            </svg>
+            <p class="preview-label" data-i18n="preview.p3">仓库管理</p>
+          </div>
+        </div>
+
+        <p class="preview-note animate-on-scroll" data-i18n="preview.note">真实截图即将推出 · Real screenshots coming soon</p>
+      </div>
+    </section>
+
+    <!-- ====================== Roadmap ====================== -->
+    <section class="section section-alt" id="roadmap">
+      <div class="container">
+        <header class="section-header animate-on-scroll">
+          <h2 class="section-title" data-i18n="roadmap.title">即将推出</h2>
+          <p class="section-subtitle" data-i18n="roadmap.subtitle">这些特性正在路上，让 Tydora 一步步走向更完整的写作工具。</p>
+        </header>
+
+        <div class="roadmap-grid">
+          <article class="roadmap-card animate-on-scroll">
+            <span class="roadmap-badge" data-i18n="roadmap.badge">Coming Soon</span>
+            <div class="roadmap-icon">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/></svg>
+            </div>
+            <h3 class="roadmap-title" data-i18n="roadmap.r1Title">双链 / 维基链接</h3>
+            <p class="roadmap-desc" data-i18n="roadmap.r1Desc">支持 <code>[[笔记名]]</code> 语法、自动补全、反向链接面板与知识图谱，让笔记互联成网。</p>
+          </article>
+
+          <article class="roadmap-card animate-on-scroll">
+            <span class="roadmap-badge" data-i18n="roadmap.badge">Coming Soon</span>
+            <div class="roadmap-icon">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg>
+            </div>
+            <h3 class="roadmap-title" data-i18n="roadmap.r2Title">图片增强</h3>
+            <p class="roadmap-desc" data-i18n="roadmap.r2Desc">粘贴拖拽上传、图床 (SM.MS) 支持、多种存储模式、压缩裁剪与批量管理。</p>
+          </article>
+
+          <article class="roadmap-card animate-on-scroll">
+            <span class="roadmap-badge" data-i18n="roadmap.badge">Coming Soon</span>
+            <div class="roadmap-icon">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
+            </div>
+            <h3 class="roadmap-title" data-i18n="roadmap.r3Title">完整编辑器设置</h3>
+            <p class="roadmap-desc" data-i18n="roadmap.r3Desc">更细粒度的编辑器行为配置面板：字体、自动保存策略、快捷键深度定制等。</p>
+          </article>
+        </div>
+      </div>
+    </section>
+
+    <!-- ====================== Download ====================== -->
+    <section class="section" id="download">
+      <div class="container">
+        <header class="section-header animate-on-scroll">
+          <h2 class="section-title" data-i18n="download.title">下载</h2>
+          <p class="section-subtitle" data-i18n="download.subtitle">立即开始你的 Markdown 写作之旅。</p>
+        </header>
+
+        <div class="download-cards">
+          <article class="download-card primary animate-on-scroll">
+            <div class="dl-platform">
+              <svg width="32" height="32" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+                <path d="M0 3.449L9.75 2.1v9.451H0m10.949-9.602L24 0v11.4H10.949M0 12.6h9.75v9.451L0 20.699M10.949 12.6H24V24l-12.9-1.801"/>
+              </svg>
+              <span class="dl-name">Windows</span>
+              <span class="dl-tag" data-i18n="download.recommended">推荐</span>
+            </div>
+            <h3 class="dl-version">Tydora v0.1.0</h3>
+            <p class="dl-format" data-i18n="download.format">NSIS 安装包 · 64-bit</p>
+            <a class="btn btn-primary btn-large" href="https://github.com/zuorn/Tydora/releases" target="_blank" rel="noopener">
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+              <span data-i18n="download.cta">下载 Tydora</span>
+            </a>
+            <p class="dl-requirements" data-i18n="download.req">系统要求：Windows 10 或更高版本（推荐 Windows 11）</p>
+          </article>
+
+          <article class="download-card secondary animate-on-scroll">
+            <div class="dl-platform">
+              <svg width="32" height="32" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+                <path d="M18.71 19.5c-.83 1.24-1.71 2.45-3.05 2.47-1.34.03-1.77-.79-3.29-.79-1.53 0-2 .77-3.27.82-1.31.05-2.3-1.32-3.14-2.53C4.25 17 2.94 12.45 4.7 9.39c.87-1.52 2.43-2.48 4.12-2.51 1.28-.02 2.5.87 3.29.87.78 0 2.26-1.07 3.81-.91.65.03 2.47.26 3.64 1.98-.09.06-2.17 1.28-2.15 3.81.03 3.02 2.65 4.03 2.68 4.04-.03.07-.42 1.44-1.38 2.83M13 3.5c.73-.83 1.94-1.46 2.94-1.5.13 1.17-.34 2.35-1.04 3.19-.69.85-1.83 1.51-2.95 1.42-.15-1.15.41-2.35 1.05-3.11z"/>
+              </svg>
+              <span class="dl-name">macOS</span>
+              <span class="dl-tag dl-tag-soon" data-i18n="download.soon">即将推出</span>
+            </div>
+            <h3 class="dl-version" data-i18n="download.macTitle">计划中</h3>
+            <p class="dl-format" data-i18n="download.macFormat">macOS 构建正在筹备中</p>
+            <p class="dl-requirements" data-i18n="download.macNote">已在仓库准备 .icns 图标资源，关注 GitHub Releases 获取最新动态。</p>
+          </article>
+        </div>
+      </div>
+    </section>
+
+    <!-- ====================== FAQ ====================== -->
+    <section class="section section-alt" id="faq">
+      <div class="container">
+        <header class="section-header animate-on-scroll">
+          <h2 class="section-title" data-i18n="faq.title">常见问题</h2>
+          <p class="section-subtitle" data-i18n="faq.subtitle">关于 Tydora 你可能想知道的事。</p>
+        </header>
+
+        <div class="faq-list">
+          <details class="faq-item animate-on-scroll">
+            <summary>
+              <span data-i18n="faq.q1">Tydora 是免费的吗？</span>
+              <svg class="faq-icon" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="6 9 12 15 18 9"/></svg>
+            </summary>
+            <div class="faq-answer">
+              <p data-i18n="faq.a1">完全免费，且基于 MIT 协议开源。任何人都可以自由使用、修改并分发。</p>
+            </div>
+          </details>
+
+          <details class="faq-item animate-on-scroll">
+            <summary>
+              <span data-i18n="faq.q2">Tydora 与 Typora 是什么关系？</span>
+              <svg class="faq-icon" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="6 9 12 15 18 9"/></svg>
+            </summary>
+            <div class="faq-answer">
+              <p data-i18n="faq.a2">Tydora 是一个向 Typora 致敬的独立开源项目，并非官方分支或克隆。命名上保留了 "Ty" 与 "ora"，延续"指尖上的礼物"这一浪漫期许。</p>
+            </div>
+          </details>
+
+          <details class="faq-item animate-on-scroll">
+            <summary>
+              <span data-i18n="faq.q3">Tydora 支持哪些平台？</span>
+              <svg class="faq-icon" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="6 9 12 15 18 9"/></svg>
+            </summary>
+            <div class="faq-answer">
+              <p data-i18n="faq.a3">当前主要面向 Windows（NSIS 安装包）；macOS 构建正在筹备中，敬请期待。</p>
+            </div>
+          </details>
+
+          <details class="faq-item animate-on-scroll">
+            <summary>
+              <span data-i18n="faq.q4">可以导入 Typora 主题吗？</span>
+              <svg class="faq-icon" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="6 9 12 15 18 9"/></svg>
+            </summary>
+            <div class="faq-answer">
+              <p data-i18n="faq.a4">可以。Tydora 兼容 Typora 的主题 CSS 文件格式，在应用设置中导入即可生效。</p>
+            </div>
+          </details>
+
+          <details class="faq-item animate-on-scroll">
+            <summary>
+              <span data-i18n="faq.q5">如何参与贡献？</span>
+              <svg class="faq-icon" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="6 9 12 15 18 9"/></svg>
+            </summary>
+            <div class="faq-answer">
+              <p data-i18n="faq.a5">欢迎在 GitHub 上提交 Issue 报告问题，或 Fork 后发起 Pull Request。每一份贡献都让 Tydora 走得更远。</p>
+            </div>
+          </details>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <!-- ====================== Footer ====================== -->
+  <footer class="footer">
+    <div class="container footer-inner">
+      <div class="footer-brand">
+        <img src="./assets/images/icon-128.png" alt="Tydora" width="36" height="36" class="footer-logo" />
+        <div>
+          <div class="footer-name">Tydora</div>
+          <div class="footer-tagline" data-i18n="footer.tagline">指尖上的礼物</div>
+        </div>
+      </div>
+
+      <div class="footer-links">
+        <a href="https://github.com/zuorn/Tydora" target="_blank" rel="noopener" data-i18n="footer.github">GitHub</a>
+        <a href="https://github.com/zuorn/Tydora/releases" target="_blank" rel="noopener" data-i18n="footer.releases">Releases</a>
+        <a href="https://github.com/zuorn/Tydora/blob/main/LICENSE" target="_blank" rel="noopener" data-i18n="footer.license">License (MIT)</a>
+      </div>
+
+      <div class="footer-meta">
+        <p data-i18n="footer.stack">Built with Tauri · React · Vditor</p>
+        <p class="footer-copyright" data-i18n="footer.copyright">© 2025 Tydora. All rights reserved.</p>
+      </div>
+    </div>
+  </footer>
+
+  <script src="./script.js" defer></script>
+</body>
+</html>

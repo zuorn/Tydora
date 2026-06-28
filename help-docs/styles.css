@@ -264,8 +264,8 @@ code {
 .navbar-inner {
   display: flex;
   align-items: center;
-  justify-content: space-between;
   height: 100%;
+  gap: 0;
 }
 
 .brand {
@@ -293,6 +293,7 @@ code {
   display: flex;
   gap: 32px;
   align-items: center;
+  margin-left: 48px;
 }
 
 .nav-links a {
@@ -326,6 +327,7 @@ code {
   display: flex;
   align-items: center;
   gap: var(--space-md);
+  margin-left: auto;
 }
 
 .lang-toggle {

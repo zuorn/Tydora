@@ -13,6 +13,9 @@ const BLOCK_TAGS = new Set([
  * 找到所有包含 [[...]] 的文本节点并转换为链接元素
  */
 export function processWikiLinksInDOM(container: HTMLElement): void {
+  // 判断是否为 SV 模式（整个编辑器就是一个 pre）
+  const isSVMode = container.tagName === 'PRE' && container.classList.contains('vditor-sv');
+
   const walker = document.createTreeWalker(
     container,
     NodeFilter.SHOW_TEXT,
@@ -21,7 +24,12 @@ export function processWikiLinksInDOM(container: HTMLElement): void {
         // 跳过代码块和已经处理过的链接
         const parent = node.parentElement;
         if (!parent) return NodeFilter.FILTER_REJECT;
-        if (parent.closest('pre, code, .wiki-link, .wiki-embed, .vditor-toolbar, .wiki-link-pending')) {
+        if (parent.closest('code, .wiki-link, .wiki-embed, .vditor-toolbar, .wiki-link-pending')) {
+          return NodeFilter.FILTER_REJECT;
+        }
+        // 跳过代码块 pre，但允许 SV 模式的 pre.vditor-sv
+        const closestPre = parent.closest('pre');
+        if (closestPre && !closestPre.classList.contains('vditor-sv')) {
           return NodeFilter.FILTER_REJECT;
         }
         if (!node.textContent || !node.textContent.includes('[[')) {
@@ -42,8 +50,80 @@ export function processWikiLinksInDOM(container: HTMLElement): void {
     processTextNode(textNode);
   }
 
-  // 处理 IR 模式：[[...]] 可能被 Vditor 拆分到多个 DOM 节点中
-  processBlockLevelWikiLinks(container);
+  // 处理跨节点的 [[...]]（IR 和 SV 模式可能需要）
+  // SV 模式下容器自身就是 pre，没有子 block，需要直接处理
+  if (isSVMode) {
+    processCrossNodeWikiLinks(container);
+  } else {
+    processBlockLevelWikiLinks(container);
+  }
+}
+
+/**
+ * 在单个元素的所有文本节点中查找跨节点的 [[...]] 并着色
+ */
+function processCrossNodeWikiLinks(el: HTMLElement): void {
+  // 跳过已处理的块
+  if (el.querySelector('.wiki-link-pending')) return;
+  if (el.querySelector('a.wiki-link')) return;
+
+  // 必须包含 [[
+  if (!el.textContent || !el.textContent.includes('[[')) return;
+
+  // 收集所有文本节点及其起始偏移
+  const textNodes: { node: Text; start: number }[] = [];
+  let pos = 0;
+  const tw = document.createTreeWalker(el, NodeFilter.SHOW_TEXT);
+  let tn: Text | null;
+  while ((tn = tw.nextNode() as Text | null)) {
+    textNodes.push({ node: tn, start: pos });
+    pos += tn.textContent!.length;
+  }
+
+  // 匹配 [[...]]
+  const re = /\[\[([^\]]+)\]\]/g;
+  let m: RegExpExecArray | null;
+  const wraps: Range[] = [];
+
+  while ((m = re.exec(el.textContent!)) !== null) {
+    const matchStart = m.index;
+    const matchEnd = m.index + m[0].length;
+
+    const startInfo = textNodes.find(n => n.start + (n.node.textContent?.length || 0) > matchStart);
+    const endInfo = textNodes.find(n => n.start + (n.node.textContent?.length || 0) >= matchEnd);
+    if (!startInfo || !endInfo) continue;
+
+    try {
+      const r = document.createRange();
+      r.setStart(startInfo.node, Math.max(0, matchStart - startInfo.start));
+      r.setEnd(endInfo.node, Math.max(0, Math.min(matchEnd - endInfo.start, endInfo.node.textContent?.length || 0)));
+      wraps.push(r);
+    } catch {
+      // 忽略 Range 错误
+    }
+  }
+
+  // 从后往前替换，避免偏移量变化
+  for (let i = wraps.length - 1; i >= 0; i--) {
+    const range = wraps[i];
+    const text = range.toString();
+    const inner = text.slice(2, -2); // 去掉 [[ 和 ]]
+
+    const span = document.createElement('span');
+    span.className = 'wiki-link wiki-link-pending';
+    span.dataset.note = inner.split('#')[0].split('|')[0];
+    span.dataset.heading = inner.includes('#') ? inner.split('#')[1]?.split('|')[0] : '';
+    span.textContent = text;
+    // inline style 确保在 Vditor 主题下也能正确显示
+    span.style.color = 'var(--accent)';
+    span.style.background = 'rgba(var(--accent-rgb, 137, 180, 250), 0.15)';
+    span.style.padding = '1px 4px';
+    span.style.borderRadius = '3px';
+    span.style.cursor = 'pointer';
+
+    range.deleteContents();
+    range.insertNode(span);
+  }
 }
 
 /**
@@ -55,67 +135,7 @@ function processBlockLevelWikiLinks(container: HTMLElement): void {
   );
 
   for (const block of blocks) {
-    // 跳过已处理的块
-    if (block.querySelector('.wiki-link-pending')) continue;
-    // 跳过包含 <a.wiki-link> 的块（已由 processTextNode 处理）
-    if (block.querySelector('a.wiki-link')) continue;
-    // 跳过代码块
-    if (block.closest('pre, code')) continue;
-
-    const fullText = block.textContent || '';
-    if (!fullText.includes('[[')) continue;
-
-    // 收集所有文本节点及其起始偏移
-    const textNodes: { node: Text; start: number }[] = [];
-    let pos = 0;
-    const tw = document.createTreeWalker(block, NodeFilter.SHOW_TEXT);
-    let tn: Text | null;
-    while ((tn = tw.nextNode() as Text | null)) {
-      textNodes.push({ node: tn, start: pos });
-      pos += tn.textContent!.length;
-    }
-
-    // 匹配 [[...]]
-    const re = /\[\[([^\]]+)\]\]/g;
-    let m: RegExpExecArray | null;
-    const wraps: Range[] = [];
-
-    while ((m = re.exec(fullText)) !== null) {
-      const matchStart = m.index;
-      const matchEnd = m.index + m[0].length;
-
-      const startInfo = textNodes.find(n => n.start + (n.node.textContent?.length || 0) > matchStart);
-      const endInfo = textNodes.find(n => n.start + (n.node.textContent?.length || 0) >= matchEnd);
-      if (!startInfo || !endInfo) continue;
-
-      try {
-        const r = document.createRange();
-        r.setStart(startInfo.node, Math.max(0, matchStart - startInfo.start));
-        r.setEnd(endInfo.node, Math.max(0, Math.min(matchEnd - endInfo.start, endInfo.node.textContent?.length || 0)));
-        wraps.push(r);
-      } catch {
-        // 忽略 Range 错误
-      }
-    }
-
-    // 从后往前替换，避免偏移量变化
-    for (let i = wraps.length - 1; i >= 0; i--) {
-      const range = wraps[i];
-      const text = range.toString();
-      const inner = text.slice(2, -2); // 去掉 [[ 和 ]]
-
-      const span = document.createElement('span');
-      span.className = 'wiki-link wiki-link-pending';
-      span.dataset.note = inner.split('#')[0].split('|')[0];
-      span.dataset.heading = inner.includes('#') ? inner.split('#')[1]?.split('|')[0] : '';
-      span.textContent = text;
-      span.style.color = 'var(--accent)';
-      span.style.borderBottom = '1px dashed var(--accent)';
-      span.style.cursor = 'pointer';
-
-      range.deleteContents();
-      range.insertNode(span);
-    }
+    processCrossNodeWikiLinks(block);
   }
 }
 
@@ -205,6 +225,15 @@ function processTextNode(textNode: Text): void {
         link.dataset.note = noteName;
         link.dataset.heading = heading || '';
         link.textContent = display;
+        // inline style 确保在 Vditor 主题下也能正确显示
+        link.style.color = 'var(--accent)';
+        link.style.background = 'rgba(var(--accent-rgb, 137, 180, 250), 0.15)';
+        link.style.padding = '1px 4px';
+        link.style.borderRadius = '3px';
+        link.style.textDecoration = 'none';
+        link.style.cursor = 'pointer';
+        link.style.fontFamily = 'inherit';
+        link.style.fontSize = 'inherit';
         fragment.appendChild(link);
       }
       
@@ -246,7 +275,7 @@ function parseWikiLinkContent(content: string): {
  * 标记链接目标是否存在（设置 data-exists 属性）
  */
 export function markLinkExistence(container: HTMLElement, findFile: (name: string) => string | undefined): void {
-  container.querySelectorAll('a.wiki-link[data-note]').forEach(el => {
+  container.querySelectorAll('a.wiki-link[data-note], span.wiki-link-pending[data-note]').forEach(el => {
     const noteName = (el as HTMLElement).dataset.note;
     if (noteName) {
       (el as HTMLElement).dataset.exists = String(findFile(noteName) !== undefined);

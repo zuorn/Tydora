@@ -7,7 +7,6 @@ import { open } from "@tauri-apps/plugin-dialog";
 import { useTheme, type ThemeName } from "./themes";
 import { loadImageSettings, saveImageSettings, type ImageSettings, type StorageMode, type FilenameFormat } from "./ImageManager";
 import { checkForUpdate, downloadAndInstall, relaunchApp, type UpdateInfo } from "./Updater";
-import { getThemeDir, getUserThemes, type ThemeInfo } from "./ThemeManager";
 import "./Settings.css";
 
 // ── Types ────────────────────────────────────────────────────────────
@@ -89,7 +88,6 @@ interface GeneralSettings {
   fontSize: number;
   editorFont: string;
   autoSave: boolean;
-  themeResourceDir: string;
 }
 
 interface ShortcutItem {
@@ -106,7 +104,6 @@ const DEFAULT_GENERAL: GeneralSettings = {
   fontSize: 14,
   editorFont: "-apple-system, BlinkMacSystemFont, \"Segoe UI\", Roboto, \"Helvetica Neue\", Arial, sans-serif",
   autoSave: true,
-  themeResourceDir: "",
 };
 
 interface MindmapSettings {
@@ -150,7 +147,7 @@ const DEFAULT_SHORTCUTS: ShortcutItem[] = [
   { id: "bold", label: "加粗", keys: ["Ctrl", "B"], group: "格式" },
   { id: "italic", label: "斜体", keys: ["Ctrl", "I"], group: "格式" },
   { id: "strike", label: "删除线", keys: ["Ctrl", "D"], group: "格式" },
-  { id: "inline-code", label: "行内代码", keys: ["Ctrl", "G"], group: "格式" },
+  { id: "inline-code", label: "行内代码", keys: ["Ctrl", "H"], group: "格式" },
   { id: "code-block", label: "代码块", keys: ["Ctrl", "U"], group: "格式" },
   { id: "link", label: "超链接", keys: ["Ctrl", "K"], group: "格式" },
   { id: "quote", label: "引用", keys: ["Ctrl", ";"], group: "格式" },
@@ -226,36 +223,10 @@ export { DEFAULT_SHORTCUTS, DEFAULT_MINDMAP, DEFAULT_GRAPH };
 function GeneralSettingsContent({
   settings,
   onChange,
-  defaultThemeDir,
 }: {
   settings: GeneralSettings;
   onChange: (s: GeneralSettings) => void;
-  defaultThemeDir: string;
 }) {
-  const handleSelectThemeDir = async () => {
-    const selected = await open({ directory: true, multiple: false });
-    if (selected && typeof selected === "string") {
-      const oldDir = settings.themeResourceDir || defaultThemeDir;
-      if (oldDir && oldDir !== selected) {
-        await invoke("copy_themes", { fromDir: oldDir, toDir: selected });
-      }
-      onChange({ ...settings, themeResourceDir: selected });
-    }
-  };
-
-  const handleOpenThemeDir = async () => {
-    const dir = settings.themeResourceDir || defaultThemeDir;
-    if (dir) {
-      await invoke("open_directory", { dirPath: dir });
-    }
-  };
-
-  const handleResetThemeDir = () => {
-    onChange({ ...settings, themeResourceDir: "" });
-  };
-
-  const displayDir = settings.themeResourceDir || defaultThemeDir || "默认目录";
-
   return (
     <div className="settings-section">
       <h3 className="settings-section-title">外观</h3>
@@ -317,30 +288,6 @@ function GeneralSettingsContent({
           />
           <span className="settings-toggle-slider" />
         </label>
-      </div>
-
-      <h3 className="settings-section-title">主题资源</h3>
-      <div className="settings-item">
-        <label className="settings-item-label">主题目录</label>
-        <div className="settings-path-wrapper">
-          <input
-            type="text"
-            className="settings-input"
-            value={displayDir}
-            readOnly
-          />
-          <button className="settings-button" onClick={handleSelectThemeDir}>
-            更改
-          </button>
-          <button className="settings-button" onClick={handleOpenThemeDir}>
-            打开
-          </button>
-          {settings.themeResourceDir && (
-            <button className="settings-button" onClick={handleResetThemeDir}>
-              重置
-            </button>
-          )}
-        </div>
       </div>
     </div>
   );
@@ -562,50 +509,11 @@ function GraphSettingsContent({
 function ThemeSettingsContent({
   theme,
   setTheme,
-  generalSettings,
-  onChangeGeneral,
-  defaultThemeDir,
 }: {
   theme: ThemeName;
   setTheme: (t: ThemeName) => void;
-  generalSettings: GeneralSettings;
-  onChangeGeneral: (s: GeneralSettings) => void;
-  defaultThemeDir: string;
 }) {
-  const [userThemes, setUserThemes] = useState<ThemeInfo[]>([]);
-
-  const themeDir = generalSettings.themeResourceDir || defaultThemeDir;
-
-  useEffect(() => {
-    if (!themeDir) return;
-    getUserThemes(themeDir).then(setUserThemes).catch(() => {});
-  }, [themeDir]);
-
-  const handleSelectThemeDir = async () => {
-    const selected = await open({ directory: true, multiple: false });
-    if (selected && typeof selected === "string") {
-      const oldDir = generalSettings.themeResourceDir || defaultThemeDir;
-      if (oldDir && oldDir !== selected) {
-        await invoke("copy_themes", { fromDir: oldDir, toDir: selected });
-      }
-      onChangeGeneral({ ...generalSettings, themeResourceDir: selected });
-    }
-  };
-
-  const handleOpenThemeDir = async () => {
-    if (themeDir) {
-      await invoke("open_directory", { dirPath: themeDir });
-    }
-  };
-
-  const handleResetThemeDir = () => {
-    onChangeGeneral({ ...generalSettings, themeResourceDir: "" });
-  };
-
-  const displayDir = generalSettings.themeResourceDir || defaultThemeDir || "默认目录";
-
   const builtinThemes: { value: ThemeName; label: string }[] = [
-    { value: "catppuccin-mocha", label: "Catppuccin Mocha" },
     { value: "white", label: "白色" },
     { value: "mint", label: "Mint" },
     { value: "mint-dark", label: "Mint Dark" },
@@ -613,6 +521,7 @@ function ThemeSettingsContent({
     { value: "claude-code", label: "Claude Code" },
     { value: "purple", label: "Purple" },
     { value: "hermes", label: "Hermes" },
+    { value: "next", label: "NexT" },
   ];
 
   return (
@@ -637,56 +546,6 @@ function ThemeSettingsContent({
             <span className="settings-theme-name">{t.label}</span>
           </div>
         ))}
-      </div>
-
-      {userThemes.length > 0 && (
-        <>
-          <h3 className="settings-section-title">Typora 主题</h3>
-          <div className="settings-theme-grid">
-            {userThemes.map((t) => (
-              <div
-                key={t.name}
-                className={`settings-theme-card${theme === t.name ? " active" : ""}`}
-                onClick={() => setTheme(t.name)}
-              >
-                <div className="settings-theme-preview settings-theme-preview-typora">
-                  {theme === t.name && (
-                    <div className="settings-theme-check">
-                      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
-                        <path d="M20 6L9 17l-5-5" />
-                      </svg>
-                    </div>
-                  )}
-                </div>
-                <span className="settings-theme-name">{t.name}</span>
-              </div>
-            ))}
-          </div>
-        </>
-      )}
-
-      <h3 className="settings-section-title" style={{ marginTop: 16 }}>主题资源</h3>
-      <div className="settings-item">
-        <label className="settings-item-label">主题目录</label>
-        <div className="settings-path-wrapper">
-          <input
-            type="text"
-            className="settings-input"
-            value={displayDir}
-            readOnly
-          />
-          <button className="settings-button" onClick={handleSelectThemeDir}>
-            更改
-          </button>
-          <button className="settings-button" onClick={handleOpenThemeDir}>
-            打开
-          </button>
-          {generalSettings.themeResourceDir && (
-            <button className="settings-button" onClick={handleResetThemeDir}>
-              重置
-            </button>
-          )}
-        </div>
       </div>
     </div>
   );
@@ -1390,12 +1249,6 @@ export default function Settings() {
     return "general";
   });
   const { theme, setTheme } = useTheme();
-  const [defaultThemeDir, setDefaultThemeDir] = useState("");
-
-  // 获取默认主题目录
-  useEffect(() => {
-    getThemeDir().then(setDefaultThemeDir).catch(() => {});
-  }, []);
 
   // ── 窗口位置/大小记忆 ──
   const saveWindowStateRef = useRef<() => Promise<void>>(async () => {});
@@ -1610,16 +1463,10 @@ export default function Settings() {
         {/* 右侧内容 */}
         <main className="settings-main">
           {activeTab === "general" && (
-            <GeneralSettingsContent settings={generalSettings} onChange={setGeneralSettings} defaultThemeDir={defaultThemeDir} />
+            <GeneralSettingsContent settings={generalSettings} onChange={setGeneralSettings} />
           )}
           {activeTab === "theme" && (
-            <ThemeSettingsContent
-              theme={theme}
-              setTheme={setTheme}
-              generalSettings={generalSettings}
-              onChangeGeneral={setGeneralSettings}
-              defaultThemeDir={defaultThemeDir}
-            />
+            <ThemeSettingsContent theme={theme} setTheme={setTheme} />
           )}
           {activeTab === "shortcuts" && <ShortcutsSettingsContent />}
           {activeTab === "editor" && (

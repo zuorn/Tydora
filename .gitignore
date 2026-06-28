@@ -4,6 +4,9 @@
 .workbuddy/
 .mimocode/
 
+# 帮助文档
+site/
+
 
 # Dependencies
 node_modules/
@@ -48,3 +51,6 @@ npm-debug.log*
 vditor/
 wix314-binaries/
 check_nodes.mjs
+
+# MkDocs build output
+site/

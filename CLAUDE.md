@@ -40,7 +40,7 @@ npm run tauri
 
 **入口**: `main.tsx` → 用 `ThemeProvider` 包裹整个应用，挂载到 `#root`。
 
-**主题系统**: `themes.tsx` 提供 `ThemeContext`，支持 4 种主题（`catppuccin-mocha`、`white`、`mint`、`mint-dark`）。主题通过 `document.documentElement.dataset.theme` 设置，并在切换时同步更新 highlight.js 代码高亮样式。默认主题为 `mint`。
+**主题系统**: `themes.tsx` 提供 `ThemeContext`，支持 7 种主题（`white`、`mint`、`mint-dark`、`liquid-glass`、`claude-code`、`purple`、`hermes`）。主题通过 `document.documentElement.dataset.theme` 设置，并在切换时同步更新 highlight.js 代码高亮样式。默认主题为 `mint`。
 
 **App 组件** (`App.tsx`) — 应用状态中心：
 - 管理编辑器内容 (`content`)、当前文件路径 (`fileName`)、修改状态 (`modified`)、编辑模式 (`viewMode: "wysiwyg" | "sv"`)

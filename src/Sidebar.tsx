@@ -357,24 +357,58 @@ function showToast(message: string) {
 
 // ── SearchBox Component ─────────────────────────────────────────────
 
-function SearchBox({
-  vaultPath,
-  onSelectFile,
+function SearchBar({
+  query,
+  onQueryChange,
   onClose,
+  inputRef,
+}: {
+  query: string;
+  onQueryChange: (q: string) => void;
+  onClose: () => void;
+  inputRef?: React.RefObject<HTMLInputElement | null>;
+}) {
+  return (
+    <div className="sidebar-search-bar">
+      <input
+        ref={inputRef}
+        className="sidebar-search-input"
+        type="text"
+        placeholder="搜索文件内容..."
+        value={query}
+        onChange={(e) => onQueryChange(e.target.value)}
+        onKeyDown={(e) => {
+          if (e.key === "Escape") {
+            onQueryChange("");
+            onClose();
+          }
+        }}
+      />
+      {query && (
+        <button
+          className="sidebar-search-clear"
+          onClick={() => onQueryChange("")}
+          title="清除"
+        >
+          ✕
+        </button>
+      )}
+    </div>
+  );
+}
+
+function SearchResults({
+  vaultPath,
+  query,
+  onSelectFile,
 }: {
   vaultPath: string;
+  query: string;
   onSelectFile: (path: string, line?: number, query?: string) => void;
-  onClose: () => void;
 }) {
-  const [query, setQuery] = useState("");
   const [results, setResults] = useState<SearchResult[]>([]);
   const [searching, setSearching] = useState(false);
-  const inputRef = useRef<HTMLInputElement>(null);
   const signalRef = useRef({ cancelled: false });
-
-  useEffect(() => {
-    inputRef.current?.focus();
-  }, []);
 
   useEffect(() => {
     if (!query.trim()) {
@@ -409,57 +443,28 @@ function SearchBox({
   };
 
   return (
-    <div className="sidebar-search-tab">
-      <div className="sidebar-search-bar">
-        <input
-          ref={inputRef}
-          className="sidebar-search-input"
-          type="text"
-          placeholder="搜索文件内容..."
-          value={query}
-          onChange={(e) => setQuery(e.target.value)}
-          onKeyDown={(e) => {
-            if (e.key === "Escape") {
-              setQuery("");
-              onClose();
-            }
-          }}
-        />
-        {query && (
-          <button
-            className="sidebar-search-clear"
-            onClick={() => setQuery("")}
-            title="清除"
-          >
-            ✕
-          </button>
-        )}
-      </div>
-      {query.trim() && (
-        <div className="sidebar-search-results">
-          {searching && <div className="sidebar-search-status">搜索中...</div>}
-          {!searching && results.length === 0 && (
-            <div className="sidebar-search-status">未找到匹配结果</div>
-          )}
-          {!searching && results.map((r) => (
-            <div key={r.path} className="sidebar-search-result">
-              <div className="sidebar-search-result-name"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{verticalAlign: "-2px", marginRight: 4}}><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>{r.fileName}</div>
-              {r.matches.map((m, i) => (
-                <div
-                  key={i}
-                  className="sidebar-search-result-line"
-                  onClick={() => onSelectFile(r.path, m.line, query.trim())}
-                >
-                  <span className="sidebar-search-result-ln">{m.line}</span>
-                  <span className="sidebar-search-result-text">
-                    {highlight(m.content, query.trim())}
-                  </span>
-                </div>
-              ))}
+    <div className="sidebar-search-results">
+      {searching && <div className="sidebar-search-status">搜索中...</div>}
+      {!searching && results.length === 0 && (
+        <div className="sidebar-search-status">未找到匹配结果</div>
+      )}
+      {!searching && results.map((r) => (
+        <div key={r.path} className="sidebar-search-result">
+          <div className="sidebar-search-result-name"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{verticalAlign: "-2px", marginRight: 4}}><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>{r.fileName}</div>
+          {r.matches.map((m, i) => (
+            <div
+              key={i}
+              className="sidebar-search-result-line"
+              onClick={() => onSelectFile(r.path, m.line, query.trim())}
+            >
+              <span className="sidebar-search-result-ln">{m.line}</span>
+              <span className="sidebar-search-result-text">
+                {highlight(m.content, query.trim())}
+              </span>
             </div>
           ))}
         </div>
-      )}
+      ))}
     </div>
   );
 }
@@ -707,6 +712,7 @@ function FileTree({
   refreshKey,
   onNewWindow,
   onScrollToTop,
+  hidden,
 }: {
   rootPath: string;
   activePath: string | null;
@@ -714,6 +720,7 @@ function FileTree({
   refreshKey: number;
   onNewWindow: (filePath: string) => void;
   onScrollToTop?: () => void;
+  hidden?: boolean;
 }) {
   const [rootNodes, setRootNodes] = useState<TreeNode[]>([]);
   const [, forceUpdate] = useState(0);
@@ -919,7 +926,7 @@ function FileTree({
   }, [onScrollToTop]);
 
   return (
-    <div ref={treeRef} className="sidebar-tree" onContextMenu={handleBlankContextMenu} onScroll={handleScroll}>
+    <div ref={treeRef} className={`sidebar-tree${hidden ? " hidden" : ""}`} onContextMenu={handleBlankContextMenu} onScroll={handleScroll}>
       {rootNodes.length > 0 &&
         rootNodes.map((node) => (
           <TreeNodeComp
@@ -1198,6 +1205,7 @@ export default function Sidebar({
   const [isResizing, setIsResizing] = useState(false);
   const [activeTab, setActiveTab] = useState<"files" | "outline">("files");
   const [searchOpen, setSearchOpen] = useState(false);
+  const [searchQuery, setSearchQuery] = useState("");
 
   const handleSelectFile = useCallback(
     (path: string, line?: number, query?: string) => { onSelectFile(path, line, query); },
@@ -1206,6 +1214,7 @@ export default function Sidebar({
 
   const closeSearch = useCallback(() => {
     setSearchOpen(false);
+    setSearchQuery("");
   }, []);
 
   // Ctrl+Shift+F to toggle search
@@ -1297,7 +1306,7 @@ export default function Sidebar({
           </button>
           <button
             className={`sidebar-tab${activeTab === "outline" ? " active" : ""}`}
-            onClick={() => setActiveTab("outline")}
+            onClick={() => { if (searchOpen) { closeSearch(); } else { setActiveTab("outline"); } }}
           >
             {searchOpen ? "搜索" : "大纲"}
           </button>
@@ -1308,20 +1317,28 @@ export default function Sidebar({
         activeVault ? (
           <>
             {searchOpen && (
-              <SearchBox
-                vaultPath={activeVault.path}
-                onSelectFile={handleSelectFile}
+              <SearchBar
+                query={searchQuery}
+                onQueryChange={setSearchQuery}
                 onClose={closeSearch}
               />
             )}
-            <FileTree
-              rootPath={activeVault.path}
-              activePath={currentFilePath}
-              onSelect={handleSelectFile}
-              refreshKey={refreshKey}
-              onNewWindow={onNewWindow}
-              onScrollToTop={() => { setSearchOpen(true); }}
-            />
+            {searchOpen && searchQuery.trim() ? (
+              <SearchResults
+                vaultPath={activeVault.path}
+                query={searchQuery}
+                onSelectFile={handleSelectFile}
+              />
+            ) : (
+              <FileTree
+                rootPath={activeVault.path}
+                activePath={currentFilePath}
+                onSelect={handleSelectFile}
+                refreshKey={refreshKey}
+                onNewWindow={onNewWindow}
+                onScrollToTop={() => { setSearchOpen(true); }}
+              />
+            )}
           </>
         ) : (
           <div className="sidebar-tree">

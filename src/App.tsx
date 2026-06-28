@@ -13,7 +13,7 @@ import { useTheme } from "./themes";
 import { ConfirmDialog } from "./ConfirmDialog";
 import { emit, listen } from "@tauri-apps/api/event";
 import { loadImageSettings, type ImageSettings } from "./ImageManager";
-import { loadEditorSettings, type EditorSettings, EDITOR_SETTINGS_KEY } from "./Settings";
+import { loadEditorSettings, type EditorSettings, EDITOR_SETTINGS_KEY, SHORTCUTS_KEY } from "./Settings";
 import { checkForUpdate, downloadAndInstall, relaunchApp, type UpdateInfo } from "./Updater";
 import { LinkIndexService } from "./LinkIndexService";
 import { WikiLinkAutocomplete } from "./WikiLinkAutocomplete";
@@ -274,6 +274,7 @@ function App({ initialFilePath }: { initialFilePath?: string | null }) {
   // ── 窗口位置/大小记忆 ──
   const saveWindowStateRef = useRef<() => Promise<void>>(async () => {});
   useEffect(() => {
+    if (!(window as any).__TAURI_INTERNALS__) return;
     const win = getCurrentWindow();
 
     // 保存当前窗口状态到 localStorage
@@ -396,8 +397,10 @@ function App({ initialFilePath }: { initialFilePath?: string | null }) {
   // 用 ref 保存最新值，避免 Ctrl+S 回调频繁重建
   const contentRef = useRef(content);
   const fileNameRef = useRef(fileName);
+  const modifiedRef = useRef(modified);
   contentRef.current = content;
   fileNameRef.current = fileName;
+  modifiedRef.current = modified;
 
   const handleSave = useCallback(async () => {
     try {
@@ -735,6 +738,29 @@ function App({ initialFilePath }: { initialFilePath?: string | null }) {
     return () => window.removeEventListener("keydown", handler, { capture: true });
   }, []);
 
+  // 行内代码快捷键（从 localStorage 读取）
+  useEffect(() => {
+    const handler = (e: KeyboardEvent) => {
+      let shortcutKeys = ["Ctrl", "H"];
+      try {
+        const saved = localStorage.getItem(SHORTCUTS_KEY);
+        if (saved) {
+          const parsed = JSON.parse(saved);
+          const item = parsed.find((s: { id: string }) => s.id === "inline-code");
+          if (item) shortcutKeys = item.keys;
+        }
+      } catch {}
+      const key = shortcutKeys.join("+").toLowerCase();
+      const eventKey = `${e.ctrlKey || e.metaKey ? "ctrl+" : ""}${e.altKey ? "alt+" : ""}${e.shiftKey ? "shift+" : ""}${e.key.toLowerCase()}`;
+      if (eventKey === key) {
+        e.preventDefault();
+        editorHandleRef.current?.executeCommand("inline-code");
+      }
+    };
+    window.addEventListener("keydown", handler, { capture: true });
+    return () => window.removeEventListener("keydown", handler, { capture: true });
+  }, []);
+
   // Ctrl+M 打开思维导图
   useEffect(() => {
     const handler = (e: KeyboardEvent) => {
@@ -778,7 +804,7 @@ function App({ initialFilePath }: { initialFilePath?: string | null }) {
 
     window.addEventListener('wiki-link-click', handleWikiLinkClick);
     return () => window.removeEventListener('wiki-link-click', handleWikiLinkClick);
-  }, [activeVaultIndex, vaults]);
+  }, [activeVaultIndex, vaults, handleSelectFile]);
 
   // 监听其他窗口的打开文件请求（如关系图谱窗口点击节点）
   useEffect(() => {
@@ -842,7 +868,14 @@ function App({ initialFilePath }: { initialFilePath?: string | null }) {
     if (editorEl) {
       editorEl.dispatchEvent(new InputEvent('input', { bubbles: true }));
     }
-  }, []);
+
+    // 兜底：直接通过 editorHandle 获取内容并同步 React 状态
+    // 确保 content 和 modified 状态被更新，即使 InputEvent 未被 Vditor 正确处理
+    const val = editorHandleRef.current?.getValue();
+    if (val !== undefined) {
+      handleChange(val);
+    }
+  }, [handleChange]);
 
   const handleWikiAutocompleteClose = useCallback(() => {
     setWikiAutocompleteVisible(false);

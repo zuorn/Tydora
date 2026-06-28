@@ -1,21 +1,22 @@
-/* 链接样式 */
+/* 链接样式 - 类似行内代码的高亮效果 */
 .wiki-link {
   color: var(--accent);
   text-decoration: none;
-  border-bottom: 1px dashed var(--accent);
   cursor: pointer;
+  background: rgba(var(--accent-rgb, 137, 180, 250), 0.15);
+  padding: 1px 4px;
+  border-radius: 3px;
   transition: all 0.15s ease;
 }
 
 .wiki-link:hover {
-  background: rgba(var(--accent-rgb, 137, 180, 250), 0.1);
-  border-bottom-style: solid;
+  background: rgba(var(--accent-rgb, 137, 180, 250), 0.25);
 }
 
 /* 占位链接（目标笔记不存在） */
 .wiki-link[data-exists="false"] {
   color: var(--text-secondary);
-  border-bottom-color: var(--text-secondary);
+  background: transparent;
   opacity: 0.6;
 }
 
@@ -40,31 +41,37 @@
   text-align: right;
 }
 
-/* 覆盖 Vditor 主题的 !important 链接样式 */
+/* 覆盖 Vditor 主题的链接样式 */
 .vditor-ir .wiki-link,
 .vditor-wysiwyg .wiki-link,
 .vditor-sv .wiki-link,
 .vditor-ir .wiki-link-pending,
 .vditor-wysiwyg .wiki-link-pending,
+.vditor-sv .wiki-link-pending,
 .vditor-reset .wiki-link,
 .vditor-reset .wiki-link-pending,
 a.wiki-link,
 span.wiki-link-pending {
   color: var(--accent) !important;
-  border-bottom: 1px dashed var(--accent) !important;
-  background: rgba(var(--accent-rgb, 137, 180, 250), 0.08) !important;
+  background: rgba(var(--accent-rgb, 137, 180, 250), 0.15) !important;
   padding: 1px 4px !important;
   border-radius: 3px !important;
   cursor: pointer !important;
+  text-decoration: none !important;
+  border: none !important;
+  font-family: inherit !important;
+  font-size: inherit !important;
 }
 
 .vditor-ir .wiki-link[data-exists="false"],
 .vditor-wysiwyg .wiki-link[data-exists="false"],
+.vditor-sv .wiki-link[data-exists="false"],
+.vditor-sv .wiki-link-pending[data-exists="false"],
 .vditor-reset .wiki-link[data-exists="false"],
+.vditor-reset .wiki-link-pending[data-exists="false"],
 a.wiki-link[data-exists="false"],
 span.wiki-link-pending[data-exists="false"] {
   color: var(--text-secondary) !important;
-  border-bottom-color: var(--text-secondary) !important;
   background: transparent !important;
   opacity: 0.6;
 }

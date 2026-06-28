@@ -1,0 +1,110 @@
+site_name: Tydora 帮助文档
+site_description: Tydora - 现代化桌面 Markdown 编辑器
+site_url: https://tydora.github.io/tydora/
+
+docs_dir: help-docs
+site_dir: site
+
+hooks:
+  - hooks/wiki_links.py
+
+theme:
+  name: material
+  language: zh
+  custom_dir: overrides
+  palette:
+    - scheme: default
+      primary: teal
+      accent: teal
+      toggle:
+        icon: material/brightness-7
+        name: 切换到深色模式
+    - scheme: slate
+      primary: teal
+      accent: teal
+      toggle:
+        icon: material/brightness-4
+        name: 切换到浅色模式
+  features:
+    - navigation.instant
+    - navigation.tracking
+    - navigation.tabs
+    - navigation.sections
+    - navigation.expand
+    - navigation.top
+    - search.suggest
+    - search.highlight
+    - content.code.copy
+    - content.code.annotate
+  icon:
+    repo: fontawesome/brands/github
+
+extra_javascript:
+  - js/d3.min.js
+  - js/knowledge-graph.js
+
+extra_css:
+  - css/knowledge-graph.css
+
+plugins:
+  - search
+
+markdown_extensions:
+  - pymdownx.highlight:
+      anchor_linenums: true
+  - pymdownx.superfences
+  - pymdownx.tabbed:
+      alternate_style: true
+  - admonition
+  - pymdownx.details
+  - attr_list
+  - md_in_html
+  - toc:
+      permalink: true
+
+extra:
+  social:
+    - icon: fontawesome/brands/github
+      link: https://github.com/tydora/tydora
+
+nav:
+  - 首页: _index.md
+  - 快速开始: 快速开始.md
+  - 编辑器:
+    - 编辑模式: 编辑器/编辑模式.md
+    - 右键菜单: 编辑器/右键菜单.md
+    - 打字机模式: 编辑器/打字机模式.md
+    - Markdown 语法: 编辑器/Markdown语法.md
+    - 表格操作: 编辑器/表格操作.md
+    - 数学公式: 编辑器/数学公式.md
+    - 代码块: 编辑器/代码块.md
+  - 文件管理:
+    - 仓库: 文件管理/仓库.md
+    - 文件树: 文件管理/文件树.md
+    - 文件操作: 文件管理/文件操作.md
+    - 文件预览: 文件管理/文件预览.md
+  - 导航与搜索:
+    - 快速打开: 导航与搜索/快速打开.md
+    - 命令面板: 导航与搜索/命令面板.md
+    - 大纲面板: 导航与搜索/大纲面板.md
+  - 知识管理:
+    - Wiki 链接: 知识管理/Wiki链接.md
+    - 嵌入内容: 知识管理/嵌入内容.md
+    - 反向链接: 知识管理/反向链接.md
+    - 知识图谱: 知识管理/知识图谱.md
+    - 链接索引: 知识管理/链接索引.md
+  - 思维导图: 思维导图.md
+  - 主题:
+    - 内置主题: 主题/内置主题.md
+    - Typora 主题: 主题/Typora主题.md
+    - 代码高亮主题: 主题/代码高亮主题.md
+  - 设置:
+    - 通用设置: 设置/通用设置.md
+    - 编辑器设置: 设置/编辑器设置.md
+    - 快捷键设置: 设置/快捷键设置.md
+    - 思维导图设置: 设置/思维导图设置.md
+    - 图片设置: 设置/图片设置.md
+  - 其他:
+    - 快捷键速查: 快捷键速查.md
+    - 关于: 关于.md
+    - 双链图谱说: 双链图谱说.md

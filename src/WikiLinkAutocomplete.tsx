@@ -26,25 +26,30 @@ export function WikiLinkAutocomplete({ query, position, onSelect, onClose }: Wik
     const handleKeyDown = (e: KeyboardEvent) => {
       if (e.key === 'ArrowDown') {
         e.preventDefault();
+        e.stopPropagation();
         setSelectedIndex(i => Math.min(i + 1, suggestions.length - 1));
       } else if (e.key === 'ArrowUp') {
         e.preventDefault();
+        e.stopPropagation();
         setSelectedIndex(i => Math.max(i - 1, 0));
       } else if (e.key === 'Enter') {
         e.preventDefault();
+        e.stopPropagation();
         if (suggestions.length > 0 && suggestions[selectedIndex]) {
           onSelect(suggestions[selectedIndex].name);
         } else if (query.trim()) {
           onSelect(query.trim());
         }
       } else if (e.key === 'Escape') {
+        e.stopPropagation();
         onClose();
       }
     };
-    
-    document.addEventListener('keydown', handleKeyDown);
-    return () => document.removeEventListener('keydown', handleKeyDown);
-  }, [suggestions, selectedIndex, onSelect, onClose]);
+
+    // 捕获阶段拦截，在 Vditor 内部处理器之前阻止 Enter/Arrow 等按键
+    document.addEventListener('keydown', handleKeyDown, true);
+    return () => document.removeEventListener('keydown', handleKeyDown, true);
+  }, [suggestions, selectedIndex, onSelect, onClose, query]);
   
   if (!position) return null;
   

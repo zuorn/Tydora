@@ -649,28 +649,38 @@ const VditorEditor = forwardRef<VditorEditorHandle, VditorEditorProps>(
         clearHighlightMarks();
         if (!query) { pendingHighlightRef.current = null; return; }
         pendingHighlightRef.current = query;
-        const editorEl = elRef.current;
-        if (!editorEl) return;
-        const resetEl = editorEl.querySelector(".vditor-reset") as HTMLElement | null;
-        if (!resetEl) return;
-        // Try immediately, and retry after delays in case Vditor hasn't finished rendering
-        const tryHighlight = () => {
+
+        const tryApply = () => {
           const q = pendingHighlightRef.current;
-          if (!q) return;
+          if (!q) return false;
           const el = elRef.current;
-          if (!el) return;
+          if (!el) return false;
           const reset = el.querySelector(".vditor-reset") as HTMLElement | null;
-          if (!reset) return;
-          // Check if there's actual text content to highlight
-          if (reset.textContent && reset.textContent.includes(q)) {
-            clearHighlightMarks();
-            highlightInElement(reset, q);
-            pendingHighlightRef.current = null;
-          }
+          if (!reset || !reset.textContent?.includes(q)) return false;
+          clearHighlightMarks();
+          highlightInElement(reset, q);
+          pendingHighlightRef.current = null;
+          return true;
         };
-        tryHighlight();
-        setTimeout(tryHighlight, 200);
-        setTimeout(tryHighlight, 500);
+
+        // 立即尝试
+        if (tryApply()) return;
+
+        // MutationObserver 持续监听 Vditor DOM 变化，直到高亮成功或超时
+        const resetEl = elRef.current?.querySelector(".vditor-reset");
+        if (!resetEl) return;
+
+        let attempts = 0;
+        const maxAttempts = 10;
+        const observer = new MutationObserver(() => {
+          if (tryApply() || ++attempts >= maxAttempts) {
+            observer.disconnect();
+          }
+        });
+        observer.observe(resetEl, { childList: true, subtree: true, characterData: true });
+
+        // 安全超时：2 秒后强制断开
+        setTimeout(() => observer.disconnect(), 2000);
       },
       clearHighlight: () => {
         clearHighlightMarks();
@@ -901,7 +911,7 @@ const VditorEditor = forwardRef<VditorEditorHandle, VditorEditorProps>(
           icon: "ant",
           lang: "zh_CN",
           placeholder: "开始输入 Markdown... ✍️",
-          theme: theme === "white" || theme === "mint" || theme === "liquid-glass" || theme === "claude-code" || theme === "purple" || theme === "hermes" ? "classic" : "dark",
+          theme: theme === "white" || theme === "mint" || theme === "liquid-glass" || theme === "claude-code" || theme === "purple" || theme === "hermes" || theme === "next" ? "classic" : "dark",
           height: "100%",
           width: "100%",
           typewriterMode,
@@ -1089,18 +1099,29 @@ const VditorEditor = forwardRef<VditorEditorHandle, VditorEditorProps>(
             
             // 存储 observer 以便清理
             (vditor as any).__zmd_wiki_observer = observer;
+
+            // Vditor 渲染完成后，如果有待高亮的搜索 query，立即应用
+            const pendingQ = pendingHighlightRef.current;
+            if (pendingQ) {
+              pendingHighlightRef.current = null;
+              const resetEl = el.querySelector(".vditor-reset") as HTMLElement | null;
+              if (resetEl) {
+                clearHighlightMarks();
+                highlightInElement(resetEl, pendingQ);
+              }
+            }
           },
           // 禁用右侧预览分屏，WYSIWYG 本身就是所见即所得
           preview: {
             mode: "editor",
             maxWidth: es.previewMaxWidth,
             theme: {
-              current: theme === "white" || theme === "mint" || theme === "liquid-glass" || theme === "claude-code" || theme === "purple" || theme === "hermes" ? "light" : "dark",
+              current: theme === "white" || theme === "mint" || theme === "liquid-glass" || theme === "claude-code" || theme === "purple" || theme === "hermes" || theme === "next" ? "light" : "dark",
               path: "/vditor/dist/css/content-theme",
             },
             hljs: {
               style: es.codeTheme === "auto"
-                ? (theme === "white" || theme === "mint" || theme === "liquid-glass" || theme === "claude-code" || theme === "purple" || theme === "hermes" ? "atom-one-light" : "atom-one-dark")
+                ? (theme === "white" || theme === "mint" || theme === "liquid-glass" || theme === "claude-code" || theme === "purple" || theme === "hermes" || theme === "next" ? "atom-one-light" : "atom-one-dark")
                 : es.codeTheme,
               enable: true,
               lineNumber: es.codeLineNumber,
@@ -1536,9 +1557,9 @@ const VditorEditor = forwardRef<VditorEditorHandle, VditorEditorProps>(
       const vditor = vditorRef.current;
       if (!vditor || status !== "ready") return;
 
-      const editorTheme = theme === "white" || theme === "mint" || theme === "liquid-glass" || theme === "claude-code" || theme === "purple" || theme === "hermes" ? "classic" : "dark";
-      const contentTheme = theme === "white" || theme === "mint" || theme === "liquid-glass" || theme === "claude-code" || theme === "purple" || theme === "hermes" ? "light" : "dark";
-      const codeTheme = theme === "white" || theme === "mint" || theme === "liquid-glass" || theme === "claude-code" || theme === "purple" || theme === "hermes" ? "atom-one-light" : "atom-one-dark";
+      const editorTheme = theme === "white" || theme === "mint" || theme === "liquid-glass" || theme === "claude-code" || theme === "purple" || theme === "hermes" || theme === "next" ? "classic" : "dark";
+      const contentTheme = theme === "white" || theme === "mint" || theme === "liquid-glass" || theme === "claude-code" || theme === "purple" || theme === "hermes" || theme === "next" ? "light" : "dark";
+      const codeTheme = theme === "white" || theme === "mint" || theme === "liquid-glass" || theme === "claude-code" || theme === "purple" || theme === "hermes" || theme === "next" ? "atom-one-light" : "atom-one-dark";
 
       vditor.setTheme(editorTheme, contentTheme, codeTheme, "/vditor/dist/css/content-theme");
     }, [theme, status]); // 移除 mode，避免模式切换时重复调用

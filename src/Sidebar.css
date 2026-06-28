@@ -70,6 +70,10 @@
   padding: 0;
 }
 
+.sidebar-tree.hidden {
+  display: none;
+}
+
 .tree-empty {
   padding: 24px 16px;
   text-align: center;
@@ -718,20 +722,14 @@
   transform: translateX(-50%) translateY(0);
 }
 
-/* ── Search Tab ── */
-.sidebar-search-tab {
-  display: flex;
-  flex-direction: column;
-  flex-shrink: 0;
-  border-bottom: 1px solid var(--border);
-}
-
+/* ── Search ── */
 .sidebar-search-bar {
   display: flex;
   align-items: center;
   gap: 6px;
   padding: 8px 10px;
   border-bottom: 1px solid var(--border);
+  flex-shrink: 0;
 }
 
 .sidebar-search-input {
@@ -769,8 +767,9 @@
 }
 
 .sidebar-search-results {
-  overflow-y: auto;
   flex: 1;
+  overflow-y: auto;
+  min-height: 0;
 }
 
 .sidebar-search-status {
@@ -921,10 +920,6 @@
 }
 
 /* ── 搜索栏 ── */
-[data-theme="liquid-glass"] .sidebar-search-tab {
-  border-bottom: 1px solid rgba(255, 255, 255, 0.2);
-}
-
 [data-theme="liquid-glass"] .sidebar-search-bar {
   border-bottom: 1px solid rgba(255, 255, 255, 0.15);
 }

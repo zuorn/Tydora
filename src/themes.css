@@ -8,6 +8,7 @@
   --text-primary: #000000;
   --text-secondary: #a6adc8;
   --accent: #89b4fa;
+  --accent-rgb: 137, 180, 250;
   --accent-hover: #74c7ec;
   --border: #45475a;
   --danger: #f38ba8;
@@ -25,6 +26,7 @@
   --text-primary: #1e293b;
   --text-secondary: #64748b;
   --accent: #2563eb;
+  --accent-rgb: 37, 99, 235;
   --accent-hover: #1d4ed8;
   --border: #d1d9e6;
   --danger: #dc2626;
@@ -41,6 +43,7 @@
   --text-primary: #1e293b;
   --text-secondary: #6B6B6B;
   --accent: #4eb289;
+  --accent-rgb: 78, 178, 137;
   --accent-hover: #3a9e6e;
   --border: #d9ede5;
   --danger: #e06c75;
@@ -57,6 +60,7 @@
   --text-primary: #cccccc;
   --text-secondary: #818286;
   --accent: #4eb289;
+  --accent-rgb: 78, 178, 137;
   --accent-hover: #5fc99e;
   --border: #39393a;
   --danger: #e06c75;
@@ -73,6 +77,7 @@
   --text-primary: #1d1d1f;
   --text-secondary: #6e6e73;
   --accent: #007AFF;
+  --accent-rgb: 0, 122, 255;
   --accent-hover: #0056CC;
   --border: rgba(0, 0, 0, 0.08);
   --danger: #FF3B30;
@@ -96,6 +101,7 @@
   --text-primary: #1a1a1a;
   --text-secondary: #6b6560;
   --accent: #c47a2a;
+  --accent-rgb: 196, 122, 42;
   --accent-hover: #a86420;
   --border: #ddd6cc;
   --danger: #c94432;
@@ -113,6 +119,7 @@
   --text-primary: #1e1b2e;
   --text-secondary: #6b6580;
   --accent: #7c3aed;
+  --accent-rgb: 124, 58, 237;
   --accent-hover: #6d28d9;
   --border: #ddd6ee;
   --danger: #dc2626;
@@ -130,11 +137,30 @@
   --text-primary: #1a1a4e;
   --text-secondary: #5a5a8a;
   --accent: #0000f2;
+  --accent-rgb: 0, 0, 242;
   --accent-hover: #2020ff;
   --border: rgba(0, 0, 242, 0.12);
   --danger: #dc2626;
   --font-mono: "Cascadia Code", "JetBrains Mono", "Fira Code", "Consolas", monospace;
   --font-ui: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
   --editor-font: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+  --editor-font-size: 15px;
+}
+
+/* ── NexT 主题（浅色，Hexo NexT Pisces 风格） ── */
+[data-theme="next"] {
+  --bg-primary: #fffef8;
+  --bg-secondary: #f8f7f2;
+  --bg-surface: #f3f2ed;
+  --text-primary: #4a4a4a;
+  --text-secondary: #8a8a8a;
+  --accent: #00796b;
+  --accent-rgb: 0, 121, 107;
+  --accent-hover: #00695c;
+  --border: #e0ddd6;
+  --danger: #d32f2f;
+  --font-mono: Consolas, Menlo, monospace, "PingFang SC", "Microsoft YaHei";
+  --font-ui: "PingFang SC", "Microsoft YaHei", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+  --editor-font: "PingFang SC", "Microsoft YaHei", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
   --editor-font-size: 15px;
 }

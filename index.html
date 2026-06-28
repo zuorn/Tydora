@@ -6,15 +6,16 @@
       (function() {
         try {
           var theme = localStorage.getItem('zmd-theme');
-          if (!theme || ['catppuccin-mocha','white','mint','mint-dark'].indexOf(theme) === -1) {
-            theme = 'mint';
+          var builtins = ['white','mint','mint-dark','liquid-glass','claude-code','purple','hermes','next'];
+          if (theme && builtins.indexOf(theme) !== -1) {
+            document.documentElement.dataset.theme = theme;
           }
-          document.documentElement.dataset.theme = theme;
         } catch(e) {}
       })();
     </script>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <link rel="icon" type="image/png" href="/icon.png" />
     <title>zmd - Markdown Editor</title>
     <!-- 预加载 highlight.js：id 需匹配 Vditor 的 addScript 检查，避免动态加载 -->
     <script id="vditorHljsScript" src="/vditor/dist/js/highlight.js/highlight.min.js"></script>

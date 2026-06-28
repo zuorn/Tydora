@@ -1,0 +1,130 @@
+/* Knowledge Graph Styles - Based on Tydora's GraphView */
+
+#knowledge-graph {
+  width: 100%;
+  min-height: 300px;
+  max-height: 350px;
+  margin-bottom: 16px;
+  border: 1px solid var(--md-typeset-table-color, #e0e0e0);
+  border-radius: 8px;
+  overflow: hidden;
+  background: var(--md-default-bg-color, #fff);
+  position: relative;
+}
+
+[data-md-color-scheme="slate"] #knowledge-graph {
+  border-color: #424242;
+  background: #1e1e2e;
+}
+
+#knowledge-graph::before {
+  content: '知识图谱';
+  display: block;
+  padding: 8px 12px;
+  font-size: 12px;
+  font-weight: 600;
+  background: var(--md-accent-fg-color, #26a69a);
+  color: #fff;
+}
+
+#knowledge-graph svg {
+  display: block;
+  width: 100%;
+  background: var(--md-default-bg-color, #fff);
+}
+
+[data-md-color-scheme="slate"] #knowledge-graph svg {
+  background: #1e1e2e;
+}
+
+.kg-node {
+  cursor: pointer;
+}
+
+.kg-node circle {
+  transition: opacity 0.15s ease;
+}
+
+.kg-node text {
+  font-family: var(--md-text-font-family, -apple-system, BlinkMacSystemFont, sans-serif);
+  user-select: none;
+}
+
+.kg-links line {
+  stroke-linecap: round;
+}
+
+/* Tooltip */
+#kg-tooltip {
+  display: none;
+  position: fixed;
+  pointer-events: none;
+  background: var(--md-default-bg-color, #fff);
+  border: 1px solid var(--md-typeset-table-color, #e0e0e0);
+  border-radius: 8px;
+  padding: 8px 12px;
+  z-index: 10000;
+  max-width: 220px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
+}
+
+[data-md-color-scheme="slate"] #kg-tooltip {
+  background: #2a2a3e;
+  border-color: #45475a;
+}
+
+.kg-tooltip-name {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--md-typeset-color, #333);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+[data-md-color-scheme="slate"] .kg-tooltip-name {
+  color: #cdd6f4;
+}
+
+.kg-tooltip-meta {
+  font-size: 11px;
+  color: var(--md-typeset-color, #666);
+  margin-top: 2px;
+}
+
+[data-md-color-scheme="slate"] .kg-tooltip-meta {
+  color: #a6adc8;
+}
+
+/* Toggle */
+.kg-toggle {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 8px 12px;
+  cursor: pointer;
+  user-select: none;
+  font-size: 12px;
+  font-weight: 600;
+  background: var(--md-accent-fg-color, #26a69a);
+  color: #fff;
+}
+
+.kg-toggle:hover {
+  opacity: 0.9;
+}
+
+.kg-toggle-arrow {
+  transition: transform 0.2s;
+}
+
+.kg-toggle.collapsed .kg-toggle-arrow {
+  transform: rotate(-90deg);
+}
+
+@media (max-width: 768px) {
+  #knowledge-graph {
+    min-height: 200px;
+    max-height: 250px;
+  }
+}

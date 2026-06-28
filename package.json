@@ -8,7 +8,10 @@
     "dev": "npm run copy-vditor && vite",
     "build": "tsc && npm run copy-vditor && vite build",
     "preview": "vite preview",
-    "tauri": "tauri"
+    "tauri": "tauri",
+    "docs:build": "mkdocs build",
+    "docs:serve": "mkdocs serve",
+    "docs:clean": "rimraf site"
   },
   "dependencies": {
     "@tauri-apps/api": "^2.0.0",

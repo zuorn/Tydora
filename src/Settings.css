@@ -300,10 +300,6 @@
   overflow: hidden;
 }
 
-.settings-theme-preview[data-theme="catppuccin-mocha"] {
-  background: linear-gradient(135deg, #313244 0%, #1e1e2e 100%);
-}
-
 .settings-theme-preview[data-theme="white"] {
   background: linear-gradient(135deg, #ffffff 0%, #f4f4f5 100%);
 }
@@ -328,6 +324,10 @@
 
 .settings-theme-preview[data-theme="purple"] {
   background: linear-gradient(135deg, #faf5ff 0%, #f3e8ff 50%, #7c3aed 150%);
+}
+
+.settings-theme-preview[data-theme="next"] {
+  background: linear-gradient(135deg, #fffef8 0%, #f8f7f2 50%, #00796b 150%);
 }
 
 .settings-theme-check {

@@ -1,5 +1,2 @@
 [target.x86_64-pc-windows-msvc]
 linker = "rust-lld"
-
-[build]
-target = "x86_64-pc-windows-msvc"

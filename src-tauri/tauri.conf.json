@@ -28,9 +28,7 @@
   "bundle": {
     "active": true,
     "createUpdaterArtifacts": true,
-    "targets": [
-      "nsis"
-    ],
+    "targets": ["nsis", "dmg", "appimage"],
     "icon": [
       "icons/32x32.png",
       "icons/128x128.png",
@@ -39,11 +37,16 @@
       "icons/icon.ico"
     ],
     "windows": {
-      "wix": {
-        "language": "zh-CN"
-      },
       "nsis": {
         "displayLanguageSelector": true
+      }
+    },
+    "macOS": {
+      "minimumSystemVersion": "10.15"
+    },
+    "linux": {
+      "appimage": {
+        "bundleMediaFramework": true
       }
     }
   },

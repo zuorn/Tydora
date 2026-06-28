@@ -388,6 +388,10 @@ code {
   transform: translateY(-6px) rotate(-45deg);
 }
 
+.nav-overlay {
+  display: none;
+}
+
 /* ============= 7. Hero ============= */
 .hero {
   padding-top: calc(var(--navbar-height) + var(--space-4xl));
@@ -1285,6 +1289,23 @@ html[lang="zh-CN"] .hero-tagline {
 
   .hamburger {
     display: flex;
+  }
+
+  .nav-overlay {
+    display: block;
+    position: fixed;
+    inset: 0;
+    top: var(--navbar-height);
+    background: rgba(0, 0, 0, 0.3);
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity var(--transition);
+    z-index: 90;
+  }
+
+  .nav-overlay.visible {
+    opacity: 1;
+    pointer-events: auto;
   }
 
   /* Hero */

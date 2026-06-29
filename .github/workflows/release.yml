@@ -54,11 +54,11 @@ jobs:
         run: npm ci
 
       - name: Decode TAURI signing key
+        shell: bash
         run: |
-          DELIM=$(openssl rand -hex 16)
-          echo "TAURI_SIGNING_PRIVATE_KEY<<${DELIM}" >> $GITHUB_ENV
+          echo "TAURI_SIGNING_PRIVATE_KEY<<EOF_TYDORA_X7k9mP" >> $GITHUB_ENV
           echo "${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}" | base64 --decode >> $GITHUB_ENV
-          echo "${DELIM}" >> $GITHUB_ENV
+          echo "EOF_TYDORA_X7k9mP" >> $GITHUB_ENV
 
       - uses: tauri-apps/tauri-action@v0
         env:

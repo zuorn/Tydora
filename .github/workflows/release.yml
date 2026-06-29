@@ -55,9 +55,10 @@ jobs:
 
       - name: Decode TAURI signing key
         run: |
-          echo "TAURI_SIGNING_PRIVATE_KEY<<EOF" >> $GITHUB_ENV
+          DELIM=$(openssl rand -hex 16)
+          echo "TAURI_SIGNING_PRIVATE_KEY<<${DELIM}" >> $GITHUB_ENV
           echo "${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}" | base64 --decode >> $GITHUB_ENV
-          echo "EOF" >> $GITHUB_ENV
+          echo "${DELIM}" >> $GITHUB_ENV
 
       - uses: tauri-apps/tauri-action@v0
         env:

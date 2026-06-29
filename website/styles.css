@@ -381,34 +381,38 @@ code{font-family:var(--font-mono);font-size:.88em;background:var(--color-bg-alt)
   font-size:clamp(1.55rem,3vw,2.1rem);font-weight:800;letter-spacing:-.025em;
 }
 .dl-grid{
-  display:grid;grid-template-columns:1.4fr 1fr;gap:20px;max-width:800px;margin:0 auto;
+  display:grid;grid-template-columns:repeat(3,1fr);gap:18px;max-width:960px;margin:0 auto;
 }
 .dl-card{
-  padding:36px 32px;border-radius:var(--radius-lg);
+  padding:30px 26px;border-radius:var(--radius-lg);
   border:1px solid var(--color-border);transition:all .25s;
+  display:flex;flex-direction:column;
 }
 .dl-primary{
   background:linear-gradient(145deg,#fff 0%,var(--color-primary-light) 60%);
   border-color:var(--color-primary);box-shadow:var(--shadow-brand);
 }
-.dl-secondary{background:var(--color-bg-alt);opacity:.88}
+.dl-secondary{background:var(--color-bg-alt)}
 .dl-platform-row{
-  display:flex;align-items:center;gap:12px;margin-bottom:10px;
+  display:flex;align-items:center;gap:10px;margin-bottom:10px;
   color:var(--color-primary);
 }
-.dl-secondary .dl-platform-row{color:var(--color-text-muted)}
-.dl-platform-name{font-size:1.2rem;font-weight:700;color:var(--color-text)}
+.dl-primary .dl-platform-row{color:var(--color-primary)}
+.dl-secondary .dl-platform-row{color:var(--color-text-secondary)}
+.dl-platform-name{font-size:1.18rem;font-weight:700;color:var(--color-text)}
 .dl-recommended{
-  padding:3px 10px;background:var(--color-primary);color:#fff;
-  font-size:.68rem;font-weight:700;border-radius:var(--radius-full);
+  margin-left:auto;padding:3px 10px;background:var(--color-primary);color:#fff;
+  font-size:.66rem;font-weight:700;border-radius:var(--radius-full);
   letter-spacing:.04em;text-transform:uppercase;
 }
-.dl-soon{
-  padding:3px 10px;background:var(--color-text-muted);color:#fff;
-  font-size:.68rem;font-weight:600;border-radius:var(--radius-full);
+.dl-os-tag{
+  margin-left:auto;padding:3px 9px;background:rgba(15,23,42,.06);
+  color:var(--color-text-secondary);font-size:.66rem;font-weight:600;
+  border-radius:var(--radius-full);letter-spacing:.02em;
 }
-.dl-format{font-size:.88rem;color:var(--color-text-secondary);margin-bottom:20px}
-.dl-note{font-size:.8rem;color:var(--color-text-muted);margin-top:14px;line-height:1.5}
+.dl-format{font-size:.86rem;color:var(--color-text-secondary);margin-bottom:18px}
+.dl-note{font-size:.78rem;color:var(--color-text-muted);margin-top:12px;line-height:1.5}
+.dl-card .btn{margin-top:auto}
 
 /* ============= 13. FAQ ============= */
 .faq-section{padding:96px 0;background:var(--color-bg-alt)}

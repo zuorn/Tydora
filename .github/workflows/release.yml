@@ -56,9 +56,12 @@ jobs:
       - name: Decode TAURI signing key
         shell: bash
         run: |
-          echo "TAURI_SIGNING_PRIVATE_KEY<<EOF_TYDORA_X7k9mP" >> $GITHUB_ENV
-          echo "${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}" | base64 --decode >> $GITHUB_ENV
-          echo "EOF_TYDORA_X7k9mP" >> $GITHUB_ENV
+          {
+            echo "TAURI_SIGNING_PRIVATE_KEY<<EOF_TYDORA"
+            echo "${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}" | base64 --decode
+            echo ""
+            echo "EOF_TYDORA"
+          } >> $GITHUB_ENV
 
       - uses: tauri-apps/tauri-action@v0
         env:

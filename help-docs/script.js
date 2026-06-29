@@ -309,15 +309,21 @@
   function initMobileMenu() {
     const hamburger = $('#hamburger');
     const navLinks = $('.nav-links');
+    const overlay = $('#navOverlay');
     if (!hamburger || !navLinks) return;
 
     hamburger.addEventListener('click', () => {
       const isOpen = hamburger.classList.toggle('open');
       navLinks.classList.toggle('open', isOpen);
       hamburger.setAttribute('aria-expanded', String(isOpen));
+      if (overlay) overlay.classList.toggle('visible', isOpen);
+      document.body.style.overflow = isOpen ? 'hidden' : '';
     });
 
-    // Close menu when a nav link is clicked
+    if (overlay) {
+      overlay.addEventListener('click', closeMobileMenu);
+    }
+
     $$('.nav-links a').forEach(link => {
       link.addEventListener('click', () => closeMobileMenu());
     });
@@ -326,11 +332,14 @@
   function closeMobileMenu() {
     const hamburger = $('#hamburger');
     const navLinks = $('.nav-links');
+    const overlay = $('#navOverlay');
     if (hamburger) {
       hamburger.classList.remove('open');
       hamburger.setAttribute('aria-expanded', 'false');
     }
     if (navLinks) navLinks.classList.remove('open');
+    if (overlay) overlay.classList.remove('visible');
+    document.body.style.overflow = '';
   }
 
   /* ========== Navbar Shadow on Scroll ========== */

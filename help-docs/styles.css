@@ -264,6 +264,7 @@ code {
 .navbar-inner {
   display: flex;
   align-items: center;
+  justify-content: space-between;
   height: 100%;
   gap: 0;
 }
@@ -388,6 +389,10 @@ code {
 
 .hamburger.open span:nth-child(3) {
   transform: translateY(-6px) rotate(-45deg);
+}
+
+.nav-overlay {
+  display: none;
 }
 
 /* ============= 7. Hero ============= */
@@ -1238,6 +1243,14 @@ html[lang="zh-CN"] .hero-tagline {
     height: var(--navbar-height);
   }
 
+  .nav-links {
+    margin-left: 0;
+  }
+
+  .nav-actions {
+    margin-left: 0;
+  }
+
   .brand-name {
     font-size: 1rem;
   }
@@ -1287,6 +1300,23 @@ html[lang="zh-CN"] .hero-tagline {
 
   .hamburger {
     display: flex;
+  }
+
+  .nav-overlay {
+    display: block;
+    position: fixed;
+    inset: 0;
+    top: var(--navbar-height);
+    background: rgba(0, 0, 0, 0.3);
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity var(--transition);
+    z-index: 90;
+  }
+
+  .nav-overlay.visible {
+    opacity: 1;
+    pointer-events: auto;
   }
 
   /* Hero */

@@ -39,6 +39,9 @@ Thumbs.db
 .env.local
 .env.*.local
 
+# Tauri signing keys (private key must NOT be committed)
+src-tauri/*.key
+
 # Logs
 *.log
 npm-debug.log*

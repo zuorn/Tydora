@@ -8,7 +8,7 @@
     "dev": "npm run copy-vditor && vite",
     "build": "tsc && npm run copy-vditor && vite build",
     "preview": "vite preview",
-    "tauri": "tauri",
+    "tauri": "node scripts/run-tauri.mjs",
     "docs:build": "mkdocs build",
     "docs:serve": "mkdocs serve",
     "docs:clean": "rimraf site"

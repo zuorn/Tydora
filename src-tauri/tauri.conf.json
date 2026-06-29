@@ -52,7 +52,7 @@
   },
   "plugins": {
     "updater": {
-      "pubkey": "dW50cnVzdGVkIGNvbW1lbnQ6IG1pbmlzaWduIHB1YmxpYyBrZXk6IEZBREFFQjM3RkRCQUI2NzQKUldSMHRycjlOK3ZhK3ZzcmFjWFhnbkhpM2pzNGVIc1Q1NHFxcWZMb3RPeXdvRk5GMUxBQWZrTWQK",
+      "pubkey": "RWRTY0Iy0CGsBP3PQkaPZ7Zeh5GbLvxZ44+p9KbwuqQ45XJwNF4AABAAAAAAAAAAAAIAAAAA1cOp7+NpYKh7YJP6ZEhvtAE9oqjfPy4rWvrsxDuRt+kRqvflDKZSW9jIq4WVzd9x0YItaSU6m2GmWHZAtzSVchfXS96vyxG5bKdtAxAoituK1+5AV1PbVniksuAd9oWq+uygCddQH28=",
       "endpoints": [
         "https://github.com/zuorn/Tydora/releases/latest/download/latest.json"
       ],

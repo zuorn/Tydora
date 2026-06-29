@@ -1,5 +1,5 @@
 /* =================================================================
- * Tydora Official Website — Terax-inspired Redesign
+ * Tydora Official Website — Terax.app-inspired Redesign
  * Pure static CSS, no build step required.
  * ================================================================= */
 
@@ -110,6 +110,8 @@ code{font-family:var(--font-mono);font-size:.88em;background:var(--color-bg-alt)
 .nav-links a:hover{color:var(--color-text)}
 .nav-links a::after{content:'';position:absolute;bottom:-3px;left:0;width:0;height:2px;background:var(--color-primary);transition:width .25s}
 .nav-links a:hover::after{width:100%}
+.nav-links a.active-section{color:var(--color-text)}
+.nav-links a.active-section::after{width:100%}
 
 .nav-actions{display:flex;align-items:center;gap:12px}
 .lang-toggle{
@@ -129,7 +131,7 @@ code{font-family:var(--font-mono);font-size:.88em;background:var(--color-bg-alt)
 .hamburger.open span:nth-child(3){transform:translateY(-6px) rotate(-45deg)}
 .nav-overlay{display:none}
 
-/* ============= 7. Hero (Terax style) ============= */
+/* ============= 7. Hero ============= */
 .hero{
   padding-top:calc(var(--navbar-height) + 72px);
   padding-bottom:72px;position:relative;overflow:hidden;
@@ -171,7 +173,7 @@ code{font-family:var(--font-mono);font-size:.88em;background:var(--color-bg-alt)
 .meta-value{font-size:.85rem;font-weight:700;color:var(--color-text)}
 .meta-label{font-size:.7rem;color:var(--color-text-muted);text-transform:uppercase;letter-spacing:.04em}
 
-/* Hero app frame (faux macOS editor window) */
+/* Hero app frame */
 .hero-app-frame{
   width:100%;max-width:540px;background:#fff;
   border-radius:var(--radius-lg);box-shadow:var(--shadow-xl);
@@ -216,14 +218,8 @@ code{font-family:var(--font-mono);font-size:.88em;background:var(--color-bg-alt)
 .app-editor{
   padding:20px 24px;font-size:.8125rem;line-height:1.7;
 }
-.md-h1{
-  font-size:1.5rem;font-weight:700;color:var(--color-text);
-  margin-bottom:8px;
-}
-.md-h2{
-  font-size:1.0625rem;font-weight:700;color:var(--color-text);
-  margin:12px 0 6px;
-}
+.md-h1{font-size:1.5rem;font-weight:700;color:var(--color-text);margin-bottom:8px}
+.md-h2{font-size:1.0625rem;font-weight:700;color:var(--color-text);margin:12px 0 6px}
 .md-p{color:var(--color-text-secondary);margin-bottom:4px}
 .md-p strong{color:var(--color-primary-dark);font-weight:600}
 .md-ul{list-style:disc;padding-left:20px;color:var(--color-text-secondary)}
@@ -234,7 +230,7 @@ code{font-family:var(--font-mono);font-size:.88em;background:var(--color-bg-alt)
   font-style:italic;margin-top:10px;
 }
 
-/* ============= 8. Feature Sections (Numbered, Terax style) ============= */
+/* ============= 8. Feature Sections ============= */
 .feature-section{padding:96px 0;position:relative}
 .feature-section-alt{background:var(--color-bg-alt)}
 .feature-inner{display:grid;grid-template-columns:auto 1fr;gap:48px;align-items:start}
@@ -287,7 +283,7 @@ code{font-family:var(--font-mono);font-size:.88em;background:var(--color-bg-alt)
 
 /* ============= 9. Themes Row ============= */
 .themes-row{
-  display:grid;grid-template-columns:repeat(5,1fr);gap:16px;
+  display:grid;grid-template-columns:repeat(4,1fr);gap:16px;
   margin-top:28px;
 }
 .theme-swatch{cursor:pointer;transition:transform .25s}
@@ -504,7 +500,6 @@ code{font-family:var(--font-mono);font-size:.88em;background:var(--color-bg-alt)
   :root{--max-width:100%;--navbar-height:56px;font-size:15px}
   .container{padding:0 18px}
 
-  /* Mobile nav */
   .nav-links{
     position:fixed;top:var(--navbar-height);left:0;right:0;
     background:var(--color-bg);flex-direction:column;align-items:stretch;gap:0;
@@ -528,7 +523,6 @@ code{font-family:var(--font-mono);font-size:.88em;background:var(--color-bg-alt)
   }
   .nav-overlay.visible{opacity:1;pointer-events:auto}
 
-  /* Hero mobile */
   .hero{padding-top:calc(var(--navbar-height)+44px);padding-bottom:48px}
   .hero-title{font-size:2.1rem;letter-spacing:-.02em}
   .hero-overline{font-size:.72rem;margin-bottom:12px}
@@ -539,7 +533,6 @@ code{font-family:var(--font-mono);font-size:.88em;background:var(--color-bg-alt)
   .meta-card{padding:10px 6px}
   .meta-value{font-size:.78rem}
 
-  /* Features mobile */
   .feature-section{padding:64px 0}
   .feature-inner{grid-template-columns:1fr 1fr;gap:24px}
   .feature-number{font-size:2rem;width:42px}
@@ -548,11 +541,9 @@ code{font-family:var(--font-mono);font-size:.88em;background:var(--color-bg-alt)
   .feature-desc{font-size:.88rem}
   .feature-list li{font-size:.84rem}
 
-  /* Themes mobile */
   .themes-row{grid-template-columns:repeat(2,1fr);gap:12px}
   .theme-swatch:last-child{grid-column:1/-1;max-width:50%;margin:0 auto}
 
-  /* Toolkit mobile */
   .toolkit-section{padding:64px 0}
   .toolkit-header{margin-bottom:36px}
   .toolkit-grid{grid-template-columns:1fr;gap:14px}
@@ -560,26 +551,22 @@ code{font-family:var(--font-mono);font-size:.88em;background:var(--color-bg-alt)
   .tk-icon{width:40px;height:40px}
   .tk-icon svg{width:19px;height:19px}
 
-  /* Roadmap mobile */
   .roadmap-section{padding:64px 0}
   .roadmap-header{margin-bottom:32px}
   .roadmap-item{padding:24px 18px}
   .rm-badge{font-size:.62rem}
 
-  /* Download mobile */
   .download-section{padding:64px 0}
   .dl-header{margin-bottom:32px}
   .dl-card{padding:24px 20px}
   .dl-platform-name{font-size:1.05rem}
 
-  /* FAQ mobile */
   .faq-section{padding:64px 0}
   .faq-header{margin-bottom:28px}
   .faq-item summary{padding:16px 18px;font-size:.9rem}
   .faq-body{padding:0 18px 16px;font-size:.87rem}
   .faq-arrow{width:16px;height:16px}
 
-  /* Footer mobile */
   .footer{padding:32px 0}
   .footer-inner{flex-direction:column;gap:20px}
   .footer-links{gap:14px}

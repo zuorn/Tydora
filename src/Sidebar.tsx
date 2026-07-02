@@ -33,6 +33,7 @@ interface SidebarProps {
   onSwitchVault: (index: number) => void;
   onRemoveVault: (index: number) => void;
   onNewWindow: (filePath: string) => void;
+  onPublish: () => void;
   collapsed: boolean;
   refreshKey: number;
   width: number;
@@ -1023,12 +1024,14 @@ function VaultSwitcher({
   onSwitch,
   onNew,
   onRemove,
+  onPublish,
 }: {
   vaults: VaultInfo[];
   activeIndex: number;
   onSwitch: (index: number) => void;
   onNew: () => void;
   onRemove: (index: number) => void;
+  onPublish: () => void;
 }) {
   const [menuOpen, setMenuOpen] = useState(false);
   const [removeConfirmOpen, setRemoveConfirmOpen] = useState(false);
@@ -1165,6 +1168,22 @@ function VaultSwitcher({
             </svg>
             <span>打开新仓库</span>
           </div>
+          {activeIndex >= 0 && (
+            <div
+              className="vault-menu-item vault-menu-manage"
+              onClick={() => {
+                setMenuOpen(false);
+                onPublish();
+              }}
+            >
+              <svg className="vault-menu-icon" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M4 12v8a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-8" />
+                <polyline points="16 6 12 2 8 6" />
+                <line x1="12" y1="2" x2="12" y2="15" />
+              </svg>
+              <span>发布为网站</span>
+            </div>
+          )}
         </div>
       )}
 
@@ -1196,6 +1215,7 @@ export default function Sidebar({
   onSwitchVault,
   onRemoveVault,
   onNewWindow,
+  onPublish,
   collapsed,
   refreshKey,
   width,
@@ -1358,6 +1378,7 @@ export default function Sidebar({
         onSwitch={onSwitchVault}
         onNew={handleNewVault}
         onRemove={onRemoveVault}
+        onPublish={onPublish}
       />
 
       {!collapsed && (

@@ -1,0 +1,738 @@
+/* TipTap Editor Theme - 使用现有 CSS 变量 */
+
+.tiptap-editor {
+  height: 100%;
+  overflow-y: auto;
+}
+
+/* Source Editor with highlight.js */
+.source-editor-container {
+  position: relative;
+  height: 100%;
+  overflow: hidden;
+  display: flex;
+}
+
+.source-line-numbers {
+  width: 50px;
+  padding: 20px 0;
+  background: var(--bg-secondary, #f5f5f5);
+  border-right: 1px solid var(--border, #e0e0e0);
+  overflow: hidden;
+  user-select: none;
+  flex-shrink: 0;
+}
+
+.source-line-numbers .source-line-number {
+  padding: 0 10px 0 0;
+  text-align: right;
+  font-family: var(--editor-font, "JetBrains Mono", "Fira Code", "Consolas", monospace);
+  font-size: var(--editor-font-size, 14px);
+  line-height: 1.6;
+  color: var(--text-secondary, #999);
+}
+
+.source-highlight-layer {
+  position: absolute;
+  top: 0;
+  left: 50px;
+  right: 0;
+  bottom: 0;
+  padding: 20px;
+  font-family: var(--editor-font, "JetBrains Mono", "Fira Code", "Consolas", monospace);
+  font-size: var(--editor-font-size, 14px);
+  line-height: 1.6;
+  color: var(--text-primary, #333);
+  background: var(--bg-primary, #fff);
+  white-space: pre-wrap;
+  word-wrap: break-word;
+  overflow: auto;
+  pointer-events: none;
+  z-index: 1;
+}
+
+.source-textarea {
+  position: absolute;
+  top: 0;
+  left: 50px;
+  right: 0;
+  bottom: 0;
+  width: calc(100% - 50px);
+  height: 100%;
+  padding: 20px;
+  border: none;
+  outline: none;
+  resize: none;
+  font-family: var(--editor-font, "JetBrains Mono", "Fira Code", "Consolas", monospace);
+  font-size: var(--editor-font-size, 14px);
+  line-height: 1.6;
+  tab-size: 2;
+  color: transparent;
+  caret-color: var(--text-primary, #333);
+  background: transparent;
+  white-space: pre-wrap;
+  word-wrap: break-word;
+  overflow: auto;
+  z-index: 2;
+}
+
+.source-textarea::selection {
+  background: rgba(0, 122, 255, 0.3);
+}
+
+/* 行样式 */
+.source-line {
+  display: flex;
+}
+
+.source-line-content {
+  flex: 1;
+  white-space: pre-wrap;
+}
+
+/* highlight.js 主题覆盖 */
+.source-highlight-layer .hljs-keyword,
+.source-highlight-layer .hljs-selector-tag,
+.source-highlight-layer .hljs-type,
+.source-highlight-layer .hljs-literal,
+.source-highlight-layer .hljs-section,
+.source-highlight-layer .hljs-link {
+  color: var(--hljs-keyword, #d73a49);
+}
+
+.source-highlight-layer .hljs-function .hljs-keyword {
+  color: var(--hljs-keyword, #d73a49);
+}
+
+.source-highlight-layer .hljs-string,
+.source-highlight-layer .hljs-title,
+.source-highlight-layer .hljs-name,
+.source-highlight-layer .hljs-type,
+.source-highlight-layer .hljs-attribute,
+.source-highlight-layer .hljs-symbol,
+.source-highlight-layer .hljs-bullet,
+.source-highlight-layer .hljs-addition,
+.source-highlight-layer .hljs-variable,
+.source-highlight-layer .hljs-template-tag,
+.source-highlight-layer .hljs-template-variable {
+  color: var(--hljs-string, #032f62);
+}
+
+.source-highlight-layer .hljs-comment,
+.source-highlight-layer .hljs-quote,
+.source-highlight-layer .hljs-deletion,
+.source-highlight-layer .hljs-meta {
+  color: var(--hljs-comment, #6a737d);
+}
+
+.source-highlight-layer .hljs-number,
+.source-highlight-layer .hljs-regexp,
+.source-highlight-layer .hljs-literal,
+.source-highlight-layer .hljs-params {
+  color: var(--hljs-number, #005cc5);
+}
+
+.source-highlight-layer .hljs-built_in {
+  color: var(--hljs-built_in, #e36209);
+}
+
+.source-highlight-layer .hljs-emphasis {
+  font-style: italic;
+}
+
+.source-highlight-layer .hljs-strong {
+  font-weight: bold;
+}
+
+.tiptap-editor .tiptap {
+  background: var(--bg-primary);
+  color: var(--text-primary);
+  font-family: var(--editor-font, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif);
+  font-size: var(--editor-font-size, 16px);
+  line-height: 1.6;
+  padding: 2rem 3rem;
+  min-height: 100%;
+  outline: none;
+}
+
+/* 标题 */
+.tiptap-editor h1 { font-size: 2em; margin: 1em 0 0.5em; font-weight: 600; }
+.tiptap-editor h2 { font-size: 1.5em; margin: 1em 0 0.5em; font-weight: 600; }
+.tiptap-editor h3 { font-size: 1.25em; margin: 1em 0 0.5em; font-weight: 600; }
+.tiptap-editor h4 { font-size: 1.1em; margin: 1em 0 0.5em; font-weight: 600; }
+.tiptap-editor h5 { font-size: 1em; margin: 1em 0 0.5em; font-weight: 600; }
+.tiptap-editor h6 { font-size: 0.9em; margin: 1em 0 0.5em; font-weight: 600; }
+
+/* 段落 */
+.tiptap-editor p { margin: 0.5em 0; }
+
+/* 代码块 */
+.tiptap-editor pre {
+  background: var(--bg-code, #f5f5f5);
+  border-radius: 6px;
+  padding: 1em;
+  overflow-x: auto;
+  font-family: var(--editor-font, "Fira Code", "Consolas", monospace);
+  font-size: 0.9em;
+  line-height: 1.5;
+}
+
+.tiptap-editor pre code {
+  background: none;
+  padding: 0;
+  border-radius: 0;
+  font-size: inherit;
+}
+
+/* IR 模式代码块语法高亮 */
+.tiptap-editor .hljs-keyword,
+.tiptap-editor .hljs-selector-tag,
+.tiptap-editor .hljs-type,
+.tiptap-editor .hljs-literal,
+.tiptap-editor .hljs-section,
+.tiptap-editor .hljs-link {
+  color: var(--hljs-keyword, #d73a49);
+}
+.tiptap-editor .hljs-string,
+.tiptap-editor .hljs-title,
+.tiptap-editor .hljs-name,
+.tiptap-editor .hljs-attribute,
+.tiptap-editor .hljs-symbol,
+.tiptap-editor .hljs-bullet,
+.tiptap-editor .hljs-addition,
+.tiptap-editor .hljs-variable,
+.tiptap-editor .hljs-template-tag,
+.tiptap-editor .hljs-template-variable {
+  color: var(--hljs-string, #032f62);
+}
+.tiptap-editor .hljs-comment,
+.tiptap-editor .hljs-quote,
+.tiptap-editor .hljs-deletion,
+.tiptap-editor .hljs-meta {
+  color: var(--hljs-comment, #6a7781);
+}
+.tiptap-editor .hljs-number,
+.tiptap-editor .hljs-regexp,
+.tiptap-editor .hljs-params {
+  color: var(--hljs-number, #005cc5);
+}
+.tiptap-editor .hljs-built_in {
+  color: var(--hljs-built_in, #e36209);
+}
+
+/* 行内代码 */
+.tiptap-editor :not(pre) > code {
+  background: var(--bg-code-inline, rgba(0, 0, 0, 0.06));
+  padding: 0.2em 0.4em;
+  border-radius: 4px;
+  font-family: var(--editor-font, "Fira Code", "Consolas", monospace);
+  font-size: 0.9em;
+  color: var(--text-code, #e83e8c);
+}
+
+/* 引用 */
+.tiptap-editor blockquote {
+  border-left: 3px solid var(--border, #d9ede5);
+  padding-left: 1em;
+  margin: 1em 0;
+  color: var(--text-secondary, #666);
+}
+
+/* 列表 */
+.tiptap-editor ul, .tiptap-editor ol {
+  padding-left: 2em;
+  margin: 0.5em 0;
+}
+
+.tiptap-editor li { margin: 0.25em 0; }
+.tiptap-editor li > p { margin: 0; }
+
+/* 表格 */
+.tiptap-editor table {
+  border-collapse: collapse;
+  width: 100%;
+  margin: 1em 0;
+}
+
+.tiptap-editor th, .tiptap-editor td {
+  border: 1px solid var(--border, #d9ede5);
+  padding: 0.5em 0.75em;
+  text-align: left;
+}
+
+.tiptap-editor th {
+  background: var(--bg-secondary, #f5f5f5);
+  font-weight: 600;
+}
+
+/* 图片 */
+.tiptap-editor img {
+  max-width: 100%;
+  height: auto;
+  border-radius: 4px;
+  margin: 0.5em 0;
+  touch-action: manipulation;
+  -webkit-touch-callout: none;
+}
+
+/* 链接 */
+.tiptap-editor a {
+  color: var(--text-link, #0969da);
+  text-decoration: none;
+}
+
+.tiptap-editor a:hover {
+  text-decoration: underline;
+}
+
+/* 水平线 */
+.tiptap-editor hr {
+  border: none;
+  border-top: 1px solid var(--border, #d9ede5);
+  margin: 1.5em 0;
+}
+
+/* Wiki 链接 */
+.tiptap-editor .wiki-link {
+  color: var(--text-wiki-link, #0969da);
+  text-decoration: none;
+  border-bottom: 1px dashed var(--text-wiki-link, #0969da);
+  cursor: pointer;
+}
+
+.tiptap-editor .wiki-link:hover {
+  background: var(--bg-wiki-link-hover, rgba(9, 105, 218, 0.1));
+}
+
+/* 搜索高亮 */
+.tiptap-editor .search-highlight {
+  background: var(--bg-search-highlight, #fff3b0);
+  border-radius: 2px;
+}
+
+/* 占位符 */
+.tiptap-editor .tiptap p.is-editor-empty:first-child::before {
+  content: attr(data-placeholder);
+  color: var(--text-secondary, #999);
+  pointer-events: none;
+  float: left;
+  height: 0;
+}
+
+/* 任务列表 */
+.tiptap-editor ul[data-type="taskList"] {
+  list-style: none;
+  padding-left: 0;
+}
+
+.tiptap-editor ul[data-type="taskList"] li {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.5em;
+}
+
+.tiptap-editor ul[data-type="taskList"] li > label {
+  flex-shrink: 0;
+}
+
+/* 隐藏 TipTap 创建的 checkboxStyler span */
+.tiptap-editor ul[data-type="taskList"] li > label > span {
+  display: none;
+}
+
+.tiptap-editor ul[data-type="taskList"] li > label input[type="checkbox"] {
+  width: 16px;
+  height: 16px;
+  margin: 0;
+  cursor: pointer;
+  accent-color: var(--accent, #0969da);
+  vertical-align: middle;
+}
+
+.tiptap-editor ul[data-type="taskList"] li > div {
+  flex: 1;
+  min-width: 0;
+}
+
+/* 重置任务列表内段落的 margin，使文字与复选框对齐 */
+.tiptap-editor ul[data-type="taskList"] li > div > p:first-child {
+  margin-top: 0;
+  margin-bottom: 0;
+}
+
+.tiptap-editor ul[data-type="taskList"] li > div > p + p {
+  margin-top: 0.5em;
+}
+
+/* 嵌套任务列表 */
+.tiptap-editor ul[data-type="taskList"] ul[data-type="taskList"] {
+  margin: 0.25em 0;
+}
+
+.tiptap-editor ul[data-type="taskList"] li[data-checked="true"] > div > p {
+  text-decoration: line-through;
+  color: var(--text-secondary, #999);
+}
+
+/* 高亮 */
+.tiptap-editor mark {
+  background: var(--bg-highlight, #fff3b0);
+  padding: 0.1em 0.2em;
+  border-radius: 2px;
+}
+
+/* 代码块工具栏 */
+.code-block-toolbar-wrapper {
+  position: relative;
+  margin: 1em 0;
+  border-radius: 8px;
+  background: var(--bg-code, #f6f8fa);
+  border: 1px solid var(--border, #e0e0e0);
+  overflow: visible;
+}
+
+.code-block-toolbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 6px 12px;
+  background: var(--bg-secondary, #f0f0f0);
+  border-bottom: 1px solid var(--border, #e0e0e0);
+  border-radius: 7px 7px 0 0;
+}
+
+/* 语言选择器 */
+.code-block-lang-selector {
+  position: relative;
+}
+
+.code-block-lang-button {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding: 4px 10px;
+  background: var(--bg-primary, #fff);
+  border: 1px solid var(--border, #d0d0d0);
+  border-radius: 6px;
+  font-size: 12px;
+  font-family: var(--editor-font, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif);
+  color: var(--text-primary, #333);
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.code-block-lang-button:hover {
+  background: var(--bg-hover, #e8e8e8);
+  border-color: var(--text-secondary, #999);
+}
+
+.code-block-lang-dropdown {
+  position: absolute;
+  top: 100%;
+  left: 0;
+  margin-top: 4px;
+  min-width: 200px;
+  max-height: 300px;
+  background: var(--bg-primary, #fff);
+  border: 1px solid var(--border, #d0d0d0);
+  border-radius: 8px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+  z-index: 100;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+}
+
+.code-block-lang-search {
+  padding: 8px 12px;
+  border: none;
+  border-bottom: 1px solid var(--border, #e0e0e0);
+  font-size: 13px;
+  outline: none;
+  background: var(--bg-primary, #fff);
+  color: var(--text-primary, #333);
+}
+
+.code-block-lang-search::placeholder {
+  color: var(--text-secondary, #999);
+}
+
+.code-block-lang-list {
+  overflow-y: auto;
+  max-height: 250px;
+}
+
+.code-block-lang-item {
+  padding: 8px 12px;
+  font-size: 13px;
+  cursor: pointer;
+  transition: background 0.1s ease;
+  color: var(--text-primary, #333);
+}
+
+.code-block-lang-item:hover {
+  background: var(--bg-hover, #f0f0f0);
+}
+
+.code-block-lang-item.active {
+  background: var(--bg-active, #e3f2fd);
+  color: var(--text-link, #0969da);
+  font-weight: 500;
+}
+
+/* 操作按钮 */
+.code-block-actions {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.code-block-action-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  padding: 0;
+  background: transparent;
+  border: none;
+  border-radius: 6px;
+  color: var(--text-secondary, #666);
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.code-block-action-btn:hover {
+  background: var(--bg-hover, #e0e0e0);
+  color: var(--text-primary, #333);
+}
+
+.code-block-action-btn.toggle:hover {
+  background: #dbeafe;
+  color: #2563eb;
+}
+
+.code-block-action-btn.delete:hover {
+  background: #fee2e2;
+  color: #dc2626;
+}
+
+.code-block-action-btn.copy:hover {
+  background: #dbeafe;
+  color: #2563eb;
+}
+
+/* 代码内容 */
+.code-block-content {
+  margin: 0;
+  padding: 16px;
+  overflow-x: auto;
+  font-family: var(--editor-font, "Fira Code", "Consolas", monospace);
+  font-size: var(--editor-font-size, 14px);
+  line-height: 1.5;
+  border-radius: 0 0 7px 7px;
+  background: transparent;
+  border: none;
+}
+
+.code-block-content code {
+  background: transparent;
+  padding: 0;
+  border-radius: 0;
+  font-size: inherit;
+  color: inherit;
+}
+
+/* 折叠状态 */
+.code-block-toolbar-wrapper.collapsed .code-block-content {
+  max-height: 40px;
+  overflow: hidden;
+}
+
+/* 编辑器容器高度 */
+.editor-container {
+  height: 100%;
+  overflow: hidden;
+}
+
+.editor-container .tiptap-editor {
+  height: 100%;
+}
+
+/* 源码模式 */
+.source-mode-container {
+  display: flex;
+  flex: 1;
+  min-height: 0;
+  width: 100%;
+  height: 100%;
+  overflow: hidden;
+}
+
+.line-numbers {
+  flex-shrink: 0;
+  width: 50px;
+  padding: 20px 0;
+  background: var(--bg-secondary, #f5f5f5);
+  border-right: 1px solid var(--border, #e0e0e0);
+  overflow: hidden;
+  user-select: none;
+}
+
+.line-number {
+  padding: 0 10px 0 0;
+  text-align: right;
+  font-family: var(--editor-font, "JetBrains Mono", "Fira Code", "Cascadia Code", monospace);
+  font-size: var(--editor-font-size, 14px);
+  line-height: 1.7;
+  color: var(--text-secondary, #999);
+}
+
+/* 右键菜单 */
+.editor-context-menu {
+  position: fixed;
+  z-index: 9999;
+  min-width: 180px;
+  background: var(--bg-primary, #fff);
+  border: 1px solid var(--border, #e0e0e0);
+  border-radius: 8px;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.15);
+  padding: 6px;
+  font-size: 13px;
+}
+
+/* 图标行 */
+.context-menu-icon-row {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  padding: 4px 0;
+}
+
+.context-menu-icon-btn-wrapper {
+  position: relative;
+}
+
+.context-menu-icon-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  border: none;
+  background: none;
+  border-radius: 6px;
+  cursor: pointer;
+  color: var(--text-primary, #333);
+  transition: background 0.1s;
+}
+
+.context-menu-icon-btn:hover {
+  background: var(--bg-hover, #e8e8e8);
+}
+
+.context-menu-icon-btn svg {
+  width: 18px;
+  height: 18px;
+}
+
+/* 提示框 */
+.context-menu-icon-btn-wrapper {
+  position: relative;
+}
+
+.context-menu-icon-btn-wrapper::after {
+  content: attr(data-tooltip);
+  position: absolute;
+  bottom: 100%;
+  left: 50%;
+  transform: translateX(-50%);
+  margin-bottom: 6px;
+  padding: 5px 10px;
+  background: rgba(0, 0, 0, 0.8);
+  color: #fff;
+  font-size: 12px;
+  font-weight: 500;
+  border-radius: 4px;
+  white-space: nowrap;
+  pointer-events: none;
+  opacity: 0;
+  transition: opacity 0.15s;
+  z-index: 10001;
+  letter-spacing: 0.3px;
+}
+
+.context-menu-icon-btn-wrapper:hover::after {
+  opacity: 1;
+}
+
+.context-menu-item-wrapper {
+  position: relative;
+}
+
+.context-menu-item {
+  display: flex;
+  align-items: center;
+  width: 100%;
+  padding: 8px 12px;
+  border: none;
+  background: none;
+  cursor: pointer;
+  color: var(--text-primary, #333);
+  font-size: 13px;
+  text-align: left;
+  transition: background 0.1s;
+}
+
+.context-menu-item:hover {
+  background: var(--bg-hover, #e8e8e8);
+}
+
+.context-menu-icon {
+  width: 20px;
+  height: 20px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-right: 8px;
+  color: var(--text-secondary, #666);
+  flex-shrink: 0;
+}
+
+.context-menu-icon svg {
+  width: 16px;
+  height: 16px;
+}
+
+.context-menu-label {
+  flex: 1;
+}
+
+.context-menu-shortcut {
+  color: var(--text-secondary, #999);
+  font-size: 11px;
+  margin-left: 16px;
+}
+
+.context-menu-arrow {
+  margin-left: 8px;
+  font-size: 8px;
+  color: var(--text-secondary, #999);
+}
+
+.context-menu-divider {
+  height: 1px;
+  background: var(--border, #e0e0e0);
+  margin: 4px 0;
+}
+
+.context-menu-submenu {
+  position: fixed;
+  z-index: 10000;
+  min-width: 180px;
+  background: var(--bg-primary, #fff);
+  border: 1px solid var(--border, #e0e0e0);
+  border-radius: 8px;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.15);
+  padding: 4px 0;
+}

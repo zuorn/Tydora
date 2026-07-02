@@ -13,8 +13,8 @@ const BLOCK_TAGS = new Set([
  * 找到所有包含 [[...]] 的文本节点并转换为链接元素
  */
 export function processWikiLinksInDOM(container: HTMLElement): void {
-  // 判断是否为 SV 模式（整个编辑器就是一个 pre）
-  const isSVMode = container.tagName === 'PRE' && container.classList.contains('vditor-sv');
+  // 判断是否为源码模式（整个编辑器就是一个 pre）
+  const isSourceMode = container.tagName === 'PRE';
 
   const walker = document.createTreeWalker(
     container,
@@ -24,12 +24,12 @@ export function processWikiLinksInDOM(container: HTMLElement): void {
         // 跳过代码块和已经处理过的链接
         const parent = node.parentElement;
         if (!parent) return NodeFilter.FILTER_REJECT;
-        if (parent.closest('code, .wiki-link, .wiki-embed, .vditor-toolbar, .wiki-link-pending')) {
+        if (parent.closest('code, .wiki-link, .wiki-embed, .wiki-link-pending')) {
           return NodeFilter.FILTER_REJECT;
         }
-        // 跳过代码块 pre，但允许 SV 模式的 pre.vditor-sv
+        // 跳过代码块 pre
         const closestPre = parent.closest('pre');
-        if (closestPre && !closestPre.classList.contains('vditor-sv')) {
+        if (closestPre) {
           return NodeFilter.FILTER_REJECT;
         }
         if (!node.textContent || !node.textContent.includes('[[')) {
@@ -50,9 +50,9 @@ export function processWikiLinksInDOM(container: HTMLElement): void {
     processTextNode(textNode);
   }
 
-  // 处理跨节点的 [[...]]（IR 和 SV 模式可能需要）
-  // SV 模式下容器自身就是 pre，没有子 block，需要直接处理
-  if (isSVMode) {
+  // 处理跨节点的 [[...]]
+  // 源码模式下容器自身就是 pre，没有子 block，需要直接处理
+  if (isSourceMode) {
     processCrossNodeWikiLinks(container);
   } else {
     processBlockLevelWikiLinks(container);
@@ -114,7 +114,7 @@ function processCrossNodeWikiLinks(el: HTMLElement): void {
     span.dataset.note = inner.split('#')[0].split('|')[0];
     span.dataset.heading = inner.includes('#') ? inner.split('#')[1]?.split('|')[0] : '';
     span.textContent = text;
-    // inline style 确保在 Vditor 主题下也能正确显示
+    // inline style 确保在各种主题下也能正确显示
     span.style.color = 'var(--accent)';
     span.style.background = 'rgba(var(--accent-rgb, 137, 180, 250), 0.15)';
     span.style.padding = '1px 4px';
@@ -225,7 +225,7 @@ function processTextNode(textNode: Text): void {
         link.dataset.note = noteName;
         link.dataset.heading = heading || '';
         link.textContent = display;
-        // inline style 确保在 Vditor 主题下也能正确显示
+        // inline style 确保在各种主题下也能正确显示
         link.style.color = 'var(--accent)';
         link.style.background = 'rgba(var(--accent-rgb, 137, 180, 250), 0.15)';
         link.style.padding = '1px 4px';

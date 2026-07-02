@@ -46,7 +46,7 @@ export function WikiLinkAutocomplete({ query, position, onSelect, onClose }: Wik
       }
     };
 
-    // 捕获阶段拦截，在 Vditor 内部处理器之前阻止 Enter/Arrow 等按键
+    // 捕获阶段拦截，在编辑器内部处理器之前阻止 Enter/Arrow 等按键
     document.addEventListener('keydown', handleKeyDown, true);
     return () => document.removeEventListener('keydown', handleKeyDown, true);
   }, [suggestions, selectedIndex, onSelect, onClose, query]);

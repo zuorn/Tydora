@@ -4,7 +4,7 @@ import { LogicalSize, LogicalPosition } from "@tauri-apps/api/dpi";
 import { readTextFile, writeTextFile } from "@tauri-apps/plugin-fs";
 import { save } from "@tauri-apps/plugin-dialog";
 import { invoke } from "@tauri-apps/api/core";
-import VditorEditor, { VditorEditorHandle, MODE_LABELS, EditorMode } from "./VditorEditor";
+import { TipTapEditor as Editor, type EditorHandle, type EditorMode, MODE_LABELS } from "./Editor";
 import Sidebar, { VaultInfo } from "./Sidebar";
 import FilePreview from "./FilePreview";
 import QuickOpen from "./QuickOpen";
@@ -19,8 +19,8 @@ import { LinkIndexService } from "./LinkIndexService";
 import { WikiLinkAutocomplete } from "./WikiLinkAutocomplete";
 import { GraphView } from "./GraphView";
 import { useVaultWatcher } from "./useVaultWatcher";
+import PublishPanel from "./PublishPanel";
 import "./App.css";
-import "./vditor-theme.css";
 import "./FilePreview.css";
 import "./WikiLink.css";
 
@@ -181,6 +181,9 @@ function App({ initialFilePath }: { initialFilePath?: string | null }) {
   // 知识图谱状态
   const [graphViewOpen, setGraphViewOpen] = useState(false);
 
+  // 发布状态
+  const [publishOpen, setPublishOpen] = useState(false);
+
   // 更新状态
   const [updateInfo, setUpdateInfo] = useState<UpdateInfo | null>(null);
   const [updateDownloading, setUpdateDownloading] = useState(false);
@@ -260,7 +263,7 @@ function App({ initialFilePath }: { initialFilePath?: string | null }) {
       });
   }, []);
 
-  // 侧栏宽度变化后通知 Vditor 重新计算尺寸
+  // 侧栏宽度变化后通知编辑器重新计算尺寸
   const notifyResize = useCallback(() => {
     requestAnimationFrame(() => {
       editorHandleRef.current?.resize();
@@ -703,28 +706,24 @@ function App({ initialFilePath }: { initialFilePath?: string | null }) {
 
   // 模式循环切换（底部栏按钮用）
   const cycleMode = useCallback(() => {
-    setViewMode((prev) => {
-      if (prev === "ir") return "wysiwyg";
-      if (prev === "wysiwyg") return "sv";
-      return "ir";
-    });
+    setViewMode((prev) => (prev === "ir" ? "sv" : "ir"));
   }, []);
 
-  // Ctrl+/ 模式切换（wysiwyg ↔ sv）
-  const toggleWysiwygSv = useCallback(() => {
-    setViewMode((prev) => (prev === "wysiwyg" ? "sv" : "wysiwyg"));
+  // Ctrl+/ 模式切换（ir ↔ sv）
+  const toggleIrSv = useCallback(() => {
+    setViewMode((prev) => (prev === "ir" ? "sv" : "ir"));
   }, []);
 
   useEffect(() => {
     const handler = (e: KeyboardEvent) => {
       if ((e.ctrlKey || e.metaKey) && e.key === "/") {
         e.preventDefault();
-        toggleWysiwygSv();
+        toggleIrSv();
       }
     };
     window.addEventListener("keydown", handler);
     return () => window.removeEventListener("keydown", handler);
-  }, [toggleWysiwygSv]);
+  }, [toggleIrSv]);
 
   // Ctrl+T 插入表格
   useEffect(() => {
@@ -863,14 +862,8 @@ function App({ initialFilePath }: { initialFilePath?: string | null }) {
     sel.removeAllRanges();
     sel.addRange(range);
 
-    // 触发 input 事件让 Vditor 同步内容
-    const editorEl = document.querySelector('.vditor-wysiwyg, .vditor-ir, .vditor-sv');
-    if (editorEl) {
-      editorEl.dispatchEvent(new InputEvent('input', { bubbles: true }));
-    }
-
     // 兜底：直接通过 editorHandle 获取内容并同步 React 状态
-    // 确保 content 和 modified 状态被更新，即使 InputEvent 未被 Vditor 正确处理
+    // 确保 content 和 modified 状态被更新
     const val = editorHandleRef.current?.getValue();
     if (val !== undefined) {
       handleChange(val);
@@ -888,7 +881,7 @@ function App({ initialFilePath }: { initialFilePath?: string | null }) {
 
   // ── Refs ──
 
-  const editorHandleRef = useRef<VditorEditorHandle>(null);
+  const editorHandleRef = useRef<EditorHandle>(null);
   // 用于跟踪已加载文件的内容原文，避免把"打开新文件"误判为修改
   const savedContentRef = useRef<string>(initialContent);
   const pendingLineRef = useRef<number | null>(null);
@@ -916,11 +909,11 @@ function App({ initialFilePath }: { initialFilePath?: string | null }) {
       invoke("open_mindmap_window");
     }},
     { id: "open-graph", label: "打开知识图谱", category: "视图", action: () => setGraphViewOpen(true) },
+    { id: "publish", label: "发布为网站", category: "工具", action: () => setPublishOpen(true) },
 
     // 编辑模式
-    { id: "mode-wysiwyg", label: viewMode === "wysiwyg" ? "所见即所得模式 ✓" : "切换到所见即所得模式", category: "模式", aliases: ["wysiwyg", "所见即所得", "编辑模式"], action: () => setViewMode("wysiwyg") },
     { id: "mode-ir", label: viewMode === "ir" ? "即时渲染模式 ✓" : "切换到即时渲染模式", category: "模式", aliases: ["ir", "即时渲染", "编辑模式"], action: () => setViewMode("ir") },
-    { id: "mode-sv", label: viewMode === "sv" ? "分屏预览模式 ✓" : "切换到分屏预览模式", category: "模式", aliases: ["sv", "分屏预览", "源码", "source", "编辑模式"], action: () => setViewMode("sv") },
+    { id: "mode-sv", label: viewMode === "sv" ? "源码模式 ✓" : "切换到源码模式", category: "模式", aliases: ["sv", "源码", "source", "编辑模式"], action: () => setViewMode("sv") },
 
     // 格式化
     { id: "bold", label: "加粗", category: "格式", shortcut: "Ctrl+B", action: () => editorHandleRef.current?.executeCommand("bold") },
@@ -986,6 +979,7 @@ function App({ initialFilePath }: { initialFilePath?: string | null }) {
           onSwitchVault={handleSwitchVault}
           onRemoveVault={handleRemoveVault}
           onNewWindow={handleNewWindow}
+          onPublish={() => setPublishOpen(true)}
           collapsed={!sidebarOpen}
           refreshKey={treeRefreshKey}
           width={sidebarWidth}
@@ -1001,23 +995,23 @@ function App({ initialFilePath }: { initialFilePath?: string | null }) {
                 <svg width="18" height="18" viewBox="0 0 18 18" fill="none" xmlns="http://www.w3.org/2000/svg">
                   {sidebarOpen ? (
                     <>
-                      <path d="M4 5h10M4 9h10M4 13h10" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round"/>
-                      <path d="M2 9l3-2.5v5L2 9z" fill="currentColor"/>
+                      <rect x="1.5" y="1.5" width="15" height="15" rx="2" stroke="currentColor" strokeWidth="1.4" />
+                      <rect x="2.5" y="2.5" width="5" height="13" rx="1" fill="currentColor" opacity="0.25" />
+                      <line x1="7.5" y1="2.5" x2="7.5" y2="15.5" stroke="currentColor" strokeWidth="1.2" />
                     </>
                   ) : (
                     <>
-                      <path d="M4 5h10M4 9h10M4 13h10" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round"/>
-                      <path d="M16 9l-3-2.5v5L16 9z" fill="currentColor"/>
+                      <rect x="1.5" y="1.5" width="15" height="15" rx="2" stroke="currentColor" strokeWidth="1.4" />
+                      <line x1="7.5" y1="2.5" x2="7.5" y2="15.5" stroke="currentColor" strokeWidth="1.2" />
                     </>
                   )}
                 </svg>
               </button>
-              <span className="editor-file-name" title={fileName || "Tydora"}>
-                {fileName && <span className="editor-file-icon"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg></span>}
-                {title}
-                {modified && <span className="editor-modified-dot">●</span>}
-              </span>
             </div>
+            <span className="editor-file-name" title={fileName || "Tydora"}>
+              {title}
+              {modified && <span className="editor-modified-dot">●</span>}
+            </span>
             {updateInfo && !updateDownloading && (
               <button className="update-btn" onClick={handleUpdateDownload} title={`有新版本 v${updateInfo.version}`}>
                 <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
@@ -1088,7 +1082,7 @@ function App({ initialFilePath }: { initialFilePath?: string | null }) {
               />
             ) : (
               <EditorErrorBoundary>
-                <VditorEditor
+                <Editor
                   ref={editorHandleRef}
                   value={content}
                   onChange={handleChange}
@@ -1122,9 +1116,9 @@ function App({ initialFilePath }: { initialFilePath?: string | null }) {
           {/* 底部栏 */}
           <div className="editor-bottombar">
             <button
-              className="editor-mode-toggle"
+              className="editor-mode-toggle source-mode-toggle"
               onClick={cycleMode}
-              title={`当前: ${MODE_LABELS[viewMode]}，点击切换模式`}
+              title={`当前: ${MODE_LABELS[viewMode]}，点击切换模式 (Ctrl+/)`}
             >
               {MODE_LABELS[viewMode]}
             </button>
@@ -1197,6 +1191,14 @@ function App({ initialFilePath }: { initialFilePath?: string | null }) {
           vaultPath={activeVaultIndex >= 0 ? vaults[activeVaultIndex]?.path : null}
           onSelectNote={handleSelectFile}
           onClose={() => setGraphViewOpen(false)}
+        />
+      )}
+
+      {/* 发布面板 */}
+      {publishOpen && (
+        <PublishPanel
+          vaultPath={activeVaultIndex >= 0 ? vaults[activeVaultIndex]?.path : null}
+          onClose={() => setPublishOpen(false)}
         />
       )}
     </div>

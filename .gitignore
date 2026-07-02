@@ -5,7 +5,13 @@
 .mimocode/
 
 # 帮助文档
-site/
+website/site/
+
+website-new/node_modules/
+
+website-new/
+
+website/
 
 
 # Dependencies
@@ -56,4 +62,4 @@ wix314-binaries/
 check_nodes.mjs
 
 # MkDocs build output
-site/
+website/site/

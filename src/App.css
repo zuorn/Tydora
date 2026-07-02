@@ -219,6 +219,11 @@ body {
   color: var(--text-primary);
 }
 
+.editor-bottombar .source-mode-toggle {
+  font-family: monospace;
+  font-weight: 600;
+}
+
 .editor-bottombar .typewriter-indicator {
   background: none;
   border: none;
@@ -923,6 +928,9 @@ body {
 }
 
 .editor-file-name {
+  position: absolute;
+  left: 50%;
+  transform: translateX(-50%);
   display: flex;
   align-items: center;
   gap: 4px;
@@ -1027,21 +1035,14 @@ body {
   background: var(--bg-primary);
 }
 
-.typewriter-mode .vditor-editor-wrapper {
+.typewriter-mode .editor-wrapper {
   position: relative;
 }
 
-/* ========== Vditor 布局适配 ========== */
+/* ========== 编辑器布局适配 ========== */
 
-/* Vditor 填满编辑器面板 */
-.editor-panel .vditor {
-  width: 100%;
-  height: 100%;
-  border: none;
-  border-radius: 0;
-}
-
-.editor-panel .vditor-editor-wrapper {
+/* 编辑器填满面板 */
+.editor-panel .editor-wrapper {
   width: 100%;
   height: 100%;
 }

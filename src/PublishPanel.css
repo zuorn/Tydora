@@ -1,0 +1,194 @@
+/* src/PublishPanel.css */
+
+.publish-panel-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.5);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+}
+
+.publish-panel {
+  background: var(--bg-primary);
+  border-radius: 12px;
+  width: 420px;
+  max-height: 80vh;
+  overflow-y: auto;
+  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+}
+
+.publish-panel-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 16px 20px;
+  border-bottom: 1px solid var(--border);
+}
+
+.publish-panel-header h2 {
+  font-size: 16px;
+  font-weight: 600;
+  margin: 0;
+}
+
+.publish-panel-close {
+  background: none;
+  border: none;
+  font-size: 20px;
+  color: var(--text-secondary);
+  cursor: pointer;
+  padding: 4px 8px;
+  border-radius: 4px;
+}
+
+.publish-panel-close:hover {
+  background: var(--bg-secondary);
+}
+
+.publish-panel-body {
+  padding: 20px;
+}
+
+.publish-hint {
+  color: var(--text-secondary);
+  text-align: center;
+  padding: 20px;
+}
+
+.publish-description {
+  color: var(--text-secondary);
+  margin-bottom: 16px;
+  font-size: 14px;
+}
+
+.publish-actions {
+  text-align: center;
+}
+
+.publish-button {
+  padding: 8px 16px;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  background: var(--bg-primary);
+  color: var(--text-primary);
+  cursor: pointer;
+  font-size: 14px;
+  transition: all 0.15s;
+}
+
+.publish-button:hover {
+  background: var(--bg-secondary);
+}
+
+.publish-button.primary {
+  background: var(--accent);
+  color: white;
+  border-color: var(--accent);
+}
+
+.publish-button.primary:hover {
+  opacity: 0.9;
+}
+
+.publish-button:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.publish-progress {
+  margin-top: 8px;
+}
+
+.publish-progress-info {
+  display: flex;
+  justify-content: space-between;
+  margin-bottom: 8px;
+  font-size: 14px;
+}
+
+.publish-phase {
+  color: var(--text-primary);
+}
+
+.publish-count {
+  color: var(--text-secondary);
+}
+
+.publish-progress-bar {
+  height: 6px;
+  background: var(--bg-secondary);
+  border-radius: 3px;
+  overflow: hidden;
+}
+
+.publish-progress-fill {
+  height: 100%;
+  background: var(--accent);
+  border-radius: 3px;
+  transition: width 0.3s ease;
+}
+
+.publish-progress-fill.indeterminate {
+  width: 100%;
+  animation: indeterminate 1.5s infinite linear;
+}
+
+@keyframes indeterminate {
+  0% { transform: translateX(-100%); }
+  100% { transform: translateX(100%); }
+}
+
+.publish-current-file {
+  margin-top: 8px;
+  font-size: 12px;
+  color: var(--text-secondary);
+  text-align: center;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.publish-error {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  padding: 12px;
+  background: color-mix(in srgb, #dc2626 8%, var(--bg-primary));
+  border: 1px solid color-mix(in srgb, #dc2626 20%, transparent);
+  border-radius: 8px;
+  color: #dc2626;
+  font-size: 14px;
+  margin-bottom: 16px;
+}
+
+.publish-error-icon {
+  font-size: 16px;
+}
+
+.publish-success {
+  text-align: center;
+  padding: 12px;
+  background: color-mix(in srgb, #16a34a 8%, var(--bg-primary));
+  border: 1px solid color-mix(in srgb, #16a34a 20%, transparent);
+  border-radius: 8px;
+  color: #16a34a;
+  font-size: 14px;
+  margin-bottom: 16px;
+}
+
+.publish-success-icon {
+  font-size: 16px;
+  margin-right: 4px;
+}
+
+.publish-success-actions {
+  display: flex;
+  gap: 8px;
+  justify-content: center;
+  margin-top: 12px;
+}

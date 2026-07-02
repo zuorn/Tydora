@@ -7,17 +7,22 @@ import { open } from "@tauri-apps/plugin-dialog";
 import { useTheme, type ThemeName } from "./themes";
 import { loadImageSettings, saveImageSettings, type ImageSettings, type StorageMode, type FilenameFormat } from "./ImageManager";
 import { checkForUpdate, downloadAndInstall, relaunchApp, type UpdateInfo } from "./Updater";
+import PublishSettings from "./PublishSettings";
+import { parseCssVariables, extractPreviewColors, type ThemeVariable, type ThemeManifest } from "./CustomThemeManager";
+import { getCustomThemeCss } from "./CustomThemeManager";
+import { CODE_THEMES, type CustomCodeTheme } from "./codeThemes";
+import hljs from "highlight.js";
 import "./Settings.css";
 
 // ── Types ────────────────────────────────────────────────────────────
 
-type SettingsTab = "general" | "theme" | "shortcuts" | "editor" | "mindmap" | "graph" | "image" | "about";
+type SettingsTab = "general" | "theme" | "shortcuts" | "editor" | "mindmap" | "graph" | "image" | "publish" | "about";
 
 // ── Editor Settings ─────────────────────────────────────────────
 
 export interface EditorSettings {
   // 编辑模式
-  defaultMode: "wysiwyg" | "ir" | "sv";
+  defaultMode: "ir" | "sv";
   typewriterMode: boolean;
   // 编辑行为
   cache: boolean;
@@ -38,7 +43,6 @@ export interface EditorSettings {
   sub: boolean;
   // 代码高亮
   codeLineNumber: boolean;
-  codeTheme: "auto" | "github" | "atom-one-light" | "atom-one-dark" | "vs" | "nord" | "monokai" | "dracula" | "solarized-light" | "solarized-dark";
   // 预览
   previewMaxWidth: number;
   // 数学公式
@@ -66,7 +70,6 @@ export const DEFAULT_EDITOR_SETTINGS: EditorSettings = {
   sup: false,
   sub: false,
   codeLineNumber: false,
-  codeTheme: "auto",
   previewMaxWidth: 800,
   mathEngine: "KaTeX",
   linkOpenNewTab: true,
@@ -143,7 +146,7 @@ const DEFAULT_GRAPH: GraphSettings = {
 };
 
 const DEFAULT_SHORTCUTS: ShortcutItem[] = [
-  // Vditor 编辑器快捷键
+  // 编辑器快捷键
   { id: "bold", label: "加粗", keys: ["Ctrl", "B"], group: "格式" },
   { id: "italic", label: "斜体", keys: ["Ctrl", "I"], group: "格式" },
   { id: "strike", label: "删除线", keys: ["Ctrl", "D"], group: "格式" },
@@ -198,9 +201,8 @@ const DEFAULT_SHORTCUTS: ShortcutItem[] = [
   { id: "open-mindmap", label: "打开思维导图", keys: ["Ctrl", "M"], group: "视图" },
 
   // 编辑模式
-  { id: "mode-wysiwyg", label: "切换到所见即所得模式", keys: ["Ctrl", "Alt", "7"], group: "模式" },
-  { id: "mode-ir", label: "切换到即时渲染模式", keys: ["Ctrl", "Alt", "8"], group: "模式" },
-  { id: "mode-sv", label: "切换到分屏预览模式", keys: ["Ctrl", "Alt", "9"], group: "模式" },
+  { id: "mode-ir", label: "切换到即时渲染模式", keys: ["Ctrl", "Alt", "7"], group: "模式" },
+  { id: "mode-sv", label: "切换到源码模式", keys: ["Ctrl", "Alt", "8"], group: "模式" },
 
   // 系统
   { id: "escape", label: "关闭提示", keys: ["Escape"], group: "系统" },
@@ -513,6 +515,18 @@ function ThemeSettingsContent({
   theme: ThemeName;
   setTheme: (t: ThemeName) => void;
 }) {
+  const { customThemes, importTheme, deleteTheme, updateThemeVariables, codeTheme, setCodeTheme, customCodeThemes, importCodeTheme, deleteCodeTheme } = useTheme();
+  const [importing, setImporting] = useState(false);
+  const [editingTheme, setEditingTheme] = useState<ThemeManifest | null>(null);
+  const [editVariables, setEditVariables] = useState<ThemeVariable[]>([]);
+  const [editPreview, setEditPreview] = useState<{ bg: string; accent: string }>({ bg: "#ffffff", accent: "#4eb289" });
+  const [deleteConfirm, setDeleteConfirm] = useState<ThemeManifest | null>(null);
+  const [nameDialog, setNameDialog] = useState<{ open: boolean; filePath: string; defaultName: string }>({ open: false, filePath: "", defaultName: "" });
+  const [themeName, setThemeName] = useState("");
+
+  const [codeThemeName, setCodeThemeName] = useState("");
+  const [codeThemeDialog, setCodeThemeDialog] = useState<{ open: boolean; filePath: string }>({ open: false, filePath: "" });
+
   const builtinThemes: { value: ThemeName; label: string }[] = [
     { value: "white", label: "白色" },
     { value: "mint", label: "Mint" },
@@ -523,6 +537,188 @@ function ThemeSettingsContent({
     { value: "hermes", label: "Hermes" },
     { value: "next", label: "NexT" },
   ];
+
+  const handleImport = useCallback(async () => {
+    try {
+      const selected = await open({
+        filters: [{ name: "CSS", extensions: ["css"] }],
+        multiple: false,
+        title: "选择主题文件",
+      });
+      if (!selected || typeof selected !== "string") return;
+
+      // Extract filename without extension as default name
+      const fileName = selected.split(/[/\\]/).pop() || "自定义主题";
+      const defaultName = fileName.replace(/\.css$/i, "");
+
+      setNameDialog({ open: true, filePath: selected, defaultName });
+      setThemeName(defaultName);
+    } catch (err) {
+      console.error("导入主题失败:", err);
+    }
+  }, []);
+
+  const handleConfirmImport = useCallback(async () => {
+    if (!nameDialog.filePath) return;
+    const name = themeName.trim() || nameDialog.defaultName;
+    try {
+      setImporting(true);
+      await importTheme(nameDialog.filePath, name);
+      setNameDialog({ open: false, filePath: "", defaultName: "" });
+    } catch (err) {
+      console.error("导入主题失败:", err);
+      alert(`导入失败: ${err instanceof Error ? err.message : "未知错误"}`);
+    } finally {
+      setImporting(false);
+    }
+  }, [nameDialog, themeName, importTheme]);
+
+  const handleDelete = useCallback(async (manifest: ThemeManifest) => {
+    setDeleteConfirm(manifest);
+  }, []);
+
+  const handleConfirmDelete = useCallback(async () => {
+    if (!deleteConfirm) return;
+    await deleteTheme(deleteConfirm.id);
+    setDeleteConfirm(null);
+  }, [deleteConfirm, deleteTheme]);
+
+  const handleStartEdit = useCallback(async (manifest: ThemeManifest) => {
+    try {
+      const css = await getCustomThemeCss(manifest.id);
+      const variables = parseCssVariables(css);
+      const colors = extractPreviewColors(css);
+      setEditVariables(variables);
+      setEditPreview(colors);
+      setEditingTheme(manifest);
+    } catch (err) {
+      console.error("加载主题失败:", err);
+    }
+  }, []);
+
+  const handleVariableChange = useCallback((index: number, newValue: string) => {
+    setEditVariables((prev) => {
+      const next = [...prev];
+      next[index] = { ...next[index], value: newValue };
+      // Update preview colors
+      const bgVar = next.find((v) => v.name === "--bg-primary");
+      const accentVar = next.find((v) => v.name === "--accent");
+      setEditPreview({
+        bg: bgVar?.value || "#ffffff",
+        accent: accentVar?.value || "#4eb289",
+      });
+      return next;
+    });
+  }, []);
+
+  const handleSaveEdit = useCallback(async () => {
+    if (!editingTheme) return;
+    await updateThemeVariables(editingTheme.id, editVariables);
+    setEditingTheme(null);
+  }, [editingTheme, editVariables, updateThemeVariables]);
+
+  const handleCancelEdit = useCallback(() => {
+    setEditingTheme(null);
+  }, []);
+
+  const handleImportCodeTheme = useCallback(async () => {
+    const { open: openDialog } = await import("@tauri-apps/plugin-dialog");
+    const selected = await openDialog({
+      filters: [{ name: "CSS", extensions: ["css"] }],
+      multiple: false,
+      title: "选择代码主题文件",
+    });
+    if (!selected || typeof selected !== "string") return;
+    const fileName = selected.split(/[\\/]/).pop() || "自定义代码主题";
+    const defaultName = fileName.replace(/\.css$/i, "");
+    setCodeThemeName(defaultName);
+    setCodeThemeDialog({ open: true, filePath: selected });
+  }, []);
+
+  const handleConfirmImportCodeTheme = useCallback(async () => {
+    if (!codeThemeDialog.filePath) return;
+    const name = codeThemeName.trim() || "自定义代码主题";
+    try {
+      await importCodeTheme(codeThemeDialog.filePath, name);
+      setCodeThemeDialog({ open: false, filePath: "" });
+    } catch (err) {
+      console.error("导入代码主题失败:", err);
+    }
+  }, [codeThemeDialog, codeThemeName, importCodeTheme]);
+
+  const handleDeleteCodeTheme = useCallback(async (m: CustomCodeTheme) => {
+    if (confirm(`确定要删除代码主题 "${m.name}" 吗？`)) {
+      await deleteCodeTheme(m.id);
+    }
+  }, [deleteCodeTheme]);
+
+  // Editor view
+  if (editingTheme) {
+    return (
+      <div className="settings-section">
+        <div className="theme-editor-header">
+          <button className="theme-editor-back" onClick={handleCancelEdit}>
+            ← 返回
+          </button>
+          <h3 className="settings-section-title" style={{ marginTop: 0 }}>编辑主题: {editingTheme.name}</h3>
+          <div className="theme-editor-actions">
+            <button className="settings-button" onClick={handleSaveEdit}>保存</button>
+            <button className="settings-button theme-editor-cancel" onClick={handleCancelEdit}>取消</button>
+          </div>
+        </div>
+        <div className="theme-editor-preview" style={{ background: editPreview.bg, borderColor: editPreview.accent }}>
+          <div className="theme-editor-preview-text" style={{ color: editPreview.bg === "#ffffff" || editPreview.bg.startsWith("oklch(1") ? "#1e293b" : "#ffffff" }}>
+            预览文字
+          </div>
+          <div className="theme-editor-preview-accent" style={{ background: editPreview.accent }}>强调色</div>
+        </div>
+        <div className="theme-editor-variables">
+          {editVariables.map((v, i) => (
+            <div key={v.name} className="theme-editor-row">
+              <label className="theme-editor-label">{v.name}</label>
+              <div className="theme-editor-control">
+                {v.type === "color" ? (
+                  <div className="theme-editor-color-group">
+                    <input
+                      type="color"
+                      className="theme-editor-color-picker"
+                      value={normalizeColorToHex(v.value)}
+                      onChange={(e) => handleVariableChange(i, e.target.value)}
+                    />
+                    <input
+                      type="text"
+                      className="theme-editor-input"
+                      value={v.value}
+                      onChange={(e) => handleVariableChange(i, e.target.value)}
+                    />
+                  </div>
+                ) : v.type === "size" ? (
+                  <div className="theme-editor-size-group">
+                    <input
+                      type="range"
+                      className="settings-range"
+                      min="10"
+                      max="24"
+                      value={parseInt(v.value) || 15}
+                      onChange={(e) => handleVariableChange(i, `${e.target.value}px`)}
+                    />
+                    <span className="settings-range-value">{v.value}</span>
+                  </div>
+                ) : (
+                  <input
+                    type="text"
+                    className="theme-editor-input"
+                    value={v.value}
+                    onChange={(e) => handleVariableChange(i, e.target.value)}
+                  />
+                )}
+              </div>
+            </div>
+          ))}
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="settings-section">
@@ -547,8 +743,225 @@ function ThemeSettingsContent({
           </div>
         ))}
       </div>
+
+      <h3 className="settings-section-title">自定义主题</h3>
+      <div className="settings-theme-grid">
+        {customThemes.map((m) => {
+          const themeId = `custom-${m.id}`;
+          const isActive = theme === themeId;
+          return (
+            <div
+              key={m.id}
+              className={`settings-theme-card custom-theme-card${isActive ? " active" : ""}`}
+              onClick={() => setTheme(themeId)}
+            >
+              <div className="settings-theme-preview custom-theme-preview" data-custom-theme={m.id}>
+                <div
+                  className="custom-theme-gradient"
+                  style={{
+                    background: `linear-gradient(135deg, ${m.previewBg || "#ffffff"} 0%, ${m.previewAccent || "#4eb289"} 100%)`,
+                  }}
+                />
+                {isActive && (
+                  <div className="settings-theme-check">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
+                      <path d="M20 6L9 17l-5-5" />
+                    </svg>
+                  </div>
+                )}
+                <div className="custom-theme-actions">
+                  <button
+                    className="custom-theme-edit-btn"
+                    title="编辑主题"
+                    onClick={(e) => { e.stopPropagation(); handleStartEdit(m); }}
+                  >
+                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                      <path d="M12 20h9" />
+                      <path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z" />
+                    </svg>
+                  </button>
+                  <button
+                    className="custom-theme-delete-btn"
+                    title="删除主题"
+                    onClick={(e) => { e.stopPropagation(); handleDelete(m); }}
+                  >
+                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                      <line x1="18" y1="6" x2="6" y2="18" />
+                      <line x1="6" y1="6" x2="18" y2="18" />
+                    </svg>
+                  </button>
+                </div>
+              </div>
+              <span className="settings-theme-name">{m.name}</span>
+            </div>
+          );
+        })}
+        <div
+          className="settings-theme-card settings-theme-import-card"
+          onClick={handleImport}
+        >
+          <div className="settings-theme-preview settings-theme-import-preview">
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+              <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
+              <polyline points="7 10 12 15 17 10" />
+              <line x1="12" y1="15" x2="12" y2="3" />
+            </svg>
+          </div>
+          <span className="settings-theme-name">{importing ? "导入中..." : "导入主题"}</span>
+        </div>
+      </div>
+
+      {customThemes.length === 0 && (
+        <p className="settings-hint" style={{ marginTop: 8 }}>
+          点击上方卡片导入 .css 格式的主题文件
+        </p>
+      )}
+
+      <h3 className="settings-section-title">代码主题</h3>
+      <div className="settings-code-theme-row">
+        <label className="settings-item-label">代码高亮主题</label>
+        <select
+          className="settings-select"
+          value={codeTheme}
+          onChange={(e) => setCodeTheme(e.target.value)}
+        >
+          <option value="auto">跟随应用主题</option>
+          <optgroup label="浅色主题">
+            {CODE_THEMES.filter((t) => !t.isDark).map((t) => (
+              <option key={t.id} value={t.id}>{t.name}</option>
+            ))}
+          </optgroup>
+          <optgroup label="深色主题">
+            {CODE_THEMES.filter((t) => t.isDark).map((t) => (
+              <option key={t.id} value={t.id}>{t.name}</option>
+            ))}
+          </optgroup>
+        </select>
+      </div>
+      <div className="settings-code-theme-preview">
+        <div className="settings-code-theme-preview-title">预览</div>
+        <pre className="settings-code-theme-preview-code">
+          <code
+            dangerouslySetInnerHTML={{
+              __html: hljs.highlight(`function greet(name) {
+  console.log("Hello, " + name);
+  return 42;
+}`, { language: "javascript" }).value,
+            }}
+          />
+        </pre>
+      </div>
+
+      <h3 className="settings-section-title">自定义代码主题</h3>
+      <div className="settings-custom-code-themes">
+        {customCodeThemes.map((m) => (
+          <div
+            key={m.id}
+            className={`settings-custom-code-theme-card${codeTheme === m.id ? " active" : ""}`}
+            onClick={() => setCodeTheme(m.id)}
+          >
+            <span className="settings-custom-code-theme-name">{m.name}</span>
+            <button
+              className="settings-custom-code-theme-delete"
+              title="删除"
+              onClick={(e) => { e.stopPropagation(); handleDeleteCodeTheme(m); }}
+            >
+              ×
+            </button>
+          </div>
+        ))}
+        <div
+          className="settings-custom-code-theme-card settings-custom-code-theme-add"
+          onClick={handleImportCodeTheme}
+        >
+          + 导入代码主题
+        </div>
+      </div>
+
+      {/* Name dialog */}
+      {nameDialog.open && (
+        <div className="theme-name-dialog-overlay" onClick={() => setNameDialog({ open: false, filePath: "", defaultName: "" })}>
+          <div className="theme-name-dialog" onClick={(e) => e.stopPropagation()}>
+            <h3 className="theme-name-dialog-title">命名主题</h3>
+            <input
+              type="text"
+              className="theme-name-dialog-input"
+              value={themeName}
+              onChange={(e) => setThemeName(e.target.value)}
+              onKeyDown={(e) => { if (e.key === "Enter") handleConfirmImport(); }}
+              placeholder="输入主题名称..."
+              autoFocus
+            />
+            <div className="theme-name-dialog-actions">
+              <button
+                className="settings-button theme-name-dialog-cancel"
+                onClick={() => setNameDialog({ open: false, filePath: "", defaultName: "" })}
+              >
+                取消
+              </button>
+              <button
+                className="settings-button"
+                onClick={handleConfirmImport}
+                disabled={importing}
+              >
+                {importing ? "导入中..." : "确认"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Delete confirmation */}
+      {deleteConfirm && (
+        <div className="theme-name-dialog-overlay" onClick={() => setDeleteConfirm(null)}>
+          <div className="theme-name-dialog" onClick={(e) => e.stopPropagation()}>
+            <h3 className="theme-name-dialog-title">删除主题</h3>
+            <p style={{ fontSize: 14, color: "var(--text-secondary)", margin: "0 0 16px" }}>
+              确定要删除主题 "{deleteConfirm.name}" 吗？此操作不可撤销。
+            </p>
+            <div className="theme-name-dialog-actions">
+              <button className="settings-button theme-name-dialog-cancel" onClick={() => setDeleteConfirm(null)}>取消</button>
+              <button className="settings-button warning" onClick={handleConfirmDelete}>删除</button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Code theme name dialog */}
+      {codeThemeDialog.open && (
+        <div className="theme-name-dialog-overlay" onClick={() => setCodeThemeDialog({ open: false, filePath: "" })}>
+          <div className="theme-name-dialog" onClick={(e) => e.stopPropagation()}>
+            <h3 className="theme-name-dialog-title">命名代码主题</h3>
+            <input
+              type="text"
+              className="theme-name-dialog-input"
+              value={codeThemeName}
+              onChange={(e) => setCodeThemeName(e.target.value)}
+              onKeyDown={(e) => { if (e.key === "Enter") handleConfirmImportCodeTheme(); }}
+              placeholder="输入代码主题名称..."
+              autoFocus
+            />
+            <div className="theme-name-dialog-actions">
+              <button className="settings-button theme-name-dialog-cancel" onClick={() => setCodeThemeDialog({ open: false, filePath: "" })}>取消</button>
+              <button className="settings-button" onClick={handleConfirmImportCodeTheme}>确认</button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
+}
+
+function normalizeColorToHex(value: string): string {
+  if (/^#[0-9a-fA-F]{3,8}$/.test(value)) {
+    // Ensure 6-digit hex for color input
+    let hex = value.slice(1);
+    if (hex.length === 3) hex = hex.split("").map((c) => c + c).join("");
+    if (hex.length === 8) hex = hex.slice(0, 6); // Remove alpha
+    return `#${hex}`;
+  }
+  // For non-hex values, return white as fallback for color picker
+  return "#ffffff";
 }
 
 function ShortcutsSettingsContent() {
@@ -907,7 +1320,6 @@ function EditorSettingsContent({
           value={settings.defaultMode}
           onChange={(e) => update("defaultMode", e.target.value as EditorSettings["defaultMode"])}
         >
-          <option value="wysiwyg">所见即所得</option>
           <option value="ir">即时渲染</option>
           <option value="sv">源码</option>
         </select>
@@ -1062,25 +1474,7 @@ function EditorSettingsContent({
           <span className="settings-toggle-slider" />
         </label>
       </div>
-      <div className="settings-item">
-        <label className="settings-item-label">代码主题</label>
-        <select
-          className="settings-select"
-          value={settings.codeTheme}
-          onChange={(e) => update("codeTheme", e.target.value as EditorSettings["codeTheme"])}
-        >
-          <option value="auto">跟随应用主题</option>
-          <option value="github">GitHub</option>
-          <option value="atom-one-light">Atom One Light</option>
-          <option value="atom-one-dark">Atom One Dark</option>
-          <option value="vs">VS Code</option>
-          <option value="nord">Nord</option>
-          <option value="monokai">Monokai</option>
-          <option value="dracula">Dracula</option>
-          <option value="solarized-light">Solarized Light</option>
-          <option value="solarized-dark">Solarized Dark</option>
-        </select>
-      </div>
+
 
       {/* 预览 */}
       <h3 className="settings-section-title">预览</h3>
@@ -1411,15 +1805,84 @@ export default function Settings() {
     await win.minimize();
   }, []);
 
-  const tabs: { id: SettingsTab; label: string }[] = [
-    { id: "general", label: "通用" },
-    { id: "theme", label: "主题" },
-    { id: "shortcuts", label: "快捷键" },
-    { id: "editor", label: "编辑器" },
-    { id: "mindmap", label: "思维导图" },
-    { id: "graph", label: "关系图谱" },
-    { id: "image", label: "图像" },
-    { id: "about", label: "关于" },
+  const handleToggleMaximize = useCallback(async () => {
+    const win = getCurrentWebviewWindow();
+    const isMax = await win.isMaximized();
+    if (isMax) {
+      await win.unmaximize();
+    } else {
+      await win.maximize();
+    }
+  }, []);
+
+  const tabs: { id: SettingsTab; label: string; icon: React.ReactNode }[] = [
+    { id: "general", label: "通用", icon: (
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+        <circle cx="12" cy="12" r="3" />
+        <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z" />
+      </svg>
+    ) },
+    { id: "theme", label: "主题", icon: (
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+        <circle cx="13.5" cy="6.5" r="0.5" fill="currentColor" stroke="none" />
+        <circle cx="17.5" cy="10.5" r="0.5" fill="currentColor" stroke="none" />
+        <circle cx="8.5" cy="7.5" r="0.5" fill="currentColor" stroke="none" />
+        <circle cx="6.5" cy="12" r="0.5" fill="currentColor" stroke="none" />
+        <path d="M12 2C6.5 2 2 6.5 2 12s4.5 10 10 10c.926 0 1.648-.746 1.648-1.688 0-.437-.18-.835-.437-1.125-.29-.289-.438-.652-.438-1.125a1.64 1.64 0 0 1 1.668-1.668h1.996c3.051 0 5.555-2.503 5.555-5.554C21.965 6.012 17.461 2 12 2z" />
+      </svg>
+    ) },
+    { id: "shortcuts", label: "快捷键", icon: (
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+        <rect x="2" y="4" width="20" height="16" rx="2" />
+        <path d="M6 8h.01M10 8h.01M14 8h.01M18 8h.01M8 12h.01M12 12h.01M16 12h.01M7 16h10" />
+      </svg>
+    ) },
+    { id: "editor", label: "编辑器", icon: (
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+        <path d="M12 20h9" />
+        <path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z" />
+      </svg>
+    ) },
+    { id: "mindmap", label: "思维导图", icon: (
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+        <circle cx="6" cy="6" r="3" />
+        <circle cx="18" cy="18" r="3" />
+        <circle cx="18" cy="6" r="3" />
+        <circle cx="6" cy="18" r="3" />
+        <line x1="8.5" y1="8.5" x2="15.5" y2="15.5" />
+        <line x1="15.5" y1="8.5" x2="8.5" y2="15.5" />
+      </svg>
+    ) },
+    { id: "graph", label: "关系图谱", icon: (
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+        <circle cx="12" cy="5" r="3" />
+        <circle cx="5" cy="19" r="3" />
+        <circle cx="19" cy="19" r="3" />
+        <line x1="9.5" y1="7" x2="6.5" y2="16.5" />
+        <line x1="14.5" y1="7" x2="17.5" y2="16.5" />
+        <line x1="7.5" y1="19" x2="16.5" y2="19" />
+      </svg>
+    ) },
+    { id: "image", label: "图像", icon: (
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+        <rect x="3" y="3" width="18" height="18" rx="2" ry="2" />
+        <circle cx="8.5" cy="8.5" r="1.5" />
+        <polyline points="21 15 16 10 5 21" />
+      </svg>
+    ) },
+    { id: "publish", label: "发布", icon: (
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+        <path d="M22 2L11 13" />
+        <path d="M22 2l-7 20-4-9-9-4 20-7z" />
+      </svg>
+    ) },
+    { id: "about", label: "关于", icon: (
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+        <circle cx="12" cy="12" r="10" />
+        <line x1="12" y1="16" x2="12" y2="12" />
+        <line x1="12" y1="8" x2="12.01" y2="8" />
+      </svg>
+    ) },
   ];
 
   return (
@@ -1433,14 +1896,28 @@ export default function Settings() {
             onClick={handleMinimize}
             title="最小化"
           >
-            ─
+            <svg width="10" height="10" viewBox="0 0 10 10">
+              <line x1="1" y1="5" x2="9" y2="5" stroke="currentColor" strokeWidth="1.2" />
+            </svg>
+          </button>
+          <button
+            className="settings-titlebar-btn"
+            onClick={handleToggleMaximize}
+            title="最大化"
+          >
+            <svg width="10" height="10" viewBox="0 0 10 10">
+              <rect x="1" y="1" width="8" height="8" rx="0.5" fill="none" stroke="currentColor" strokeWidth="1.2" />
+            </svg>
           </button>
           <button
             className="settings-titlebar-btn settings-titlebar-close"
             onClick={handleClose}
             title="关闭"
           >
-            ✕
+            <svg width="10" height="10" viewBox="0 0 10 10">
+              <line x1="1.5" y1="1.5" x2="8.5" y2="8.5" stroke="currentColor" strokeWidth="1.2" />
+              <line x1="8.5" y1="1.5" x2="1.5" y2="8.5" stroke="currentColor" strokeWidth="1.2" />
+            </svg>
           </button>
         </div>
       </div>
@@ -1455,6 +1932,7 @@ export default function Settings() {
               className={`settings-nav-item${activeTab === tab.id ? " active" : ""}`}
               onClick={() => setActiveTab(tab.id)}
             >
+              {tab.icon}
               {tab.label}
             </button>
           ))}
@@ -1480,6 +1958,9 @@ export default function Settings() {
           )}
           {activeTab === "image" && (
             <ImageSettingsContent settings={imageSettings} onChange={setImageSettings} />
+          )}
+          {activeTab === "publish" && (
+            <PublishSettings />
           )}
           {activeTab === "about" && <AboutSettingsContent />}
         </main>

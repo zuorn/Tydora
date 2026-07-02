@@ -41,15 +41,9 @@
   text-align: right;
 }
 
-/* 覆盖 Vditor 主题的链接样式 */
-.vditor-ir .wiki-link,
-.vditor-wysiwyg .wiki-link,
-.vditor-sv .wiki-link,
-.vditor-ir .wiki-link-pending,
-.vditor-wysiwyg .wiki-link-pending,
-.vditor-sv .wiki-link-pending,
-.vditor-reset .wiki-link,
-.vditor-reset .wiki-link-pending,
+/* Wiki 链接样式 */
+.tiptap-editor .wiki-link,
+.tiptap-editor .wiki-link-pending,
 a.wiki-link,
 span.wiki-link-pending {
   color: var(--accent) !important;
@@ -63,12 +57,8 @@ span.wiki-link-pending {
   font-size: inherit !important;
 }
 
-.vditor-ir .wiki-link[data-exists="false"],
-.vditor-wysiwyg .wiki-link[data-exists="false"],
-.vditor-sv .wiki-link[data-exists="false"],
-.vditor-sv .wiki-link-pending[data-exists="false"],
-.vditor-reset .wiki-link[data-exists="false"],
-.vditor-reset .wiki-link-pending[data-exists="false"],
+.tiptap-editor .wiki-link[data-exists="false"],
+.tiptap-editor .wiki-link-pending[data-exists="false"],
 a.wiki-link[data-exists="false"],
 span.wiki-link-pending[data-exists="false"] {
   color: var(--text-secondary) !important;

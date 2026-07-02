@@ -4,7 +4,7 @@ on:
   push:
     branches: [main]
     paths:
-      - 'help-docs/**'
+      - 'website/docs/**'
       - 'hooks/**'
       - 'overrides/**'
       - 'mkdocs.yml'
@@ -42,7 +42,7 @@ jobs:
       - name: Upload artifact
         uses: actions/upload-pages-artifact@v3
         with:
-          path: site/
+          path: website/site/
 
   deploy:
     environment:

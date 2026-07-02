@@ -1,8 +1,12 @@
+use std::fs;
 use std::process::Command;
-use tauri::{Manager, WebviewWindowBuilder};
+use std::sync::Mutex;
+use tauri::{Manager, WebviewWindowBuilder, State};
 
 mod commands;
 use commands::watcher_commands::{watch_vault, unwatch_vault, WatcherState};
+
+struct PreviewServer(Mutex<Option<std::process::Child>>);
 
 /// URL 百分号解码，将 %XX 转换为对应字节，最终返回解码后的字符串
 fn percent_decode(s: &str) -> String {
@@ -241,6 +245,280 @@ fn open_directory(dir_path: String) -> Result<(), String> {
     Ok(())
 }
 
+/// 用系统默认程序打开文件（HTML 用浏览器，图片用默认查看器）
+#[tauri::command]
+fn open_file(file_path: String) -> Result<(), String> {
+    #[cfg(target_os = "windows")]
+    {
+        Command::new("cmd")
+            .args(["/C", "start", "", &file_path])
+            .spawn()
+            .map_err(|e| e.to_string())?;
+    }
+    #[cfg(target_os = "macos")]
+    {
+        Command::new("open")
+            .arg(&file_path)
+            .spawn()
+            .map_err(|e| e.to_string())?;
+    }
+    #[cfg(target_os = "linux")]
+    {
+        Command::new("xdg-open")
+            .arg(&file_path)
+            .spawn()
+            .map_err(|e| e.to_string())?;
+    }
+    Ok(())
+}
+
+/// 获取当前工作目录
+#[tauri::command]
+fn get_cwd() -> Result<String, String> {
+    std::env::current_dir()
+        .map(|p| p.to_string_lossy().to_string())
+        .map_err(|e| e.to_string())
+}
+
+/// 执行 markdown-publish CLI 构建静态网站
+#[tauri::command]
+async fn run_markdown_publish(
+    vault_dir: String,
+    out_dir: String,
+    config: String,
+) -> Result<String, String> {
+    // 解析配置获取 siteName 等参数
+    let config_json: serde_json::Value = serde_json::from_str(&config).unwrap_or(serde_json::Value::Null);
+
+    let mut args = vec![
+        "build".to_string(),
+        "--vault".to_string(),
+        vault_dir.clone(),
+        "--out".to_string(),
+        out_dir.clone(),
+    ];
+
+    // 添加可选参数
+    if let Some(site_name) = config_json.get("siteName").and_then(|v| v.as_str()) {
+        args.push("--site-name".to_string());
+        args.push(site_name.to_string());
+    }
+    if let Some(site_lang) = config_json.get("siteLang").and_then(|v| v.as_str()) {
+        args.push("--site-lang".to_string());
+        args.push(site_lang.to_string());
+    }
+    if let Some(site_url) = config_json.get("siteUrl").and_then(|v| v.as_str()) {
+        if !site_url.is_empty() {
+            args.push("--site-url".to_string());
+            args.push(site_url.to_string());
+        }
+    }
+    if let Some(base_href) = config_json.get("baseHref").and_then(|v| v.as_str()) {
+        args.push("--base-href".to_string());
+        args.push(base_href.to_string());
+    }
+    if let Some(build_mode) = config_json.get("buildMode").and_then(|v| v.as_str()) {
+        args.push("--build-mode".to_string());
+        args.push(build_mode.to_string());
+    }
+
+    // 获取当前工作目录，构建 CLI 脚本路径
+    // Tauri 的 cwd 是 src-tauri 目录，需要往上一级找到项目根目录
+    let cwd = std::env::current_dir()
+        .map_err(|e| format!("获取当前目录失败: {}", e))?;
+
+    let project_root = cwd.parent().unwrap_or(&cwd);
+
+    let cli_path = project_root.join("node_modules")
+        .join("@abstractwebunit")
+        .join("markdown-publish")
+        .join("tools")
+        .join("cli")
+        .join("cli.mjs");
+
+    if !cli_path.exists() {
+        return Err(format!("找不到 CLI 脚本: {}", cli_path.display()));
+    }
+
+    let output = Command::new("node")
+        .arg(cli_path.to_str().unwrap_or_default())
+        .args(&args)
+        .output()
+        .map_err(|e| format!("启动 markdown-publish 失败: {}", e))?;
+
+    if output.status.success() {
+        let stdout = String::from_utf8_lossy(&output.stdout);
+        Ok(stdout.to_string())
+    } else {
+        let stderr = String::from_utf8_lossy(&output.stderr);
+        let stdout = String::from_utf8_lossy(&output.stdout);
+        Err(format!("markdown-publish 执行失败:\n{}\n{}", stdout, stderr))
+    }
+}
+
+/// 使用 Node.js 内置 HTTP 服务器预览静态网站
+#[tauri::command]
+async fn preview_site(dir: String, state: State<'_, PreviewServer>) -> Result<String, String> {
+    // 先关闭已有的服务器
+    {
+        let mut guard = state.0.lock().unwrap();
+        if let Some(mut child) = guard.take() {
+            let _ = child.kill();
+            let _ = child.wait();
+        }
+    }
+
+    let dir_path = std::path::Path::new(&dir);
+    if !dir_path.exists() {
+        return Err(format!("目录不存在: {}", dir));
+    }
+
+    // 在输出目录中创建服务器脚本，使用 __dirname 获取正确路径
+    // 使用 .cjs 扩展名，因为 package.json 有 "type": "module"
+    let script_path = dir_path.join("__preview_server.cjs");
+
+    let server_script = r#"
+const http = require('http');
+const fs = require('fs');
+const path = require('path');
+
+// 使用脚本所在目录作为服务器根目录
+const DIR = __dirname;
+const PORT = 3000;
+
+const MIME_TYPES = {
+    '.html': 'text/html; charset=utf-8',
+    '.css': 'text/css; charset=utf-8',
+    '.js': 'application/javascript; charset=utf-8',
+    '.json': 'application/json; charset=utf-8',
+    '.png': 'image/png',
+    '.jpg': 'image/jpeg',
+    '.gif': 'image/gif',
+    '.svg': 'image/svg+xml',
+    '.ico': 'image/x-icon',
+    '.woff': 'font/woff',
+    '.woff2': 'font/woff2',
+};
+
+function findFile(urlPath) {
+    // 对于 /、/index.html、/index，优先查找 index/index.html
+    if (urlPath === '/' || urlPath === '/index.html' || urlPath === '/index') {
+        const indexDir = path.join(DIR, 'index', 'index.html');
+        if (fs.existsSync(indexDir) && fs.statSync(indexDir).isFile()) {
+            return indexDir;
+        }
+    }
+
+    // 直接路径
+    let fullPath = path.join(DIR, urlPath);
+    if (fs.existsSync(fullPath) && fs.statSync(fullPath).isFile()) {
+        return fullPath;
+    }
+
+    // 添加 .html
+    fullPath = path.join(DIR, urlPath + '.html');
+    if (fs.existsSync(fullPath) && fs.statSync(fullPath).isFile()) {
+        return fullPath;
+    }
+
+    // 添加 /index.html
+    fullPath = path.join(DIR, urlPath, 'index.html');
+    if (fs.existsSync(fullPath) && fs.statSync(fullPath).isFile()) {
+        return fullPath;
+    }
+
+    return null;
+}
+
+const server = http.createServer((req, res) => {
+    try {
+        let urlPath = decodeURIComponent(req.url.split('?')[0]);
+        if (urlPath === '/') urlPath = '/index.html';
+
+        const filePath = findFile(urlPath);
+
+        if (!filePath) {
+            res.writeHead(404);
+            res.end('Not Found');
+            return;
+        }
+
+        const ext = path.extname(filePath);
+        const contentType = MIME_TYPES[ext] || 'application/octet-stream';
+
+        fs.readFile(filePath, (err, data) => {
+            if (err) {
+                res.writeHead(500);
+                res.end('Error');
+                return;
+            }
+            res.writeHead(200, { 'Content-Type': contentType });
+            res.end(data);
+        });
+    } catch (e) {
+        res.writeHead(500);
+        res.end('Server Error');
+    }
+});
+
+server.listen(PORT, '127.0.0.1', () => {
+    console.log('Preview: http://127.0.0.1:' + PORT);
+});
+"#;
+
+    fs::write(&script_path, server_script)
+        .map_err(|e| format!("创建脚本失败: {}", e))?;
+
+    // 启动服务器并保存进程句柄
+    let child = Command::new("node")
+        .arg(script_path.to_str().unwrap_or_default())
+        .spawn()
+        .map_err(|e| format!("启动服务器失败: {}", e))?;
+
+    {
+        let mut guard = state.0.lock().unwrap();
+        *guard = Some(child);
+    }
+
+    // 等待服务器启动
+    std::thread::sleep(std::time::Duration::from_secs(1));
+
+    let url = "http://127.0.0.1:3000".to_string();
+
+    // 打开浏览器
+    #[cfg(target_os = "windows")]
+    {
+        let _ = Command::new("cmd")
+            .args(["/C", "start", "", &url])
+            .spawn();
+    }
+    #[cfg(target_os = "macos")]
+    {
+        let _ = Command::new("open")
+            .arg(&url)
+            .spawn();
+    }
+    #[cfg(target_os = "linux")]
+    {
+        let _ = Command::new("xdg-open")
+            .arg(&url)
+            .spawn();
+    }
+
+    Ok(url)
+}
+
+/// 停止预览服务器
+#[tauri::command]
+async fn stop_preview(state: State<'_, PreviewServer>) -> Result<(), String> {
+    let mut guard = state.0.lock().unwrap();
+    if let Some(mut child) = guard.take() {
+        let _ = child.kill();
+        let _ = child.wait();
+    }
+    Ok(())
+}
+
 pub fn run() {
     tauri::Builder::default()
         .plugin(tauri_plugin_fs::init())
@@ -268,18 +546,24 @@ pub fn run() {
         .invoke_handler(tauri::generate_handler![
             get_default_content,
             get_app_version,
+            get_cwd,
             open_settings_window,
             open_file_in_new_window,
             open_file_location,
+            open_file,
             open_directory,
             open_mindmap_window,
             open_graph_window,
             watch_vault,
             unwatch_vault,
+            run_markdown_publish,
+            preview_site,
+            stop_preview,
         ])
         .setup(|app| {
             // 初始化文件监听器状态
             app.manage(WatcherState(std::sync::Mutex::new(None)));
+            app.manage(PreviewServer(std::sync::Mutex::new(None)));
 
             #[cfg(debug_assertions)]
             {

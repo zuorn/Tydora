@@ -1,4 +1,0 @@
-User-agent: *
-Allow: /
-
-Sitemap: https://github.com/zuorn/Tydora

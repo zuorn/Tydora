@@ -8,41 +8,26 @@
   color: var(--text-primary);
 }
 
-/* ── Titlebar ──────────────────────────────────────────────────────── */
-
-.settings-titlebar {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  height: 40px;
-  padding: 0 12px;
-  background: var(--bg-secondary);
-  border-bottom: 1px solid var(--border);
-  user-select: none;
-  -webkit-app-region: drag;
-}
-
-.settings-title {
-  font-size: 14px;
-  font-weight: 500;
-  color: var(--text-primary);
-}
+/* ── Titlebar Controls (窗口控制按钮) ────────────────────────────── */
 
 .settings-titlebar-controls {
+  position: absolute;
+  top: 0;
+  right: 0;
   display: flex;
-  gap: 8px;
+  gap: 0;
   -webkit-app-region: no-drag;
+  z-index: 10;
 }
 
 .settings-titlebar-btn {
-  width: 32px;
-  height: 28px;
+  width: 46px;
+  height: 20px;
   display: flex;
   align-items: center;
   justify-content: center;
   background: transparent;
   border: none;
-  border-radius: 4px;
   color: var(--text-secondary);
   cursor: pointer;
   transition: background 0.15s, color 0.15s;
@@ -53,6 +38,12 @@
 
 .settings-titlebar-btn svg {
   flex-shrink: 0;
+  opacity: 0.7;
+  transition: opacity 0.15s ease;
+}
+
+.settings-titlebar-btn:hover svg {
+  opacity: 1;
 }
 
 .settings-titlebar-btn:hover {
@@ -73,38 +64,154 @@
   overflow: hidden;
 }
 
-/* ── Navigation ───────────────────────────────────────────────────── */
-
-.settings-nav {
-  width: 160px;
-  min-width: 160px;
+/* ── 内容区域包装器 ── */
+.settings-main-wrapper {
+  flex: 1;
   display: flex;
   flex-direction: column;
-  padding: 12px 8px;
+  overflow: hidden;
+}
+
+/* ── 内容区域顶部栏 ── */
+.settings-main-topbar {
+  height: 20px;
+  flex-shrink: 0;
+  background: transparent;
+  -webkit-app-region: drag;
+  position: relative;
+}
+
+/* ── Navigation (类似主窗口侧栏) ────────────────────────────────── */
+
+.settings-nav {
+  width: 260px;
+  min-width: 260px;
+  display: flex;
+  flex-direction: column;
   background: var(--bg-secondary);
   border-right: 1px solid var(--border);
-  gap: 2px;
+  overflow: hidden;
+  flex-shrink: 0;
+}
+
+/* ── 顶部透明拖拽区域 ── */
+.settings-nav-topbar {
+  height: 20px;
+  flex-shrink: 0;
+  background: transparent;
+  -webkit-app-region: drag;
+  position: relative;
+}
+
+.settings-nav-content {
+  flex: 1;
+  overflow-y: auto;
+  padding: 8px 8px 16px;
+}
+
+/* ── Navigation Search ──────────────────────────────────────────── */
+
+.settings-nav-search {
+  position: relative;
+  margin-bottom: 8px;
+  display: flex;
+  align-items: center;
+}
+
+.settings-nav-search-icon {
+  position: absolute;
+  left: 8px;
+  top: 50%;
+  transform: translateY(-50%);
+  color: var(--text-secondary);
+  pointer-events: none;
+  z-index: 1;
+  opacity: 0.6;
+}
+
+.settings-nav-search-input {
+  width: 100%;
+  padding: 6px 28px 6px 28px;
+  background: var(--bg-primary);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  color: var(--text-primary);
+  font-size: 13px;
+  outline: none;
+  transition: border-color 0.15s ease, box-shadow 0.15s ease;
+  position: relative;
+}
+
+.settings-nav-search-input::placeholder {
+  color: var(--text-secondary);
+  opacity: 0.7;
+}
+
+.settings-nav-search-input:focus {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 2px color-mix(in srgb, var(--accent) 15%, transparent);
+}
+
+.settings-nav-search-clear {
+  position: absolute;
+  right: 4px;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 20px;
+  height: 20px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: transparent;
+  border: none;
+  border-radius: 4px;
+  color: var(--text-secondary);
+  cursor: pointer;
+  transition: background 0.15s ease, color 0.15s ease;
+  z-index: 1;
+}
+
+.settings-nav-search-clear:hover {
+  background: var(--bg-surface);
+  color: var(--text-primary);
+}
+
+/* ── Navigation Groups ──────────────────────────────────────────── */
+
+.settings-nav-group {
+  margin-bottom: 4px;
+}
+
+.settings-nav-group-title {
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--text-secondary);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  padding: 12px 12px 6px;
 }
 
 .settings-nav-item {
   display: flex;
   align-items: center;
-  padding: 10px 14px;
+  padding: 6px 12px;
   background: transparent;
   border: none;
   border-radius: 6px;
   color: var(--text-secondary);
-  font-size: 14px;
+  font-size: 13px;
   text-align: left;
   cursor: pointer;
-  transition: background 0.15s, color 0.15s;
-  gap: 10px;
+  transition: background 0.15s ease, color 0.15s ease;
+  gap: 8px;
+  width: 100%;
 }
 
 .settings-nav-item svg {
   flex-shrink: 0;
   width: 16px;
   height: 16px;
+  opacity: 0.7;
 }
 
 .settings-nav-item:hover {
@@ -112,25 +219,54 @@
   color: var(--text-primary);
 }
 
+.settings-nav-item:hover svg {
+  opacity: 1;
+}
+
 .settings-nav-item.active {
-  background: var(--accent);
-  color: white;
+  background: var(--bg-surface);
+  color: var(--text-primary);
+  font-weight: 500;
+}
+
+.settings-nav-item.active svg {
+  opacity: 1;
+}
+
+/* ── Empty State ────────────────────────────────────────────────── */
+
+.settings-nav-empty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 32px 16px;
+  color: var(--text-secondary);
+  text-align: center;
+  gap: 8px;
+}
+
+.settings-nav-empty svg {
+  opacity: 0.5;
+}
+
+.settings-nav-empty span {
+  font-size: 13px;
 }
 
 /* ── Main Content ─────────────────────────────────────────────────── */
 
 .settings-main {
   flex: 1;
-  padding: 24px 32px;
+  padding: 0 32px 24px;
   overflow-y: auto;
   background: var(--bg-primary);
 }
 
 .settings-section {
   width: 100%;
-  max-width: 560px;
-  margin-left: auto;
-  margin-right: auto;
+  max-width: 600px;
+  margin: 0 auto 24px;
 }
 
 .about-header {
@@ -139,12 +275,12 @@
 }
 
 .settings-section-title {
-  font-size: 11px;
+  font-size: 12px;
   font-weight: 600;
   color: var(--text-secondary);
   text-transform: uppercase;
   letter-spacing: 0.5px;
-  margin-bottom: 10px;
+  margin-bottom: 12px;
   margin-top: 20px;
 }
 
@@ -158,33 +294,46 @@
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 12px 14px;
+  padding: 12px 16px;
   background: var(--bg-secondary);
-  border-radius: 6px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
   margin-bottom: 8px;
+  transition: border-color 0.15s ease;
+}
+
+.settings-item:hover {
+  border-color: color-mix(in srgb, var(--accent) 30%, var(--border));
 }
 
 .settings-item-label {
   font-size: 14px;
   color: var(--text-primary);
+  font-weight: 500;
 }
 
 /* ── Select ────────────────────────────────────────────────────────── */
 
 .settings-select {
-  padding: 6px 12px;
+  padding: 8px 12px;
   background: var(--bg-surface);
   border: 1px solid var(--border);
-  border-radius: 4px;
+  border-radius: 6px;
   color: var(--text-primary);
   font-size: 13px;
   cursor: pointer;
   min-width: 140px;
+  outline: none;
+  transition: border-color 0.15s ease, box-shadow 0.15s ease;
+}
+
+.settings-select:hover {
+  border-color: color-mix(in srgb, var(--text-secondary) 30%, var(--border));
 }
 
 .settings-select:focus {
-  outline: none;
   border-color: var(--accent);
+  box-shadow: 0 0 0 2px color-mix(in srgb, var(--accent) 20%, transparent);
 }
 
 /* ── Range Input ───────────────────────────────────────────────────── */
@@ -207,22 +356,28 @@
 
 .settings-range::-webkit-slider-thumb {
   -webkit-appearance: none;
-  width: 16px;
-  height: 16px;
+  width: 18px;
+  height: 18px;
   background: var(--accent);
   border-radius: 50%;
   cursor: pointer;
-  transition: background 0.15s;
+  transition: background 0.15s ease, transform 0.15s ease;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.2);
 }
 
 .settings-range::-webkit-slider-thumb:hover {
   background: var(--accent-hover);
+  transform: scale(1.1);
+}
+
+.settings-range:active::-webkit-slider-thumb {
+  transform: scale(0.95);
 }
 
 .settings-range-value {
   font-size: 13px;
   color: var(--text-secondary);
-  font-family: monospace;
+  font-family: var(--font-mono);
   min-width: 45px;
 }
 
@@ -231,8 +386,8 @@
 .settings-toggle {
   position: relative;
   display: inline-block;
-  width: 44px;
-  height: 24px;
+  width: 40px;
+  height: 22px;
   cursor: pointer;
 }
 
@@ -246,8 +401,8 @@
   position: absolute;
   inset: 0;
   background: var(--border);
-  border-radius: 12px;
-  transition: background 0.2s;
+  border-radius: 11px;
+  transition: background 0.2s ease;
 }
 
 .settings-toggle-slider::before {
@@ -255,11 +410,12 @@
   position: absolute;
   width: 18px;
   height: 18px;
-  left: 3px;
-  top: 3px;
+  left: 2px;
+  top: 2px;
   background: white;
   border-radius: 50%;
-  transition: transform 0.2s;
+  transition: transform 0.2s ease;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.2);
 }
 
 .settings-toggle input:checked + .settings-toggle-slider {
@@ -267,7 +423,15 @@
 }
 
 .settings-toggle input:checked + .settings-toggle-slider::before {
-  transform: translateX(20px);
+  transform: translateX(18px);
+}
+
+.settings-toggle:hover .settings-toggle-slider {
+  background: color-mix(in srgb, var(--text-secondary) 30%, var(--border));
+}
+
+.settings-toggle:hover input:checked + .settings-toggle-slider {
+  background: var(--accent-hover);
 }
 
 /* ── Theme Grid ────────────────────────────────────────────────────── */
@@ -281,22 +445,22 @@
 .settings-theme-card {
   padding: 12px;
   background: var(--bg-secondary);
-  border: 2px solid transparent;
+  border: 2px solid var(--border);
   border-radius: 8px;
   cursor: pointer;
   transition: all 0.2s ease;
 }
 
 .settings-theme-card:hover {
-  background: var(--bg-surface);
+  border-color: color-mix(in srgb, var(--accent) 50%, var(--border));
   transform: translateY(-1px);
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
 }
 
 .settings-theme-card.active {
   border-color: var(--accent);
   background: color-mix(in srgb, var(--accent) 8%, var(--bg-secondary));
-  box-shadow: 0 0 0 1px var(--accent), 0 2px 12px rgba(0, 0, 0, 0.15);
+  box-shadow: 0 0 0 1px var(--accent), 0 4px 16px rgba(0, 0, 0, 0.15);
 }
 
 .settings-theme-preview {
@@ -783,9 +947,15 @@
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 10px 14px;
+  padding: 12px 16px;
   background: var(--bg-secondary);
-  border-radius: 6px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  transition: border-color 0.15s ease;
+}
+
+.settings-shortcut-item:hover {
+  border-color: color-mix(in srgb, var(--accent) 30%, var(--border));
 }
 
 .settings-shortcut-label {
@@ -839,15 +1009,16 @@
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  min-width: 24px;
-  height: 24px;
-  padding: 0 8px;
+  min-width: 28px;
+  height: 28px;
+  padding: 0 10px;
   background: var(--bg-surface);
   border: 1px solid var(--border);
-  border-radius: 4px;
+  border-radius: 6px;
   font-size: 12px;
-  font-family: monospace;
+  font-family: var(--font-mono);
   color: var(--text-secondary);
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.1);
 }
 
 .settings-kbd-sep {
@@ -903,48 +1074,57 @@
 
 .settings-about-header {
   text-align: center;
-  padding: 24px 0 32px;
+  padding: 32px 0 40px;
 }
 
 .settings-about-icon {
-  width: 72px;
-  height: 72px;
-  border-radius: 16px;
-  margin-bottom: 16px;
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+  width: 80px;
+  height: 80px;
+  border-radius: 18px;
+  margin-bottom: 20px;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.15);
 }
 
 .settings-about-title {
-  font-size: 28px;
+  font-size: 32px;
   font-weight: 700;
   color: var(--text-primary);
   margin-bottom: 8px;
 }
 
 .settings-about-subtitle {
-  font-size: 14px;
+  font-size: 15px;
   color: var(--text-secondary);
+  margin-bottom: 4px;
 }
 
 .settings-about-value {
   font-size: 14px;
   color: var(--text-secondary);
-  font-family: monospace;
+  font-family: var(--font-mono);
 }
 
 .settings-button {
-  padding: 8px 16px;
+  padding: 10px 20px;
   background: var(--accent);
   border: none;
-  border-radius: 4px;
+  border-radius: 8px;
   color: white;
-  font-size: 13px;
+  font-size: 14px;
+  font-weight: 500;
   cursor: pointer;
-  transition: background 0.15s;
+  transition: all 0.15s ease;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
 }
 
 .settings-button:hover:not(:disabled) {
   background: var(--accent-hover);
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+}
+
+.settings-button:active:not(:disabled) {
+  transform: translateY(0);
 }
 
 .settings-button:disabled {
@@ -979,16 +1159,16 @@
 }
 
 .settings-window ::-webkit-scrollbar-track {
-  background: var(--bg-primary);
+  background: transparent;
 }
 
 .settings-window ::-webkit-scrollbar-thumb {
-  background: var(--border);
+  background: color-mix(in srgb, var(--text-secondary) 30%, transparent);
   border-radius: 4px;
 }
 
 .settings-window ::-webkit-scrollbar-thumb:hover {
-  background: var(--text-secondary);
+  background: color-mix(in srgb, var(--text-secondary) 50%, transparent);
 }
 
 /* ── Path Input ──────────────────────────────────────────────────── */
@@ -1001,18 +1181,24 @@
 
 .settings-input {
   flex: 1;
-  padding: 6px 12px;
+  padding: 8px 12px;
   background: var(--bg-surface);
   border: 1px solid var(--border);
-  border-radius: 4px;
+  border-radius: 6px;
   color: var(--text-primary);
   font-size: 13px;
   min-width: 0;
+  outline: none;
+  transition: border-color 0.15s ease, box-shadow 0.15s ease;
+}
+
+.settings-input:hover {
+  border-color: color-mix(in srgb, var(--text-secondary) 30%, var(--border));
 }
 
 .settings-input:focus {
-  outline: none;
   border-color: var(--accent);
+  box-shadow: 0 0 0 2px color-mix(in srgb, var(--accent) 20%, transparent);
 }
 
 .settings-input::placeholder {
@@ -1038,10 +1224,24 @@
 .settings-radio {
   display: flex;
   align-items: center;
-  gap: 6px;
-  font-size: 13px;
+  gap: 8px;
+  font-size: 14px;
   color: var(--text-primary);
   cursor: pointer;
+  padding: 8px 12px;
+  background: var(--bg-secondary);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  transition: all 0.15s ease;
+}
+
+.settings-radio:hover {
+  border-color: color-mix(in srgb, var(--accent) 30%, var(--border));
+}
+
+.settings-radio:has(input:checked) {
+  border-color: var(--accent);
+  background: color-mix(in srgb, var(--accent) 8%, var(--bg-secondary));
 }
 
 .settings-radio input[type="radio"] {
@@ -1098,20 +1298,27 @@
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 12px 14px;
+  padding: 12px 16px;
   background: var(--bg-secondary);
-  border-radius: 6px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
   margin-bottom: 12px;
+  transition: border-color 0.15s ease;
+}
+
+.settings-code-theme-row:hover {
+  border-color: color-mix(in srgb, var(--accent) 30%, var(--border));
 }
 
 .settings-code-theme-preview {
   background: var(--bg-secondary);
-  border-radius: 6px;
+  border-radius: 8px;
   overflow: hidden;
+  border: 1px solid var(--border);
 }
 
 .settings-code-theme-preview-title {
-  padding: 8px 14px;
+  padding: 10px 16px;
   font-size: 12px;
   font-weight: 600;
   color: var(--text-secondary);
@@ -1123,7 +1330,7 @@
 .settings-code-theme-preview-code {
   margin: 0;
   padding: 16px;
-  font-family: "Cascadia Code", "JetBrains Mono", "Fira Code", monospace;
+  font-family: var(--font-mono);
   font-size: 13px;
   line-height: 1.6;
   overflow-x: auto;
@@ -1180,16 +1387,22 @@
   display: flex;
   align-items: center;
   gap: 8px;
-  padding: 8px 12px;
+  padding: 10px 14px;
   background: var(--bg-secondary);
   border: 1px solid var(--border);
-  border-radius: 6px;
+  border-radius: 8px;
   cursor: pointer;
-  transition: all 0.15s;
+  transition: all 0.15s ease;
 }
 
 .settings-custom-code-theme-card:hover {
+  border-color: color-mix(in srgb, var(--accent) 30%, var(--border));
   background: var(--bg-surface);
+}
+
+.settings-custom-code-theme-card.active {
+  border-color: var(--accent);
+  background: color-mix(in srgb, var(--accent) 8%, var(--bg-secondary));
 }
 
 .settings-custom-code-theme-card.active {
@@ -1241,15 +1454,7 @@
   background-attachment: fixed;
 }
 
-/* ── 标题栏 ── */
-[data-theme="liquid-glass"] .settings-titlebar {
-  background: rgba(255, 255, 255, 0.75);
-  backdrop-filter: blur(28px) saturate(180%);
-  -webkit-backdrop-filter: blur(28px) saturate(180%);
-  border-bottom: 1px solid rgba(255, 255, 255, 0.7);
-  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.7), 0 1px 2px rgba(0, 0, 0, 0.03);
-}
-
+/* ── 标题栏控制按钮 ── */
 [data-theme="liquid-glass"] .settings-titlebar-btn:hover {
   background: rgba(0, 0, 0, 0.06);
 }

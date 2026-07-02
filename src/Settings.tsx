@@ -18,6 +18,18 @@ import "./Settings.css";
 
 type SettingsTab = "general" | "theme" | "shortcuts" | "editor" | "mindmap" | "graph" | "image" | "publish" | "about";
 
+interface NavItem {
+  id: SettingsTab;
+  label: string;
+  icon: React.ReactNode;
+  searchTerms?: string[];
+}
+
+interface NavGroup {
+  title: string;
+  items: NavItem[];
+}
+
 // ── Editor Settings ─────────────────────────────────────────────
 
 export interface EditorSettings {
@@ -1815,131 +1827,216 @@ export default function Settings() {
     }
   }, []);
 
-  const tabs: { id: SettingsTab; label: string; icon: React.ReactNode }[] = [
-    { id: "general", label: "通用", icon: (
-      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-        <circle cx="12" cy="12" r="3" />
-        <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z" />
-      </svg>
-    ) },
-    { id: "theme", label: "主题", icon: (
-      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-        <circle cx="13.5" cy="6.5" r="0.5" fill="currentColor" stroke="none" />
-        <circle cx="17.5" cy="10.5" r="0.5" fill="currentColor" stroke="none" />
-        <circle cx="8.5" cy="7.5" r="0.5" fill="currentColor" stroke="none" />
-        <circle cx="6.5" cy="12" r="0.5" fill="currentColor" stroke="none" />
-        <path d="M12 2C6.5 2 2 6.5 2 12s4.5 10 10 10c.926 0 1.648-.746 1.648-1.688 0-.437-.18-.835-.437-1.125-.29-.289-.438-.652-.438-1.125a1.64 1.64 0 0 1 1.668-1.668h1.996c3.051 0 5.555-2.503 5.555-5.554C21.965 6.012 17.461 2 12 2z" />
-      </svg>
-    ) },
-    { id: "shortcuts", label: "快捷键", icon: (
-      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-        <rect x="2" y="4" width="20" height="16" rx="2" />
-        <path d="M6 8h.01M10 8h.01M14 8h.01M18 8h.01M8 12h.01M12 12h.01M16 12h.01M7 16h10" />
-      </svg>
-    ) },
-    { id: "editor", label: "编辑器", icon: (
-      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-        <path d="M12 20h9" />
-        <path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z" />
-      </svg>
-    ) },
-    { id: "mindmap", label: "思维导图", icon: (
-      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-        <circle cx="6" cy="6" r="3" />
-        <circle cx="18" cy="18" r="3" />
-        <circle cx="18" cy="6" r="3" />
-        <circle cx="6" cy="18" r="3" />
-        <line x1="8.5" y1="8.5" x2="15.5" y2="15.5" />
-        <line x1="15.5" y1="8.5" x2="8.5" y2="15.5" />
-      </svg>
-    ) },
-    { id: "graph", label: "关系图谱", icon: (
-      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-        <circle cx="12" cy="5" r="3" />
-        <circle cx="5" cy="19" r="3" />
-        <circle cx="19" cy="19" r="3" />
-        <line x1="9.5" y1="7" x2="6.5" y2="16.5" />
-        <line x1="14.5" y1="7" x2="17.5" y2="16.5" />
-        <line x1="7.5" y1="19" x2="16.5" y2="19" />
-      </svg>
-    ) },
-    { id: "image", label: "图像", icon: (
-      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-        <rect x="3" y="3" width="18" height="18" rx="2" ry="2" />
-        <circle cx="8.5" cy="8.5" r="1.5" />
-        <polyline points="21 15 16 10 5 21" />
-      </svg>
-    ) },
-    { id: "publish", label: "发布", icon: (
-      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-        <path d="M22 2L11 13" />
-        <path d="M22 2l-7 20-4-9-9-4 20-7z" />
-      </svg>
-    ) },
-    { id: "about", label: "关于", icon: (
-      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-        <circle cx="12" cy="12" r="10" />
-        <line x1="12" y1="16" x2="12" y2="12" />
-        <line x1="12" y1="8" x2="12.01" y2="8" />
-      </svg>
-    ) },
+  // Search state
+  const [searchQuery, setSearchQuery] = useState('');
+
+  // Navigation groups with search terms
+  const navGroups: NavGroup[] = [
+    {
+      title: "通用",
+      items: [
+        { id: "general", label: "通用", icon: (
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+            <circle cx="12" cy="12" r="3" />
+            <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z" />
+          </svg>
+        ), searchTerms: ["通用", "general", "外观", "字体", "编辑设置"] },
+        { id: "theme", label: "主题", icon: (
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+            <circle cx="13.5" cy="6.5" r="0.5" fill="currentColor" stroke="none" />
+            <circle cx="17.5" cy="10.5" r="0.5" fill="currentColor" stroke="none" />
+            <circle cx="8.5" cy="7.5" r="0.5" fill="currentColor" stroke="none" />
+            <circle cx="6.5" cy="12" r="0.5" fill="currentColor" stroke="none" />
+            <path d="M12 2C6.5 2 2 6.5 2 12s4.5 10 10 10c.926 0 1.648-.746 1.648-1.688 0-.437-.18-.835-.437-1.125-.29-.289-.438-.652-.438-1.125a1.64 1.64 0 0 1 1.668-1.668h1.996c3.051 0 5.555-2.503 5.555-5.554C21.965 6.012 17.461 2 12 2z" />
+          </svg>
+        ), searchTerms: ["主题", "theme", "颜色", "自定义主题", "代码主题"] },
+        { id: "shortcuts", label: "快捷键", icon: (
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+            <rect x="2" y="4" width="20" height="16" rx="2" />
+            <path d="M6 8h.01M10 8h.01M14 8h.01M18 8h.01M8 12h.01M12 12h.01M16 12h.01M7 16h10" />
+          </svg>
+        ), searchTerms: ["快捷键", "shortcuts", "键盘", "热键"] },
+      ]
+    },
+    {
+      title: "编辑器",
+      items: [
+        { id: "editor", label: "编辑器", icon: (
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+            <path d="M12 20h9" />
+            <path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z" />
+          </svg>
+        ), searchTerms: ["编辑器", "editor", "编辑模式", "Markdown", "渲染", "代码高亮", "预览", "数学公式", "链接"] },
+        { id: "mindmap", label: "思维导图", icon: (
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+            <circle cx="6" cy="6" r="3" />
+            <circle cx="18" cy="18" r="3" />
+            <circle cx="18" cy="6" r="3" />
+            <circle cx="6" cy="18" r="3" />
+            <line x1="8.5" y1="8.5" x2="15.5" y2="15.5" />
+            <line x1="15.5" y1="8.5" x2="8.5" y2="15.5" />
+          </svg>
+        ), searchTerms: ["思维导图", "mindmap", "脑图", "布局", "节点"] },
+        { id: "graph", label: "关系图谱", icon: (
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+            <circle cx="12" cy="5" r="3" />
+            <circle cx="5" cy="19" r="3" />
+            <circle cx="19" cy="19" r="3" />
+            <line x1="9.5" y1="7" x2="6.5" y2="16.5" />
+            <line x1="14.5" y1="7" x2="17.5" y2="16.5" />
+            <line x1="7.5" y1="19" x2="16.5" y2="19" />
+          </svg>
+        ), searchTerms: ["关系图谱", "graph", "知识图谱", "链接图"] },
+      ]
+    },
+    {
+      title: "媒体",
+      items: [
+        { id: "image", label: "图像", icon: (
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+            <rect x="3" y="3" width="18" height="18" rx="2" ry="2" />
+            <circle cx="8.5" cy="8.5" r="1.5" />
+            <polyline points="21 15 16 10 5 21" />
+          </svg>
+        ), searchTerms: ["图像", "image", "图片", "上传", "存储"] },
+        { id: "publish", label: "发布", icon: (
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+            <path d="M22 2L11 13" />
+            <path d="M22 2l-7 20-4-9-9-4 20-7z" />
+          </svg>
+        ), searchTerms: ["发布", "publish", "导出", "部署", "网站"] },
+      ]
+    },
+    {
+      title: "关于",
+      items: [
+        { id: "about", label: "关于", icon: (
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+            <circle cx="12" cy="12" r="10" />
+            <line x1="12" y1="16" x2="12" y2="12" />
+            <line x1="12" y1="8" x2="12.01" y2="8" />
+          </svg>
+        ), searchTerms: ["关于", "about", "版本", "更新", "GitHub"] },
+      ]
+    }
   ];
+
+  // Filter navigation based on search query
+  const filteredGroups = navGroups.map(group => ({
+    ...group,
+    items: group.items.filter(item => {
+      if (!searchQuery.trim()) return true;
+      const query = searchQuery.toLowerCase();
+      return item.label.toLowerCase().includes(query) ||
+        item.searchTerms?.some(term => term.toLowerCase().includes(query));
+    })
+  })).filter(group => group.items.length > 0);
+
+  // Flatten for checking if any results
+  const hasResults = filteredGroups.some(group => group.items.length > 0);
 
   return (
     <div className="settings-window">
-      {/* 标题栏 */}
-      <div className="settings-titlebar" data-tauri-drag-region>
-        <span className="settings-title">设置</span>
-        <div className="settings-titlebar-controls">
-          <button
-            className="settings-titlebar-btn"
-            onClick={handleMinimize}
-            title="最小化"
-          >
-            <svg width="10" height="10" viewBox="0 0 10 10">
-              <line x1="1" y1="5" x2="9" y2="5" stroke="currentColor" strokeWidth="1.2" />
-            </svg>
-          </button>
-          <button
-            className="settings-titlebar-btn"
-            onClick={handleToggleMaximize}
-            title="最大化"
-          >
-            <svg width="10" height="10" viewBox="0 0 10 10">
-              <rect x="1" y="1" width="8" height="8" rx="0.5" fill="none" stroke="currentColor" strokeWidth="1.2" />
-            </svg>
-          </button>
-          <button
-            className="settings-titlebar-btn settings-titlebar-close"
-            onClick={handleClose}
-            title="关闭"
-          >
-            <svg width="10" height="10" viewBox="0 0 10 10">
-              <line x1="1.5" y1="1.5" x2="8.5" y2="8.5" stroke="currentColor" strokeWidth="1.2" />
-              <line x1="8.5" y1="1.5" x2="1.5" y2="8.5" stroke="currentColor" strokeWidth="1.2" />
-            </svg>
-          </button>
-        </div>
-      </div>
-
       {/* 主内容 */}
       <div className="settings-body">
         {/* 左侧菜单 */}
         <nav className="settings-nav">
-          {tabs.map((tab) => (
-            <button
-              key={tab.id}
-              className={`settings-nav-item${activeTab === tab.id ? " active" : ""}`}
-              onClick={() => setActiveTab(tab.id)}
-            >
-              {tab.icon}
-              {tab.label}
-            </button>
-          ))}
+          {/* 顶部透明拖拽区域 */}
+          <div className="settings-nav-topbar" data-tauri-drag-region />
+          <div className="settings-nav-content">
+            {/* 搜索框 */}
+            <div className="settings-nav-search">
+              <svg className="settings-nav-search-icon" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <circle cx="11" cy="11" r="8" />
+                <path d="m21 21-4.35-4.35" />
+              </svg>
+              <input
+                type="text"
+                className="settings-nav-search-input"
+                placeholder="搜索设置..."
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+              />
+              {searchQuery && (
+                <button
+                  className="settings-nav-search-clear"
+                  onClick={() => setSearchQuery('')}
+                  title="清除搜索"
+                >
+                  <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                    <line x1="18" y1="6" x2="6" y2="18" />
+                    <line x1="6" y1="6" x2="18" y2="18" />
+                  </svg>
+                </button>
+              )}
+            </div>
+
+            {/* 导航分组 */}
+            {hasResults ? (
+              filteredGroups.map((group) => (
+                <div key={group.title} className="settings-nav-group">
+                  <div className="settings-nav-group-title">{group.title}</div>
+                  {group.items.map((item) => (
+                    <button
+                      key={item.id}
+                      className={`settings-nav-item${activeTab === item.id ? " active" : ""}`}
+                      onClick={() => setActiveTab(item.id)}
+                    >
+                      {item.icon}
+                      {item.label}
+                    </button>
+                  ))}
+                </div>
+              ))
+            ) : (
+              <div className="settings-nav-empty">
+                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+                  <circle cx="11" cy="11" r="8" />
+                  <path d="m21 21-4.35-4.35" />
+                  <path d="M8 11h6" />
+                </svg>
+                <span>未找到匹配的设置</span>
+              </div>
+            )}
+          </div>
         </nav>
 
         {/* 右侧内容 */}
-        <main className="settings-main">
+        <div className="settings-main-wrapper">
+          {/* 内容区域顶部栏 */}
+          <div className="settings-main-topbar" data-tauri-drag-region>
+            <div className="settings-titlebar-controls">
+              <button
+                className="settings-titlebar-btn"
+                onClick={handleMinimize}
+                title="最小化"
+              >
+                <svg width="10" height="10" viewBox="0 0 10 10">
+                  <line x1="1" y1="5" x2="9" y2="5" stroke="currentColor" strokeWidth="1.2" />
+                </svg>
+              </button>
+              <button
+                className="settings-titlebar-btn"
+                onClick={handleToggleMaximize}
+                title="最大化"
+              >
+                <svg width="10" height="10" viewBox="0 0 10 10">
+                  <rect x="1" y="1" width="8" height="8" rx="0.5" fill="none" stroke="currentColor" strokeWidth="1.2" />
+                </svg>
+              </button>
+              <button
+                className="settings-titlebar-btn settings-titlebar-close"
+                onClick={handleClose}
+                title="关闭"
+              >
+                <svg width="10" height="10" viewBox="0 0 10 10">
+                  <line x1="1.5" y1="1.5" x2="8.5" y2="8.5" stroke="currentColor" strokeWidth="1.2" />
+                  <line x1="8.5" y1="1.5" x2="1.5" y2="8.5" stroke="currentColor" strokeWidth="1.2" />
+                </svg>
+              </button>
+            </div>
+          </div>
+          <main className="settings-main">
           {activeTab === "general" && (
             <GeneralSettingsContent settings={generalSettings} onChange={setGeneralSettings} />
           )}
@@ -1964,6 +2061,7 @@ export default function Settings() {
           )}
           {activeTab === "about" && <AboutSettingsContent />}
         </main>
+        </div>
       </div>
     </div>
   );

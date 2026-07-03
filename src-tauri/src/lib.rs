@@ -272,6 +272,33 @@ fn open_file(file_path: String) -> Result<(), String> {
     Ok(())
 }
 
+/// 用系统默认浏览器打开 URL
+#[tauri::command]
+fn open_url(url: String) -> Result<(), String> {
+    #[cfg(target_os = "windows")]
+    {
+        Command::new("cmd")
+            .args(["/C", "start", "", &url])
+            .spawn()
+            .map_err(|e| e.to_string())?;
+    }
+    #[cfg(target_os = "macos")]
+    {
+        Command::new("open")
+            .arg(&url)
+            .spawn()
+            .map_err(|e| e.to_string())?;
+    }
+    #[cfg(target_os = "linux")]
+    {
+        Command::new("xdg-open")
+            .arg(&url)
+            .spawn()
+            .map_err(|e| e.to_string())?;
+    }
+    Ok(())
+}
+
 /// 获取当前工作目录
 #[tauri::command]
 fn get_cwd() -> Result<String, String> {
@@ -551,6 +578,7 @@ pub fn run() {
             open_file_in_new_window,
             open_file_location,
             open_file,
+            open_url,
             open_directory,
             open_mindmap_window,
             open_graph_window,

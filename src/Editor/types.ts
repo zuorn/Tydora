@@ -6,6 +6,7 @@ export interface EditorHandle {
   getValue: () => string;
   setValue: (value: string) => void;
   insertTextAtCursor: (text: string) => void;
+  replaceRangeWithWikiLink: (fromPos: number, noteName: string, heading?: string, display?: string) => void;
   resize: () => void;
   highlightSearch: (query: string) => void;
   clearHighlight: () => void;

@@ -104,9 +104,6 @@ class CodeBlockToolbarView implements NodeView {
     // 点击外部关闭下拉框
     this.handleDocumentClick = this.handleDocumentClick.bind(this);
     document.addEventListener("click", this.handleDocumentClick);
-
-    // Apply initial highlighting
-    this.applyHighlighting();
   }
 
   private createLanguageSelector(): HTMLElement {
@@ -269,7 +266,6 @@ class CodeBlockToolbarView implements NodeView {
     if (this.langButton) {
       this.langButton.textContent = LANGUAGES.find(l => l.value === node.attrs.language)?.label || "Plain Text";
     }
-    this.applyHighlighting();
     return true;
   }
 
@@ -292,15 +288,10 @@ class CodeBlockToolbarView implements NodeView {
   }
 
   stopEvent(event: Event) {
-    // 允许工具栏按钮的点击事件冒泡
     if ((event.target as HTMLElement).closest(".code-block-toolbar")) {
-      return false;
+      return true;
     }
-    return true;
-  }
-
-  ignoreMutation() {
-    return true;
+    return false;
   }
 
   destroy() {

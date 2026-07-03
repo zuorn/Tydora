@@ -177,6 +177,7 @@ function App({ initialFilePath }: { initialFilePath?: string | null }) {
   const [wikiAutocompleteVisible, setWikiAutocompleteVisible] = useState(false);
   const [wikiAutocompleteQuery, setWikiAutocompleteQuery] = useState('');
   const [wikiAutocompletePosition, setWikiAutocompletePosition] = useState<{ x: number; y: number } | null>(null);
+  const wikiTriggerEditorPosRef = useRef<number | null>(null);
 
   // 知识图谱状态
   const [graphViewOpen, setGraphViewOpen] = useState(false);
@@ -805,6 +806,22 @@ function App({ initialFilePath }: { initialFilePath?: string | null }) {
     return () => window.removeEventListener('wiki-link-click', handleWikiLinkClick);
   }, [activeVaultIndex, vaults, handleSelectFile]);
 
+  // Ctrl+Click wiki-link 在新窗口打开
+  useEffect(() => {
+    const handleWikiLinkNewWindow = (e: Event) => {
+      const customEvent = e as CustomEvent<{ noteName: string; heading?: string }>;
+      const { noteName } = customEvent.detail;
+
+      const targetPath = LinkIndexService.findFileByNoteName(noteName);
+      if (targetPath) {
+        invoke("open_file_in_new_window", { filePath: targetPath });
+      }
+    };
+
+    window.addEventListener('wiki-link-open-new-window', handleWikiLinkNewWindow);
+    return () => window.removeEventListener('wiki-link-open-new-window', handleWikiLinkNewWindow);
+  }, []);
+
   // 监听其他窗口的打开文件请求（如关系图谱窗口点击节点）
   useEffect(() => {
     const unlisten = listen<{ path: string }>("open-file", (event) => {
@@ -816,10 +833,15 @@ function App({ initialFilePath }: { initialFilePath?: string | null }) {
   // 监听 wikilink 自动补全触发
   useEffect(() => {
     const handleWikiLinkTrigger = (e: Event) => {
-      const customEvent = e as CustomEvent<{ query: string; position: { x: number; y: number } }>;
-      const { query, position } = customEvent.detail;
+      const customEvent = e as CustomEvent<{
+        query: string;
+        editorPosition: number;
+        screenPosition: { x: number; y: number } | null;
+      }>;
+      const { query, editorPosition, screenPosition } = customEvent.detail;
       setWikiAutocompleteQuery(query);
-      setWikiAutocompletePosition(position);
+      setWikiAutocompletePosition(screenPosition);
+      wikiTriggerEditorPosRef.current = editorPosition;
       setWikiAutocompleteVisible(true);
     };
 
@@ -830,40 +852,14 @@ function App({ initialFilePath }: { initialFilePath?: string | null }) {
   // WikiLink 自动补全选中回调
   const handleWikiAutocompleteSelect = useCallback((noteName: string) => {
     setWikiAutocompleteVisible(false);
-    // 使用 Selection API 在编辑器中直接替换文本，避免 setValue 滚动到顶部
-    const sel = window.getSelection();
-    if (!sel || sel.rangeCount === 0) return;
-    const range = sel.getRangeAt(0);
-    const node = range.startContainer;
-    if (node.nodeType !== Node.TEXT_NODE) return;
+    const triggerPos = wikiTriggerEditorPosRef.current;
+    if (triggerPos === null) return;
 
-    const text = node.textContent || '';
-    const offset = range.startOffset;
-    // 向前找到 [[
-    const before = text.slice(0, offset);
-    const lastOpen = before.lastIndexOf('[[');
-    if (lastOpen < 0) return;
+    // 使用编辑器命令替换 [[query → WikiLink 节点
+    editorHandleRef.current?.replaceRangeWithWikiLink(triggerPos, noteName);
+    wikiTriggerEditorPosRef.current = null;
 
-    // 选中从 [[ 开始到光标位置的文本
-    const startNode = node;
-    const startOffset = lastOpen;
-    const endNode = node;
-    const endOffset = offset;
-
-    // 删除选区内容并插入完整的 [[noteName]]
-    range.setStart(startNode, startOffset);
-    range.setEnd(endNode, endOffset);
-    range.deleteContents();
-    range.insertNode(document.createTextNode(`[[${noteName}]]`));
-
-    // 移动光标到插入文本之后
-    range.setStartAfter(range.endContainer);
-    range.setEndAfter(range.endContainer);
-    sel.removeAllRanges();
-    sel.addRange(range);
-
-    // 兜底：直接通过 editorHandle 获取内容并同步 React 状态
-    // 确保 content 和 modified 状态被更新
+    // 同步 React 状态
     const val = editorHandleRef.current?.getValue();
     if (val !== undefined) {
       handleChange(val);

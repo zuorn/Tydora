@@ -25,9 +25,19 @@ npm run dev
 # 构建前端（TypeScript 编译 + Vite 打包）
 npm run build
 
-# 启动 Tauri（桌面应用）
+# 预览生产构建（vite preview）
+npm run preview
+
+# 启动 Tauri（桌面应用）— 通过 scripts/run-tauri.mjs 加载 .env 签名密钥
 npm run tauri
+
+# 文档站点
+npm run docs:build    # 构建 MkDocs 文档站点
+npm run docs:serve    # 本地预览文档站点
+npm run docs:clean    # 清理构建的文档
 ```
+
+**注意**：项目目前没有配置 test/lint/format 脚本。`npm run build` 内置了 `tsc` 类型检查。`scripts/run-tauri.mjs` 用于加载 `.env` 文件中的签名密钥环境变量，然后转发参数给 `npx tauri`。
 
 ## 架构概览
 
@@ -35,7 +45,11 @@ npm run tauri
 
 **入口**: `main.tsx` → 用 `ThemeProvider` 包裹整个应用，挂载到 `#root`。
 
-**主题系统**: `themes.tsx` 提供 `ThemeContext`，支持 7 种主题（`white`、`mint`、`mint-dark`、`liquid-glass`、`claude-code`、`purple`、`hermes`）。主题通过 `document.documentElement.dataset.theme` 设置，并在切换时同步更新 highlight.js 代码高亮样式。默认主题为 `mint`。
+**主题系统**:
+- `ThemeManager.ts` — 8 种内置主题定义（`white`、`mint`、`mint-dark`、`liquid-glass`、`claude-code`、`purple`、`hermes`、`next`）。默认主题为 `mint`。
+- `CustomThemeManager.ts` — 自定义主题的导入/导出/管理，存储在 Tauri `appDataDir` 中。
+- `codeThemes.ts` — 11 种代码语法高亮配色方案。
+- `themes.tsx` 提供 `ThemeContext`，主题通过 `document.documentElement.dataset.theme` 设置，并在切换时同步更新 highlight.js 代码高亮样式。
 
 **App 组件** (`App.tsx`) — 应用状态中心：
 - 管理编辑器内容 (`content`)、当前文件路径 (`fileName`)、修改状态 (`modified`)、编辑模式 (`viewMode: "ir" | "sv"`)
@@ -68,17 +82,139 @@ npm run tauri
 
 **入口**: `main.rs` → 调用 `tydora_lib::run()`
 
-**lib.rs**:
-- 注册两个自定义 Tauri 命令：`get_default_content`、`get_app_version`
-- 注册 `tauri-plugin-fs` 和 `tauri-plugin-dialog` 插件
+**源码结构**:
+```
+src-tauri/src/
+├── main.rs
+├── lib.rs
+└── commands/
+    ├── mod.rs
+    └── watcher_commands.rs    # 文件监听命令（notify crate）
+```
+
+**Tauri 插件**（5 个）:
+| 插件 | 用途 |
+|------|------|
+| `tauri-plugin-fs` | 文件系统访问 |
+| `tauri-plugin-dialog` | 系统对话框 |
+| `tauri-plugin-window-state` | 窗口状态持久化 |
+| `tauri-plugin-updater` | 应用自动更新 |
+| `tauri-plugin-process` | 进程管理 |
+
+**自定义 Tauri 命令**（15 个）:
+| 命令 | 用途 |
+|------|------|
+| `get_default_content` | 获取默认编辑器内容 |
+| `get_app_version` | 获取应用版本号 |
+| `get_cwd` | 获取当前工作目录 |
+| `open_settings_window` | 打开设置窗口（800×600，无装饰） |
+| `open_file_in_new_window` | 在新窗口打开文件（1200×800） |
+| `open_file_location` | 在系统文件管理器中定位文件 |
+| `open_file` | 用系统默认应用打开文件 |
+| `open_directory` | 在系统文件管理器中打开目录 |
+| `open_mindmap_window` | 打开思维导图窗口（900×600） |
+| `open_graph_window` | 打开知识图谱窗口（1000×700） |
+| `watch_vault` | 启动仓库文件系统监听 |
+| `unwatch_vault` | 停止仓库文件系统监听 |
+| `run_markdown_publish` | 调用 `@abstractwebunit/markdown-publish` CLI 发布网站 |
+| `preview_site` | 启动 HTTP 服务器预览已发布站点 |
+| `stop_preview` | 停止预览 HTTP 服务器 |
+
+**状态管理**（lib.rs）:
+- `WatcherState` (`Mutex<Option<RecommendedWatcher>>`) — 仓库文件监听状态
+- `PreviewServer` (`Mutex<Option<Child>>`) — 预览 HTTP 服务器子进程
+
+**其他**:
+- `register_uri_scheme_protocol("local-file", ...)` — 自定义 URI scheme，用于加载本地文件
 - Debug 模式下自动打开 DevTools
-- 设置 `windows_subsystem = "windows"` 防止 release 模式出现控制台窗口
+- `windows_subsystem = "windows"` 防止 release 模式出现控制台窗口
+
+**Rust 依赖**: `serde`/`serde_json`（序列化）、`notify`（文件系统监听）、三个 Tauri 插件 crate。
+
+### 多窗口架构
+
+Tydora 采用多窗口架构，主进程通过 Tauri Window API 管理多个独立窗口：
+
+| 窗口 | 触发方式 | 默认大小 | 说明 |
+|------|----------|----------|------|
+| 主窗口 | 应用启动 | 1200×800 | 编辑器、侧栏等核心 UI |
+| 设置窗口 | `open_settings_window` | 800×600 | 独立设置面板（无装饰） |
+| 文件窗口 | `open_file_in_new_window` | 1200×800 | 在独立窗口中编辑文件 |
+| 图谱窗口 | `open_graph_window` | 1000×700 | 知识图谱可视化 |
+| 思维导图窗口 | `open_mindmap_window` | 900×600 | 思维导图可视化 |
+
+各独立窗口（如 GraphWindow、MindmapWindow）渲染各自的 React 组件树，通过序列化的 JSON 数据（如 LinkIndexService 序列化的链接索引）与主窗口共享状态。
+
+### Tauri 配置 (tauri.conf.json)
+
+- **标识符**: `com.tydora.editor`，版本 `0.0.5`
+- **窗口**: 1200×800，居中，无装饰，可调整大小
+- **打包**: Windows (NSIS)、macOS (DMG)、Linux (AppImage)
+- **CSP**: 设为 `null`（允许加载本地资源）
+- **自动更新**: 配置了公钥签名验证，端点指向 GitHub Releases
+- **beforeDevCommand**: `npm run dev`，**beforeBuildCommand**: `npm run build`
+- **capabilities** (`src-tauri/capabilities/default.json`): 授予文件系统全路径读写、窗口控制、对话框、更新器、进程管理权限
 
 ### 构建配置
 
-- **Vite** (`vite.config.ts`): `@vitejs/plugin-react`，端口 1420 严格模式，忽略 `src-tauri/` 的文件监听
-- **TypeScript**: target ES2020，严格模式，路径别名 `@/* → src/*`
+- **Vite** (`vite.config.ts`): `@vitejs/plugin-react`，端口 1420 严格模式，`clearScreen: false`（避免覆盖 Rust 编译错误），忽略 `src-tauri/` 的文件监听
+- **TypeScript**: target ES2020，严格模式，`noUnusedLocals`/`noUnusedParameters`/`noFallthroughCasesInSwitch` 开启，路径别名 `@/* → src/*`，`moduleResolution: "bundler"`
 - **Rust**: 链接器 `rust-lld`，目标 `x86_64-pc-windows-msvc`
+
+### Wiki-Link 系统
+
+Obsidian 风格的 `[[双向链接]]` 由三个模块协作实现：
+
+| 模块 | 文件 | 职责 |
+|------|------|------|
+| 解析器 | `LinkParser.ts` | 正则匹配 `[[link]]` 和 `![[embed]]` 语法 |
+| 索引服务 | `LinkIndexService.ts` | 维护 outlinks/backlinks 映射、文件名快速查找，支持全量重建和增量更新，可序列化为 JSON 跨窗口传输 |
+| DOM 处理器 | `WikiLinkProcessor.ts` | 将文本节点中的 `[[...]]` 转换为可点击的样式化链接 |
+| TipTap 扩展 | `extensions/wiki-link.ts` | 编辑器内的 WikiLink Node 扩展 |
+| 自动补全 | `WikiLinkAutocomplete.tsx` | 监听 `wiki-link-trigger` 事件显示补全列表，通过 Selection API 替换文本 |
+| 反向链接面板 | `BacklinksPanel.tsx` | 展示当前文件的反向链接和出链 |
+
+### 发布功能
+
+将 Vault 中的 Markdown 文件发布为静态网站：
+
+| 模块 | 文件 | 职责 |
+|------|------|------|
+| 发布面板 | `PublishPanel.tsx` | 发布操作覆盖面板 |
+| 发布设置 | `PublishSettings.tsx` | 发布配置表单 |
+| 发布服务 | `PublishService.ts` | 加载/保存发布配置，调用 `run_markdown_publish` Rust 命令 |
+| Rust 命令 | `run_markdown_publish` | 调用 `@abstractwebunit/markdown-publish` CLI |
+| 预览 | `preview_site` / `stop_preview` | 启动/停止 Node.js HTTP 服务器预览发布结果 |
+
+### 文件监听系统
+
+`useVaultWatcher.ts` — React Hook，在 Vault 切换时：
+1. 调用 `watch_vault` Rust 命令启动 `notify` crate 文件系统监听
+2. 防抖处理文件变更事件
+3. 自动更新 LinkIndexService 的链接索引
+4. 组件卸载或切换 Vault 时调用 `unwatch_vault` 停止监听
+
+### 其他重要模块
+
+- **`FilePreview.tsx`** — 非 Markdown 文件预览（图片、视频、音频、PDF），支持缩放
+- **`ConfirmDialog.tsx`** — 可复用确认对话框，支持 Y/N 键盘快捷键
+- **`ImageManager.ts`** — 图片存储管理（vault-assets 固定目录）、文件名生成、路径工具
+- **`Updater.ts`** — 封装 `@tauri-apps/plugin-updater`，提供检查/下载/安装/重启流程
+
+## CI/CD
+
+### GitHub Actions
+
+**`.github/workflows/release.yml`**:
+- 触发: push 到 `release` 分支或手动 dispatch
+- 跨平台构建矩阵: `windows-latest`、`macos-latest` (aarch64 + x86_64)、`ubuntu-22.04`
+- 使用 `dtolnay/rust-toolchain@stable`、`swatinem/rust-cache@v2`、`tauri-apps/tauri-action@v0`
+- 创建 Draft GitHub Release，使用 `TAURI_SIGNING_PRIVATE_KEY` 进行代码签名
+- Linux 依赖: `libwebkit2gtk-4.1-dev`、`libappindicator3-dev`、`librsvg2-dev`、`patchelf`、`libgtk-3-dev`
+
+**`.github/workflows/deploy-docs.yml`**:
+- 触发: push 到 `main` 且变更涉及 `website/` 目录下的文档文件
+- 使用 Python 3.12 构建 MkDocs 站点，部署到 GitHub Pages
 
 ## TipTap 编辑器架构
 
@@ -122,14 +258,25 @@ npm run tauri
 | `slash-command.css` | Slash 菜单样式 | 代码完成，待集成 |
 | `selection-toolbar.ts` | 选中文本浮动工具栏 | 代码完成，待集成 |
 | `drag-handle.ts` | 拖拽手柄（自定义实现） | 代码完成，待集成 |
+| `safe-focus.ts` | SafeFocus 扩展（替代有 bug 的 Focus 扩展） | 代码完成，待集成 |
+
+### Frontmatter 支持
+
+- **`src/Editor/frontmatter.ts`**: YAML frontmatter 解析器 — 导出 `parseFrontmatter()`（严格模式）和 `extractFrontmatter()`（始终返回 `{ frontmatter, body }`），支持引号字符串、数组、布尔值、数字、null 和多行值。
+- **`src/Editor/PropertiesPanel.tsx`**: 可折叠的 YAML 属性面板，显示排序后的 frontmatter 键值（title/tags/date 等优先），支持一键复制 YAML 块，复用代码块工具栏样式。
 
 ## 主题/样式文件
 
-- `src/themes.css` — CSS 变量定义 7 种主题的颜色方案
+- `src/themes.css` — CSS 变量定义 8 种主题的颜色方案
 - `src/App.css` — 主布局（app、main-container、editor-container、顶部/底部栏、窗口控件）
 - `src/Sidebar.css` — 侧栏/文件树/右键菜单样式
 - `src/Editor/theme.css` — TipTap 编辑器样式、代码块工具栏、右键菜单、源码编辑器样式
-- `src/Settings.css` — 设置面板样式
+- `src/Settings.css` — 设置/发布设置面板样式
+- `src/PublishPanel.css` — 发布面板样式
+- `src/GraphView.css` / `src/MindmapView.css` — 图谱/思维导图样式
+- `src/GraphWindow.css` / `src/MindmapWindow.css` — 图谱/思维导图独立窗口样式
+- `src/BacklinksPanel.css` / `src/FilePreview.css` — 反向链接/文件预览样式
+- `src/WikiLink.css` / `src/WikiLinkAutocomplete.css` — WikiLink 样式
 
 ## 重要开发规则
 
@@ -240,9 +387,14 @@ TypeError: Cannot destructure property 'isEditable' of 'editor' as it is undefin
 ```
 src/
 ├── App.tsx                    # 应用主组件，状态管理
+├── App.css                    # 主布局样式
 ├── main.tsx                   # 入口
-├── themes.tsx                 # 主题系统
+├── themes.tsx                 # 主题 Context
+├── ThemeManager.ts            # 8 种内置主题定义
+├── CustomThemeManager.ts      # 自定义主题管理
+├── codeThemes.ts              # 代码语法高亮配色
 ├── Sidebar.tsx                # 侧栏（文件树+大纲+仓库切换）
+├── Sidebar.css                # 侧栏样式
 ├── Editor/
 │   ├── TipTapEditor.tsx       # TipTap 编辑器主组件
 │   ├── SourceEditor.tsx       # CodeMirror 源码编辑器
@@ -251,15 +403,32 @@ src/
 │   ├── types.ts               # 编辑器类型定义
 │   ├── shortcuts.ts           # 快捷键管理
 │   ├── theme.css              # 编辑器样式
+│   ├── frontmatter.ts         # YAML frontmatter 解析器
+│   ├── PropertiesPanel.tsx    # Frontmatter 属性显示面板
+│   ├── index.tsx              # Barrel re-export
 │   └── extensions/            # 自定义 TipTap 扩展
 │       ├── wiki-link.ts
 │       ├── search-highlight.ts
 │       ├── code-block-toolbar.ts
 │       └── custom-commands.ts
 ├── WikiLinkAutocomplete.tsx   # WikiLink 自动补全
-├── GraphView.tsx              # 知识图谱
-├── MindmapView.tsx            # 思维导图
+├── BacklinksPanel.tsx         # 反向链接面板
+├── LinkIndexService.ts        # 链接索引服务
+├── LinkParser.ts              # [[wiki-link]] 解析器
+├── WikiLinkProcessor.ts       # DOM 层 WikiLink 处理器
+├── ImageManager.ts            # 图片存储管理
+├── GraphView.tsx              # 知识图谱视图
+├── GraphWindow.tsx            # 知识图谱独立窗口
+├── MindmapView.tsx            # 思维导图视图
+├── MindmapWindow.tsx          # 思维导图独立窗口
+├── FilePreview.tsx            # 非 MD 文件预览（图片/视频/音频/PDF）
+├── PublishPanel.tsx           # 发布操作面板
+├── PublishSettings.tsx        # 发布设置表单
+├── PublishService.ts          # 发布服务
+├── ConfirmDialog.tsx          # 确认对话框（支持 Y/N 快捷键）
 ├── Settings.tsx               # 设置面板
 ├── CommandPalette.tsx         # 命令面板
-└── QuickOpen.tsx              # 快速打开文件
+├── QuickOpen.tsx              # 快速打开文件
+├── Updater.ts                 # 自动更新（检查/下载/安装/重启）
+└── useVaultWatcher.ts         # 仓库文件监听 Hook
 ```

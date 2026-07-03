@@ -83,6 +83,7 @@
 /* 行样式 */
 .source-line {
   display: flex;
+  min-height: 1.6em;
 }
 
 .source-line-content {
@@ -279,6 +280,7 @@
 .tiptap-editor a {
   color: var(--text-link, #0969da);
   text-decoration: none;
+  cursor: pointer;
 }
 
 .tiptap-editor a:hover {
@@ -293,15 +295,30 @@
 }
 
 /* Wiki 链接 */
-.tiptap-editor .wiki-link {
-  color: var(--text-wiki-link, #0969da);
+.tiptap-editor .wiki-link,
+.tiptap-editor .wiki-link-pending {
+  color: var(--accent, #0969da);
   text-decoration: none;
-  border-bottom: 1px dashed var(--text-wiki-link, #0969da);
   cursor: pointer;
+  background: rgba(var(--accent-rgb, 137, 180, 250), 0.15);
+  padding: 1px 4px;
+  border-radius: 3px;
+  transition: all 0.15s ease;
+  border: none;
+  font-family: inherit;
+  font-size: inherit;
 }
 
-.tiptap-editor .wiki-link:hover {
-  background: var(--bg-wiki-link-hover, rgba(9, 105, 218, 0.1));
+.tiptap-editor .wiki-link:hover,
+.tiptap-editor .wiki-link-pending:hover {
+  background: rgba(var(--accent-rgb, 137, 180, 250), 0.25);
+}
+
+.tiptap-editor .wiki-link[data-exists="false"],
+.tiptap-editor .wiki-link-pending[data-exists="false"] {
+  color: var(--text-secondary, #999);
+  background: transparent;
+  opacity: 0.6;
 }
 
 /* 搜索高亮 */
@@ -735,4 +752,106 @@
   border-radius: 8px;
   box-shadow: 0 4px 16px rgba(0, 0, 0, 0.15);
   padding: 4px 0;
+}
+
+/* 表格浮动工具栏 */
+.table-floating-toolbar {
+  position: absolute;
+  top: -40px;
+  left: 0;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 4px 8px;
+  background: var(--bg-primary, #fff);
+  border: 1px solid var(--border, #e0e0e0);
+  border-radius: 8px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+  z-index: 50;
+  min-width: 200px;
+}
+
+.table-floating-toolbar-left,
+.table-floating-toolbar-right {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+}
+
+.table-toolbar-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  padding: 0;
+  background: transparent;
+  border: none;
+  border-radius: 4px;
+  color: var(--text-secondary, #666);
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.table-toolbar-btn:hover {
+  background: var(--bg-hover, #f0f0f0);
+  color: var(--text-primary, #333);
+}
+
+.table-toolbar-btn.active {
+  background: var(--bg-active, #e3f2fd);
+  color: var(--text-link, #0969da);
+}
+
+.table-toolbar-btn.delete:hover {
+  background: #fee2e2;
+  color: #dc2626;
+}
+
+.table-toolbar-divider {
+  width: 1px;
+  height: 20px;
+  background: var(--border, #e0e0e0);
+  margin: 0 4px;
+}
+
+.table-toolbar-more-wrapper {
+  position: relative;
+}
+
+.table-toolbar-dropdown {
+  position: absolute;
+  top: 100%;
+  right: 0;
+  margin-top: 4px;
+  min-width: 160px;
+  background: var(--bg-primary, #fff);
+  border: 1px solid var(--border, #e0e0e0);
+  border-radius: 8px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+  z-index: 100;
+  overflow: hidden;
+}
+
+.table-toolbar-dropdown button {
+  display: block;
+  width: 100%;
+  padding: 8px 12px;
+  background: none;
+  border: none;
+  text-align: left;
+  font-size: 13px;
+  cursor: pointer;
+  color: var(--text-primary, #333);
+  transition: background 0.1s ease;
+}
+
+.table-toolbar-dropdown button:hover {
+  background: var(--bg-hover, #f0f0f0);
+}
+
+.table-toolbar-dropdown-divider {
+  height: 1px;
+  background: var(--border, #e0e0e0);
+  margin: 4px 0;
 }

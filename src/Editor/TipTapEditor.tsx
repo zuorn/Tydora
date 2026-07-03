@@ -26,9 +26,12 @@ import { common, createLowlight } from "lowlight";
 import { WikiLink } from "./extensions/wiki-link";
 import { SearchHighlight } from "./extensions/search-highlight";
 import { CodeBlockToolbar } from "./extensions/code-block-toolbar";
+import { TableFloatingToolbar } from "./extensions/table-floating-toolbar";
+import { TableFloatingToolbar as TableFloatingToolbarComponent } from "./TableFloatingToolbar";
 import { executeCommand } from "./extensions/custom-commands";
 import { saveImageToLocal, loadImageSettings } from "../ImageManager";
 import { loadShortcuts, matchShortcut } from "./shortcuts";
+import { invoke } from "@tauri-apps/api/core";
 import SourceEditor, { type SourceEditorHandle } from "./SourceEditor";
 import { ContextMenu } from "./ContextMenu";
 import type { ThemeName } from "../themes";
@@ -63,6 +66,7 @@ const TipTapEditor = forwardRef<EditorHandle, TipTapEditorProps>(
     const imageSettingsRef = useRef(imageSettings);
     const sourceEditorRef = useRef<SourceEditorHandle>(null);
     const [contextMenuPos, setContextMenuPos] = useState<{ x: number; y: number } | null>(null);
+    const [tableToolbar, setTableToolbar] = useState<{ table: HTMLElement } | null>(null);
 
     onChangeRef.current = onChange;
     onWordCountRef.current = onWordCount;
@@ -126,17 +130,18 @@ const TipTapEditor = forwardRef<EditorHandle, TipTapEditorProps>(
         WikiLink,
         SearchHighlight,
         CodeBlockToolbar,
+        TableFloatingToolbar,
       ],
       content: value,
       onUpdate: ({ editor: ed }) => {
+        const md = (ed.storage as Record<string, any>).markdown.getMarkdown();
+
         if (isInternalRef.current) {
           isInternalRef.current = false;
-          return;
+        } else {
+          onChangeRef.current(md);
         }
-        const md = (ed.storage as Record<string, any>).markdown.getMarkdown();
-        onChangeRef.current(md);
 
-        // 更新字数统计
         const text = ed.getText();
         const count = editorSettings?.counterType === "markdown"
           ? md.length
@@ -221,6 +226,47 @@ const TipTapEditor = forwardRef<EditorHandle, TipTapEditorProps>(
       return () => window.removeEventListener("image-upload-file", handleImageUpload);
     }, [handleImageFile]);
 
+    // 监听表格工具栏显示事件
+    useEffect(() => {
+      const handleTableToolbarShow = (e: Event) => {
+        const customEvent = e as CustomEvent;
+        if (customEvent.detail?.table && editor) {
+          setTableToolbar({ table: customEvent.detail.table });
+        }
+      };
+      window.addEventListener("table-toolbar-show", handleTableToolbarShow);
+      return () => window.removeEventListener("table-toolbar-show", handleTableToolbarShow);
+    }, [editor]);
+
+    // Ctrl+Click 打开链接
+    useEffect(() => {
+      const container = containerRef.current;
+      if (!container) return;
+
+      const handleClick = (e: MouseEvent) => {
+        if (!e.ctrlKey && !e.metaKey) return;
+
+        const target = e.target as HTMLElement;
+        const anchor = target.closest("a");
+        if (!anchor) return;
+
+        const href = anchor.getAttribute("href");
+        if (!href || href === "#") return;
+
+        e.preventDefault();
+        e.stopPropagation();
+
+        if (href.startsWith("http://") || href.startsWith("https://")) {
+          invoke("open_url", { url: href });
+        } else if (!href.startsWith("wikilink://")) {
+          invoke("open_file", { filePath: href });
+        }
+      };
+
+      container.addEventListener("click", handleClick, true);
+      return () => container.removeEventListener("click", handleClick, true);
+    }, [editor]);
+
     // 注册快捷键
     useEffect(() => {
       if (!editor) return;
@@ -303,6 +349,18 @@ const TipTapEditor = forwardRef<EditorHandle, TipTapEditorProps>(
       insertTextAtCursor: (text: string) => {
         if (!editor) return;
         editor.chain().focus().insertContent(text).run();
+      },
+      replaceRangeWithWikiLink: (fromPos: number, noteName: string, heading?: string, display?: string) => {
+        if (!editor) return;
+        const to = editor.state.selection.from;
+        editor
+          .chain()
+          .focus()
+          .insertContentAt(
+            { from: fromPos, to },
+            { type: 'wikiLink' as any, attrs: { note: noteName, heading: heading || null, display: display || null } }
+          )
+          .run();
       },
       resize: () => {
         if (!editor) return;
@@ -406,6 +464,7 @@ const TipTapEditor = forwardRef<EditorHandle, TipTapEditorProps>(
           ref={sourceEditorRef}
           value={value}
           onChange={onChange}
+          onWordCount={onWordCount}
         />
       );
     }
@@ -423,6 +482,12 @@ const TipTapEditor = forwardRef<EditorHandle, TipTapEditorProps>(
           onContextMenu={handleContextMenu}
         >
           <EditorContent editor={editor} className="tiptap-editor" />
+          {tableToolbar && editor && (
+            <TableFloatingToolbarComponent
+              editor={editor}
+              onClose={() => setTableToolbar(null)}
+            />
+          )}
         </div>
         <ContextMenu
           editor={editor}

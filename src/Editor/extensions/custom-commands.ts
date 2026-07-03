@@ -116,6 +116,39 @@ export function executeCommand(name: string, editor: Editor | null) {
     case "table-col-delete":
       chain.deleteColumn().run();
       break;
+    case "table-align-left":
+      editor.chain().focus().command(({ tr, state }) => {
+        const { $from } = state.selection;
+        const cell = $from.node(-1);
+        if (cell && (cell.type.name === "tableCell" || cell.type.name === "tableHeader")) {
+          tr.setNodeMarkup($from.before(-1), undefined, { ...cell.attrs, textAlign: "left" });
+          return true;
+        }
+        return false;
+      }).run();
+      break;
+    case "table-align-center":
+      editor.chain().focus().command(({ tr, state }) => {
+        const { $from } = state.selection;
+        const cell = $from.node(-1);
+        if (cell && (cell.type.name === "tableCell" || cell.type.name === "tableHeader")) {
+          tr.setNodeMarkup($from.before(-1), undefined, { ...cell.attrs, textAlign: "center" });
+          return true;
+        }
+        return false;
+      }).run();
+      break;
+    case "table-align-right":
+      editor.chain().focus().command(({ tr, state }) => {
+        const { $from } = state.selection;
+        const cell = $from.node(-1);
+        if (cell && (cell.type.name === "tableCell" || cell.type.name === "tableHeader")) {
+          tr.setNodeMarkup($from.before(-1), undefined, { ...cell.attrs, textAlign: "right" });
+          return true;
+        }
+        return false;
+      }).run();
+      break;
 
     // 编辑
     case "undo":

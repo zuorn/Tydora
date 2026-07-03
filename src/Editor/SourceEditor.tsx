@@ -46,6 +46,7 @@ hljs.registerLanguage("kotlin", kotlin);
 interface SourceEditorProps {
   value: string;
   onChange: (value: string) => void;
+  onWordCount?: (count: number) => void;
 }
 
 export interface SourceEditorHandle {
@@ -55,14 +56,21 @@ export interface SourceEditorHandle {
 }
 
 const SourceEditor = forwardRef<SourceEditorHandle, SourceEditorProps>(
-  ({ value, onChange }, ref) => {
+  ({ value, onChange, onWordCount }, ref) => {
     const textareaRef = useRef<HTMLTextAreaElement>(null);
     const highlightRef = useRef<HTMLDivElement>(null);
     const lineNumbersRef = useRef<HTMLDivElement>(null);
     const onChangeRef = useRef(onChange);
+    const onWordCountRef = useRef(onWordCount);
     const [lineCount, setLineCount] = useState(1);
 
     onChangeRef.current = onChange;
+    onWordCountRef.current = onWordCount;
+
+    const updateWordCount = (text: string) => {
+      const count = text.replace(/\s/g, "").length;
+      onWordCountRef.current?.(count);
+    };
 
     useImperativeHandle(ref, () => ({
       getValue: () => textareaRef.current?.value ?? "",
@@ -71,6 +79,7 @@ const SourceEditor = forwardRef<SourceEditorHandle, SourceEditorProps>(
           textareaRef.current.value = val;
           updateHighlight(val);
           setLineCount(val.split("\n").length);
+          updateWordCount(val);
         }
       },
       focus: () => textareaRef.current?.focus(),
@@ -109,7 +118,7 @@ const SourceEditor = forwardRef<SourceEditorHandle, SourceEditorProps>(
       // 添加行号
       const lines = highlighted.split("\n");
       const numberedLines = lines.map((line) =>
-        `<div class="source-line"><span class="source-line-content">${line || " "}</span></div>`
+        `<div class="source-line"><span class="source-line-content">${line}</span></div>`
       ).join("");
 
       highlightRef.current.innerHTML = numberedLines;
@@ -118,13 +127,15 @@ const SourceEditor = forwardRef<SourceEditorHandle, SourceEditorProps>(
     useEffect(() => {
       updateHighlight(value);
       setLineCount(value.split("\n").length);
-    }, []);
+      updateWordCount(value);
+    }, [value]);
 
     const handleInput = () => {
       const newValue = textareaRef.current?.value ?? "";
       onChangeRef.current(newValue);
       updateHighlight(newValue);
       setLineCount(newValue.split("\n").length);
+      updateWordCount(newValue);
     };
 
     const handleScroll = () => {

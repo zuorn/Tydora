@@ -1,21 +1,124 @@
-import { useState, useRef, useEffect } from "react";
+import { useState, useRef, useEffect, useLayoutEffect, useCallback } from "react";
+import { createPortal } from "react-dom";
 import type { Editor } from "@tiptap/core";
+
+const GRID_ROWS = 8;
+const GRID_COLS = 10;
 
 interface TableFloatingToolbarProps {
   editor: Editor;
+  tableElement: HTMLElement;
   onClose: () => void;
+  onContentChange: (md: string) => void;
 }
 
-export function TableFloatingToolbar({ editor, onClose }: TableFloatingToolbarProps) {
+export function TableFloatingToolbar({ editor, tableElement, onClose, onContentChange }: TableFloatingToolbarProps) {
   const [showMoreMenu, setShowMoreMenu] = useState(false);
+  const [showGridPicker, setShowGridPicker] = useState(false);
+  const [hoverRow, setHoverRow] = useState(0);
+  const [hoverCol, setHoverCol] = useState(0);
+  const [pos, setPos] = useState({ top: 0, left: 0 });
   const moreMenuRef = useRef<HTMLDivElement>(null);
+  const gridPickerRef = useRef<HTMLDivElement>(null);
   const toolbarRef = useRef<HTMLDivElement>(null);
+
+  // 调整表格大小（通过 Markdown 操作）
+  const handleResizeTable = useCallback((targetRows: number, targetCols: number) => {
+    const md = (editor.storage as any).markdown.getMarkdown();
+    const lines = md.split("\n");
+
+    // 找到表格的起止行
+    let tableStart = -1;
+    let tableEnd = -1;
+    for (let i = 0; i < lines.length; i++) {
+      if (lines[i].trim().startsWith("|")) {
+        if (tableStart === -1) tableStart = i;
+        tableEnd = i;
+      } else if (tableStart !== -1) {
+        break;
+      }
+    }
+    if (tableStart === -1) return;
+
+    // 解析表格行（跳过分隔行 |---|---|）
+    const dataLines: string[] = [];
+    for (let i = tableStart; i <= tableEnd; i++) {
+      const line = lines[i].trim();
+      if (line.match(/^\|[\s\-:|]+\|$/)) continue; // 跳过分隔行
+      dataLines.push(line);
+    }
+
+    // 解析每个单元格
+    const parseRow = (line: string) => {
+      return line.split("|").filter((_, i, arr) => i > 0 && i < arr.length - 1);
+    };
+
+    const rows = dataLines.map(parseRow);
+    const currentRows = rows.length;
+    const currentCols = rows.length > 0 ? rows[0].length : 0;
+
+    // 构建新表格
+    const newRows: string[][] = [];
+    for (let r = 0; r < targetRows; r++) {
+      const row: string[] = [];
+      for (let c = 0; c < targetCols; c++) {
+        if (r < currentRows && c < currentCols) {
+          row.push(rows[r][c]);
+        } else {
+          row.push(" ");
+        }
+      }
+      newRows.push(row);
+    }
+
+    // 生成 Markdown 表格
+    const headerLine = "| " + newRows[0].join(" | ") + " |";
+    const separatorLine = "| " + newRows[0].map(() => "---").join(" | ") + " |";
+    const dataLinesNew = newRows.slice(1).map(row => "| " + row.join(" | ") + " |");
+    const tableMd = [headerLine, separatorLine, ...dataLinesNew].join("\n");
+
+    // 替换 Markdown 中的表格
+    const beforeTable = lines.slice(0, tableStart).join("\n");
+    const afterTable = lines.slice(tableEnd + 1).join("\n");
+    const newMd = [beforeTable, tableMd, afterTable].filter(Boolean).join("\n");
+
+    onContentChange(newMd);
+    editor.commands.focus();
+    setShowGridPicker(false);
+  }, [editor, onContentChange]);
+
+  const updatePosition = useCallback(() => {
+    const rect = tableElement.getBoundingClientRect();
+    const toolbarHeight = toolbarRef.current?.offsetHeight || 36;
+    setPos({
+      top: rect.top - toolbarHeight - 4,
+      left: rect.left,
+    });
+  }, [tableElement]);
+
+  useLayoutEffect(() => {
+    updatePosition();
+  }, [updatePosition]);
+
+  useEffect(() => {
+    updatePosition();
+  }, []);
+
+  useEffect(() => {
+    window.addEventListener("scroll", updatePosition, true);
+    window.addEventListener("resize", updatePosition);
+    return () => {
+      window.removeEventListener("scroll", updatePosition, true);
+      window.removeEventListener("resize", updatePosition);
+    };
+  }, [updatePosition]);
 
   useEffect(() => {
     const handleClickOutside = (e: MouseEvent) => {
       if (
         toolbarRef.current && !toolbarRef.current.contains(e.target as Node) &&
-        moreMenuRef.current && !moreMenuRef.current.contains(e.target as Node)
+        moreMenuRef.current && !moreMenuRef.current.contains(e.target as Node) &&
+        gridPickerRef.current && !gridPickerRef.current.contains(e.target as Node)
       ) {
         onClose();
       }
@@ -114,10 +217,56 @@ export function TableFloatingToolbar({ editor, onClose }: TableFloatingToolbarPr
     ),
   };
 
-  return (
-    <div ref={toolbarRef} className="table-floating-toolbar">
+  const gridPicker = showGridPicker && (
+    <div ref={gridPickerRef} className="table-grid-picker">
+      <div className="table-grid-grid">
+        {Array.from({ length: GRID_ROWS }, (_, row) => (
+          <div key={row} className="table-grid-row">
+            {Array.from({ length: GRID_COLS }, (_, col) => {
+              const isHovered = row < hoverRow && col < hoverCol;
+              return (
+                <div
+                  key={col}
+                  className={`table-grid-cell ${isHovered ? "hover" : ""}`}
+                  onMouseEnter={() => {
+                    setHoverRow(row + 1);
+                    setHoverCol(col + 1);
+                  }}
+                  onClick={() => handleResizeTable(row + 1, col + 1)}
+                />
+              );
+            })}
+          </div>
+        ))}
+      </div>
+      <div className="table-grid-size">
+        {hoverRow > 0 && hoverCol > 0
+          ? `${hoverRow} × ${hoverCol}`
+          : "选择表格大小"}
+      </div>
+    </div>
+  );
+
+  const toolbar = (
+    <div
+      ref={toolbarRef}
+      className="table-floating-toolbar"
+      style={{ position: "fixed", top: pos.top, left: pos.left, zIndex: 9999 }}
+    >
       <div className="table-floating-toolbar-left">
-        <button className="table-toolbar-btn" title="插入表格">{ICONS.table}</button>
+        <div className="table-toolbar-grid-wrapper" ref={gridPickerRef}>
+          <button
+            className={`table-toolbar-btn ${showGridPicker ? "active" : ""}`}
+            title="调整表格大小"
+            onClick={() => {
+              setShowGridPicker(!showGridPicker);
+              setShowMoreMenu(false);
+            }}
+          >
+            {ICONS.table}
+          </button>
+          {gridPicker}
+        </div>
         <div className="table-toolbar-divider" />
         <button className="table-toolbar-btn" title="左对齐" onClick={() => handleAlign("left")}>{ICONS.alignLeft}</button>
         <button className="table-toolbar-btn" title="居中对齐" onClick={() => handleAlign("center")}>{ICONS.alignCenter}</button>
@@ -128,7 +277,10 @@ export function TableFloatingToolbar({ editor, onClose }: TableFloatingToolbarPr
           <button
             className={`table-toolbar-btn ${showMoreMenu ? "active" : ""}`}
             title="更多操作"
-            onClick={() => setShowMoreMenu(!showMoreMenu)}
+            onClick={() => {
+              setShowMoreMenu(!showMoreMenu);
+              setShowGridPicker(false);
+            }}
           >
             {ICONS.more}
           </button>
@@ -152,4 +304,6 @@ export function TableFloatingToolbar({ editor, onClose }: TableFloatingToolbarPr
       </div>
     </div>
   );
+
+  return createPortal(toolbar, document.body);
 }

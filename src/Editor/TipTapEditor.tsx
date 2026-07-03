@@ -62,6 +62,7 @@ const TipTapEditor = forwardRef<EditorHandle, TipTapEditorProps>(
     const onWordCountRef = useRef(onWordCount);
     const isInternalRef = useRef(false);
     const currentFilePathRef = useRef(currentFilePath);
+    const prevFilePathRef = useRef(currentFilePath);
     const activeVaultPathRef = useRef(activeVaultPath);
     const imageSettingsRef = useRef(imageSettings);
     const sourceEditorRef = useRef<SourceEditorHandle>(null);
@@ -451,12 +452,21 @@ const TipTapEditor = forwardRef<EditorHandle, TipTapEditorProps>(
         isInternalRef.current = false;
         return;
       }
-      const currentContent = (editor.storage as Record<string, any>).markdown.getMarkdown();
-      if (value !== currentContent) {
+      const fileChanged = prevFilePathRef.current !== currentFilePath;
+      prevFilePathRef.current = currentFilePath;
+
+      if (fileChanged) {
+        // 文件切换时始终强制更新内容
         isInternalRef.current = true;
         editor.commands.setContent(value);
+      } else {
+        const currentContent = (editor.storage as Record<string, any>).markdown.getMarkdown();
+        if (value !== currentContent) {
+          isInternalRef.current = true;
+          editor.commands.setContent(value);
+        }
       }
-    }, [value, editor]);
+    }, [value, editor, currentFilePath]);
 
     if (mode === "sv") {
       return (
@@ -485,7 +495,12 @@ const TipTapEditor = forwardRef<EditorHandle, TipTapEditorProps>(
           {tableToolbar && editor && (
             <TableFloatingToolbarComponent
               editor={editor}
+              tableElement={tableToolbar.table}
               onClose={() => setTableToolbar(null)}
+              onContentChange={(md) => {
+                isInternalRef.current = true;
+                editor.commands.setContent(md);
+              }}
             />
           )}
         </div>

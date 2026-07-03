@@ -756,9 +756,6 @@
 
 /* 表格浮动工具栏 */
 .table-floating-toolbar {
-  position: absolute;
-  top: -40px;
-  left: 0;
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -767,7 +764,6 @@
   border: 1px solid var(--border, #e0e0e0);
   border-radius: 8px;
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
-  z-index: 50;
   min-width: 200px;
 }
 
@@ -854,4 +850,60 @@
   height: 1px;
   background: var(--border, #e0e0e0);
   margin: 4px 0;
+}
+
+/* 表格网格选择器 */
+.table-toolbar-grid-wrapper {
+  position: relative;
+}
+
+.table-grid-picker {
+  position: absolute;
+  top: 100%;
+  left: 0;
+  margin-top: 4px;
+  background: var(--bg-primary, #fff);
+  border: 1px solid var(--border, #e0e0e0);
+  border-radius: 8px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+  z-index: 100;
+  padding: 8px;
+}
+
+.table-grid-grid {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.table-grid-row {
+  display: flex;
+  gap: 2px;
+}
+
+.table-grid-cell {
+  width: 16px;
+  height: 16px;
+  border: 1px solid var(--border, #d0d0d0);
+  border-radius: 2px;
+  cursor: pointer;
+  transition: all 0.1s ease;
+}
+
+.table-grid-cell:hover {
+  border-color: var(--text-secondary, #999);
+}
+
+.table-grid-cell.hover {
+  background: var(--text-secondary, #888);
+  border-color: var(--text-secondary, #888);
+}
+
+.table-grid-size {
+  text-align: center;
+  font-size: 12px;
+  color: var(--text-secondary, #666);
+  margin-top: 8px;
+  padding-top: 8px;
+  border-top: 1px solid var(--border, #e0e0e0);
 }

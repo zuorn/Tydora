@@ -89,7 +89,7 @@ class CodeBlockToolbarView implements NodeView {
     const actions = this.createActions();
     this.toolbar.appendChild(actions);
 
-    // 代码内容区（保留原始 pre > code 结构）
+    // 代码内容区（ProseMirror 管理 contentDOM）
     this.contentDOM = document.createElement("pre");
     this.contentDOM.className = "code-block-content";
 
@@ -101,9 +101,8 @@ class CodeBlockToolbarView implements NodeView {
 
     this.dom = this.wrapper;
 
-    // 点击外部关闭下拉框
+    // 点击外部关闭下拉框（延迟绑定，避免按钮点击立即触发）
     this.handleDocumentClick = this.handleDocumentClick.bind(this);
-    document.addEventListener("click", this.handleDocumentClick);
   }
 
   private createLanguageSelector(): HTMLElement {
@@ -116,7 +115,6 @@ class CodeBlockToolbarView implements NodeView {
 
     const langDropdown = document.createElement("div");
     langDropdown.className = "code-block-lang-dropdown";
-    langDropdown.style.display = "none";
 
     const searchInput = document.createElement("input");
     searchInput.type = "text";
@@ -125,6 +123,19 @@ class CodeBlockToolbarView implements NodeView {
 
     const langList = document.createElement("div");
     langList.className = "code-block-lang-list";
+
+    const closeDropdown = () => {
+      langDropdown.classList.remove("open");
+      document.removeEventListener("mousedown", this.handleDocumentClick);
+    };
+
+    const openDropdown = () => {
+      langDropdown.classList.add("open");
+      // 延迟绑定，让当前 mousedown 事件完成后再监听外部点击
+      requestAnimationFrame(() => {
+        document.addEventListener("mousedown", this.handleDocumentClick);
+      });
+    };
 
     const renderLangList = (filter: string) => {
       langList.innerHTML = "";
@@ -136,10 +147,11 @@ class CodeBlockToolbarView implements NodeView {
         item.className = "code-block-lang-item";
         if (lang.value === this.node.attrs.language) item.classList.add("active");
         item.textContent = lang.label;
-        item.addEventListener("click", (e) => {
+        item.addEventListener("mousedown", (e) => {
+          e.preventDefault(); // 阻止编辑器失焦
           e.stopPropagation();
           this.setLanguage(lang.value, lang.label);
-          langDropdown.style.display = "none";
+          closeDropdown();
         });
         langList.appendChild(item);
       });
@@ -148,15 +160,26 @@ class CodeBlockToolbarView implements NodeView {
     searchInput.addEventListener("input", () => {
       renderLangList(searchInput.value);
     });
-
-    langButton.addEventListener("click", (e) => {
+    searchInput.addEventListener("mousedown", (e) => {
       e.stopPropagation();
-      const isVisible = langDropdown.style.display === "block";
-      langDropdown.style.display = isVisible ? "none" : "block";
-      if (!isVisible) {
+    });
+
+    // 使用 mousedown 而非 click：在 ProseMirror 介入之前就处理事件，
+    // 避免 click 阶段 ProseMirror 状态更新导致 NodeView 重渲染从而关闭下拉菜单
+    langButton.addEventListener("mousedown", (e) => {
+      e.preventDefault(); // 阻止编辑器失焦
+      e.stopPropagation();
+      const isOpen = langDropdown.classList.contains("open");
+      if (isOpen) {
+        closeDropdown();
+      } else {
+        openDropdown();
         searchInput.value = "";
         renderLangList("");
-        searchInput.focus();
+        // 延迟 focus，确保下拉菜单已渲染完成
+        requestAnimationFrame(() => {
+          searchInput.focus();
+        });
       }
     });
 
@@ -254,9 +277,12 @@ class CodeBlockToolbarView implements NodeView {
   }
 
   private handleDocumentClick(e: MouseEvent) {
-    if (this.langDropdown && !this.langDropdown.contains(e.target as Node)) {
-      this.langDropdown.style.display = "none";
-    }
+    // 点击在下拉菜单内部时不做任何操作（下拉项和搜索框的 mousedown 已通过
+    // stopPropagation 阻止冒泡，此处处理点击下拉菜单背景区域的情况）
+    if (this.langDropdown && this.langDropdown.contains(e.target as Node)) return;
+    // 点击在下拉菜单外部 → 关闭
+    this.langDropdown?.classList.remove("open");
+    document.removeEventListener("mousedown", this.handleDocumentClick);
   }
 
   update(node: any) {
@@ -272,8 +298,17 @@ class CodeBlockToolbarView implements NodeView {
   private applyHighlighting() {
     const code = this.node.textContent;
     const lang = this.node.attrs.language || "";
-    const codeEl = this.contentDOM.querySelector("code");
-    if (!codeEl) return;
+    let codeEl = this.contentDOM.querySelector("code");
+
+    // ProseMirror 可能会移除预插入的 <code> 元素，需要重新创建
+    if (!codeEl) {
+      codeEl = document.createElement("code");
+      // 将现有文本节点移入 <code>
+      while (this.contentDOM.firstChild) {
+        codeEl.appendChild(this.contentDOM.firstChild);
+      }
+      this.contentDOM.appendChild(codeEl);
+    }
 
     if (lang && hljs.getLanguage(lang)) {
       try {
@@ -295,6 +330,6 @@ class CodeBlockToolbarView implements NodeView {
   }
 
   destroy() {
-    document.removeEventListener("click", this.handleDocumentClick);
+    document.removeEventListener("mousedown", this.handleDocumentClick);
   }
 }

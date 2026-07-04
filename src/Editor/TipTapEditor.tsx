@@ -1,6 +1,7 @@
 import { useRef, useEffect, forwardRef, useImperativeHandle, useCallback, useState } from "react";
 import { useEditor, EditorContent } from "@tiptap/react";
 import StarterKit from "@tiptap/starter-kit";
+import Paragraph from "@tiptap/extension-paragraph";
 import Placeholder from "@tiptap/extension-placeholder";
 import Bold from "@tiptap/extension-bold";
 import Italic from "@tiptap/extension-italic";
@@ -21,6 +22,7 @@ import TaskList from "@tiptap/extension-task-list";
 import TaskItem from "@tiptap/extension-task-item";
 import Highlight from "@tiptap/extension-highlight";
 import Typography from "@tiptap/extension-typography";
+import Heading from "@tiptap/extension-heading";
 import { Markdown } from "tiptap-markdown";
 import { common, createLowlight } from "lowlight";
 import { WikiLink } from "./extensions/wiki-link";
@@ -34,6 +36,7 @@ import { loadShortcuts, matchShortcut } from "./shortcuts";
 import { invoke } from "@tauri-apps/api/core";
 import SourceEditor, { type SourceEditorHandle } from "./SourceEditor";
 import { ContextMenu } from "./ContextMenu";
+import { LinkDialog } from "./LinkDialog";
 import type { ThemeName } from "../themes";
 import type { ImageSettings } from "../ImageManager";
 import type { EditorSettings } from "../Settings";
@@ -68,6 +71,8 @@ const TipTapEditor = forwardRef<EditorHandle, TipTapEditorProps>(
     const sourceEditorRef = useRef<SourceEditorHandle>(null);
     const [contextMenuPos, setContextMenuPos] = useState<{ x: number; y: number } | null>(null);
     const [tableToolbar, setTableToolbar] = useState<{ table: HTMLElement } | null>(null);
+    const linkEditRef = useRef<{ from: number; to: number } | null>(null);
+    const [linkDialog, setLinkDialog] = useState<{ defaultText: string } | null>(null);
 
     onChangeRef.current = onChange;
     onWordCountRef.current = onWordCount;
@@ -88,8 +93,24 @@ const TipTapEditor = forwardRef<EditorHandle, TipTapEditorProps>(
           bulletList: false,
           orderedList: false,
           listItem: false,
+          heading: false,
         }),
-        // 单独添加扩展，禁用内置快捷键
+        // 单独添加扩展，禁用内置快捷键，paragraph 添加 textAlign 属性
+        Paragraph.extend({
+          addAttributes() {
+            return {
+              textAlign: {
+                default: null,
+                parseHTML: (element) => element.style.textAlign || null,
+                renderHTML: (attributes) => {
+                  if (!attributes.textAlign) return {};
+                  return { style: `text-align: ${attributes.textAlign}` };
+                },
+              },
+            };
+          },
+          addKeyboardShortcuts() { return {}; },
+        }),
         Bold.extend({ addKeyboardShortcuts() { return {}; } }),
         Italic.extend({ addKeyboardShortcuts() { return {}; } }),
         Strike.extend({ addKeyboardShortcuts() { return {}; } }),
@@ -98,13 +119,41 @@ const TipTapEditor = forwardRef<EditorHandle, TipTapEditorProps>(
         BulletList.extend({ addKeyboardShortcuts() { return {}; } }),
         OrderedList.extend({ addKeyboardShortcuts() { return {}; } }),
         ListItem,
+        Heading.extend({ addKeyboardShortcuts() { return {}; } }),
         Placeholder.configure({
           placeholder: "开始输入 Markdown...",
         }),
         CodeBlockLowlight.configure({
           lowlight,
         }),
-        TiptapImage.configure({
+        TiptapImage.extend({
+          addAttributes() {
+            return {
+              src: { default: null },
+              alt: { default: null },
+              "data-abs-path": { default: null },
+            };
+          },
+          addNodeView() {
+            return ({ node }) => {
+              const dom = document.createElement("img");
+              // 优先使用绝对路径（data-abs-path），否则用 src
+              const absPath = node.attrs["data-abs-path"] as string | null;
+              const src = node.attrs.src as string;
+              if (absPath) {
+                dom.src = `local-file://localhost/${encodeURIComponent(absPath)}`;
+              } else if (src && !src.startsWith("http") && !src.startsWith("data:") && !src.startsWith("local-file:")) {
+                dom.src = `local-file://localhost/${encodeURIComponent(src)}`;
+              } else {
+                dom.src = src;
+              }
+              dom.alt = (node.attrs.alt as string) || "";
+              dom.style.maxWidth = "100%";
+              dom.style.height = "auto";
+              return { dom };
+            };
+          },
+        }).configure({
           inline: true,
           allowBase64: true,
         }),
@@ -209,7 +258,8 @@ const TipTapEditor = forwardRef<EditorHandle, TipTapEditorProps>(
         editor.chain().focus().setImage({
           src: result.markdownRef,
           alt: file.name,
-        }).run();
+          "data-abs-path": result.savedPath,
+        } as any).run();
       } catch (e) {
         console.error("[ImageUpload] save failed:", e);
       }
@@ -227,7 +277,80 @@ const TipTapEditor = forwardRef<EditorHandle, TipTapEditorProps>(
       return () => window.removeEventListener("image-upload-file", handleImageUpload);
     }, [handleImageFile]);
 
-    // 监听表格工具栏显示事件
+    // 监听链接弹窗事件
+    useEffect(() => {
+      const handleLinkDialogOpen = (e: Event) => {
+        const detail = (e as CustomEvent).detail;
+        setLinkDialog({ defaultText: detail?.defaultText || "" });
+      };
+      window.addEventListener("link-dialog-open", handleLinkDialogOpen);
+      return () => window.removeEventListener("link-dialog-open", handleLinkDialogOpen);
+    }, []);
+
+    // 链接弹窗确认：插入链接
+    const handleLinkDialogConfirm = useCallback((text: string, url: string) => {
+      if (!editor) return;
+      editor
+        .chain()
+        .focus()
+        .command(({ tr }) => {
+          const from = tr.selection.from;
+          const linkMark = editor.schema.marks.link.create({ href: url });
+          tr.insertText(text);
+          tr.addMark(from, from + text.length, linkMark);
+          return true;
+        })
+        .run();
+      setLinkDialog(null);
+    }, [editor]);
+
+    // 链接弹窗取消
+    const handleLinkDialogCancel = useCallback(() => {
+      setLinkDialog(null);
+      editor?.commands.focus();
+    }, [editor]);
+
+    // 将编辑中的链接源码恢复为渲染后的链接
+    const restoreLinkEdit = useCallback(() => {
+      const range = linkEditRef.current;
+      if (!range || !editor) return;
+
+      const { from, to } = range;
+      const doc = editor.state.doc;
+      const actualTo = Math.min(to, doc.content.size);
+      if (actualTo <= from) {
+        linkEditRef.current = null;
+        return;
+      }
+
+      const text = doc.textBetween(from, actualTo);
+      const m = text.match(/^\[([^\]]*)\]\(([^)]*)\)$/);
+      if (m) {
+        const [, linkText, linkUrl] = m;
+        editor
+          .chain()
+          .command(({ tr }) => {
+            tr.delete(from, actualTo);
+            const linkMark = editor.schema.marks.link.create({ href: linkUrl });
+            tr.insertText(linkText, from);
+            tr.addMark(from, from + linkText.length, linkMark);
+            return true;
+          })
+          .run();
+      }
+
+      linkEditRef.current = null;
+    }, [editor]);
+
+    // 同步文件路径到 editor.storage，供图片 node view 解析相对路径
+    useEffect(() => {
+      if (editor) {
+        (editor.storage as Record<string, any>).currentFilePath = currentFilePath;
+        (editor.storage as Record<string, any>).activeVaultPath = activeVaultPath;
+      }
+    }, [editor, currentFilePath, activeVaultPath]);
+
+    // 监听表格工具栏显示/隐藏事件
     useEffect(() => {
       const handleTableToolbarShow = (e: Event) => {
         const customEvent = e as CustomEvent;
@@ -235,8 +358,15 @@ const TipTapEditor = forwardRef<EditorHandle, TipTapEditorProps>(
           setTableToolbar({ table: customEvent.detail.table });
         }
       };
+      const handleTableToolbarHide = () => {
+        setTableToolbar(null);
+      };
       window.addEventListener("table-toolbar-show", handleTableToolbarShow);
-      return () => window.removeEventListener("table-toolbar-show", handleTableToolbarShow);
+      window.addEventListener("table-toolbar-hide", handleTableToolbarHide);
+      return () => {
+        window.removeEventListener("table-toolbar-show", handleTableToolbarShow);
+        window.removeEventListener("table-toolbar-hide", handleTableToolbarHide);
+      };
     }, [editor]);
 
     // Ctrl+Click 打开链接
@@ -267,6 +397,132 @@ const TipTapEditor = forwardRef<EditorHandle, TipTapEditorProps>(
       container.addEventListener("click", handleClick, true);
       return () => container.removeEventListener("click", handleClick, true);
     }, [editor]);
+
+    // 点击链接时在 IR 模式下显示 markdown 源码并可编辑
+    useEffect(() => {
+      const container = containerRef.current;
+      if (!container || !editor) return;
+
+      // 将链接元素替换为 markdown 源码文本
+      const convertLinkToSource = (anchor: HTMLAnchorElement) => {
+        if (!editor) return;
+
+        let pos: number;
+        try {
+          pos = editor.view.posAtDOM(anchor, 0);
+        } catch {
+          return;
+        }
+
+        const { doc } = editor.state;
+        let from = -1;
+        let to = -1;
+        let linkHref = "";
+
+        // 在点击位置附近查找带 link mark 的文本节点
+        doc.nodesBetween(pos, Math.min(pos + 1000, doc.content.size), (node, nodePos) => {
+          if (node.isText) {
+            const linkMark = node.marks.find((m: Record<string, any>) => m.type.name === "link");
+            if (linkMark) {
+              from = nodePos;
+              to = nodePos + node.nodeSize;
+              linkHref = linkMark.attrs.href as string;
+              return false;
+            }
+          }
+          return true;
+        });
+
+        if (from === -1 || !linkHref) return;
+
+        const text = doc.textBetween(from, to);
+        const md = `[${text}](${linkHref})`;
+
+        editor
+          .chain()
+          .focus()
+          .command(({ tr }) => {
+            tr.delete(from, to);
+            tr.insertText(md, from);
+            return true;
+          })
+          .setTextSelection(from + md.length)
+          .run();
+
+        linkEditRef.current = { from, to: from + md.length };
+      };
+
+      const handleClick = (e: MouseEvent) => {
+        if (e.ctrlKey || e.metaKey) return;
+
+        const target = e.target as HTMLElement;
+        const anchor = target.closest("a") as HTMLAnchorElement | null;
+
+        // 点击在链接外部 → 恢复正在编辑的链接
+        if (!anchor) {
+          if (linkEditRef.current) {
+            // 检查点击是否在编辑区域内（允许用户在源码文本中移动光标）
+            try {
+              const posInfo = editor.view.posAtCoords({ left: e.clientX, top: e.clientY });
+              if (posInfo) {
+                const { from, to } = linkEditRef.current;
+                if (posInfo.pos >= from && posInfo.pos < to) {
+                  return; // 点击在编辑区域内，不恢复
+                }
+              }
+            } catch {
+              // posAtCoords 可能失败，回退到恢复
+            }
+            restoreLinkEdit();
+          }
+          return;
+        }
+
+        // 跳过 wiki-link 和空链接
+        if (anchor.classList.contains("wiki-link")) return;
+        const href = anchor.getAttribute("href");
+        if (!href || href === "#") return;
+
+        e.preventDefault();
+        e.stopPropagation();
+
+        // 如果正在编辑另一个链接，先恢复它，再处理当前点击
+        if (linkEditRef.current) {
+          restoreLinkEdit();
+          // 恢复后 DOM 可能已更新，用坐标重新定位链接元素
+          setTimeout(() => {
+            const el = document.elementFromPoint(e.clientX, e.clientY);
+            const a = el?.closest("a") as HTMLAnchorElement | null;
+            if (a && !a.classList.contains("wiki-link")) {
+              const h = a.getAttribute("href");
+              if (h && h !== "#") convertLinkToSource(a);
+            }
+          }, 0);
+          return;
+        }
+
+        convertLinkToSource(anchor);
+      };
+
+      container.addEventListener("click", handleClick);
+      return () => container.removeEventListener("click", handleClick);
+    }, [editor, restoreLinkEdit]);
+
+    // Escape 键恢复正在编辑的链接
+    useEffect(() => {
+      if (!editor) return;
+
+      const handleKeyDown = (e: KeyboardEvent) => {
+        if (e.key === "Escape" && linkEditRef.current) {
+          restoreLinkEdit();
+          editor.commands.focus();
+          e.preventDefault();
+        }
+      };
+
+      window.addEventListener("keydown", handleKeyDown);
+      return () => window.removeEventListener("keydown", handleKeyDown);
+    }, [editor, restoreLinkEdit]);
 
     // 注册快捷键
     useEffect(() => {
@@ -509,6 +765,13 @@ const TipTapEditor = forwardRef<EditorHandle, TipTapEditorProps>(
           position={contextMenuPos}
           onClose={() => setContextMenuPos(null)}
         />
+        {linkDialog && (
+          <LinkDialog
+            defaultText={linkDialog.defaultText}
+            onConfirm={handleLinkDialogConfirm}
+            onCancel={handleLinkDialogCancel}
+          />
+        )}
       </div>
     );
   }

@@ -204,6 +204,65 @@ body {
   border-top: none;
 }
 
+/* 侧栏折叠时：topbar/bottombar 完全隐藏，鼠标移到对应边缘时滑出 */
+
+/* 不可见触发区 */
+.editor-topbar-trigger,
+.editor-bottombar-trigger {
+  display: none;
+}
+
+.editor-container.sidebar-collapsed .editor-topbar-trigger {
+  display: block;
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 36px;
+  z-index: 19;
+}
+
+.editor-container.sidebar-collapsed .editor-bottombar-trigger {
+  display: block;
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  height: 24px;
+  z-index: 19;
+}
+
+/* 顶部栏用 top 位移替代 transform，避免破坏窗口拖拽 */
+.editor-container.sidebar-collapsed .editor-topbar {
+  position: absolute;
+  top: -36px;
+  left: 0;
+  right: 0;
+  z-index: 20;
+  transition: top 0.2s ease;
+}
+
+/* 底部栏完全隐藏在屏幕下方 */
+.editor-container.sidebar-collapsed .editor-bottombar {
+  position: absolute;
+  bottom: -24px;
+  left: 0;
+  right: 0;
+  z-index: 20;
+  transition: bottom 0.2s ease;
+}
+
+/* 鼠标进入触发区或悬停在栏上时滑出 */
+.editor-container.sidebar-collapsed .editor-topbar-trigger:hover + .editor-topbar,
+.editor-container.sidebar-collapsed .editor-topbar:hover {
+  top: 0;
+}
+
+.editor-container.sidebar-collapsed .editor-bottombar-trigger:hover + .editor-bottombar,
+.editor-container.sidebar-collapsed .editor-bottombar:hover {
+  bottom: 0;
+}
+
 .editor-bottombar .editor-mode-toggle {
   background: none;
   border: none;
@@ -254,7 +313,7 @@ body {
   line-height: 1;
 }
 
-/* ========== 滚动条 ========== */
+/* ========== 滚动条（自动隐藏：滚动时显示，停止 400ms 后淡出） ========== */
 ::-webkit-scrollbar {
   width: 8px;
   height: 8px;
@@ -265,12 +324,28 @@ body {
 }
 
 ::-webkit-scrollbar-thumb {
-  background: var(--border);
+  background: transparent;
   border-radius: 4px;
+  transition: background-color 0.15s ease;
+}
+
+html[data-scrolling] ::-webkit-scrollbar-thumb {
+  background: var(--border);
+  transition: background-color 0s;
 }
 
 ::-webkit-scrollbar-thumb:hover {
   background: var(--text-secondary);
+}
+
+/* Firefox */
+* {
+  scrollbar-width: thin;
+  scrollbar-color: transparent transparent;
+}
+
+html[data-scrolling] * {
+  scrollbar-color: var(--border) transparent;
 }
 
 /* ========== 工具栏分隔线 ========== */
@@ -522,6 +597,21 @@ body {
 .live-block-view ol li {
   margin-bottom: 0;
   list-style-type: decimal;
+}
+
+/* 嵌套无序列表缩进引导竖线 —— 实线贯穿，圆点自然覆盖 */
+.live-block-view li:has(> ul:not([data-type="taskList"])) {
+  position: relative;
+}
+
+.live-block-view li:has(> ul:not([data-type="taskList"]))::before {
+  content: '';
+  position: absolute;
+  left: -12px;
+  top: 0.75em;
+  bottom: 0;
+  width: 1px;
+  background: var(--border);
 }
 
 .live-block-view ul:has(li input[type="checkbox"]) {
@@ -1406,14 +1496,29 @@ body {
   background: #ffffff;
 }
 
-/* ── 滚动条 ── */
+/* ── 滚动条（自动隐藏，由 data-scrolling 控制） ── */
 [data-theme="liquid-glass"] ::-webkit-scrollbar-thumb {
-  background: rgba(0, 0, 0, 0.12);
+  background: transparent;
   border-radius: 10px;
+  transition: background-color 0.15s ease;
+}
+
+[data-theme="liquid-glass"] html[data-scrolling] ::-webkit-scrollbar-thumb {
+  background: rgba(0, 0, 0, 0.12);
+  transition: background-color 0s;
 }
 
 [data-theme="liquid-glass"] ::-webkit-scrollbar-thumb:hover {
   background: rgba(0, 0, 0, 0.25);
+}
+
+/* Firefox */
+[data-theme="liquid-glass"] * {
+  scrollbar-color: transparent transparent;
+}
+
+[data-theme="liquid-glass"] html[data-scrolling] * {
+  scrollbar-color: rgba(0, 0, 0, 0.12) transparent;
 }
 
 /* ── 窗口控件 ── */

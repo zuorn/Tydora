@@ -31,7 +31,7 @@ function replaceWikiLinkSyntax(_match: string, content: string): string {
 
   const displayText = display || note;
   const headingAttr = heading ? ` data-heading="${encodeHeading(heading)}"` : '';
-  return `<a data-note="${encodeNote(note)}"${headingAttr} href="#">${displayText}</a>`;
+  return `<a data-note="${encodeNote(note)}"${headingAttr}>${displayText}</a>`;
 }
 
 declare module "@tiptap/core" {
@@ -51,8 +51,14 @@ export const WikiLink = Node.create({
 
   addAttributes() {
     return {
-      note: { default: null },
-      heading: { default: null },
+      note: {
+        default: null,
+        parseHTML: (element) => element.getAttribute("data-note"),
+      },
+      heading: {
+        default: null,
+        parseHTML: (element) => element.getAttribute("data-heading"),
+      },
       display: { default: null },
     };
   },
@@ -168,21 +174,12 @@ export const WikiLink = Node.create({
       dom.addEventListener("click", (e) => {
         e.preventDefault();
         e.stopPropagation();
-        if (e.ctrlKey || e.metaKey) {
-          window.dispatchEvent(new CustomEvent("wiki-link-open-new-window", {
-            detail: {
-              noteName: node.attrs.note,
-              heading: node.attrs.heading
-            }
-          }));
-        } else {
-          window.dispatchEvent(new CustomEvent("wiki-link-click", {
-            detail: {
-              noteName: node.attrs.note,
-              heading: node.attrs.heading
-            }
-          }));
-        }
+        window.dispatchEvent(new CustomEvent("wiki-link-click", {
+          detail: {
+            noteName: node.attrs.note,
+            heading: node.attrs.heading
+          }
+        }));
       });
 
       return { dom };

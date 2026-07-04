@@ -1,0 +1,92 @@
+.link-dialog-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.3);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 10000;
+}
+
+.link-dialog {
+  background: var(--bg-primary, #fff);
+  border: 1px solid var(--border-color, #e0e0e0);
+  border-radius: 8px;
+  padding: 20px;
+  width: 380px;
+  max-width: 90vw;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.15);
+}
+
+.link-dialog-title {
+  font-size: 15px;
+  font-weight: 600;
+  color: var(--text-primary, #333);
+  margin-bottom: 16px;
+}
+
+.link-dialog-field {
+  margin-bottom: 12px;
+}
+
+.link-dialog-label {
+  display: block;
+  font-size: 12px;
+  color: var(--text-secondary, #888);
+  margin-bottom: 4px;
+}
+
+.link-dialog-input {
+  width: 100%;
+  padding: 8px 10px;
+  border: 1px solid var(--border-color, #d0d0d0);
+  border-radius: 6px;
+  font-size: 13px;
+  color: var(--text-primary, #333);
+  background: var(--bg-secondary, #f9f9f9);
+  outline: none;
+  box-sizing: border-box;
+}
+
+.link-dialog-input:focus {
+  border-color: var(--accent-color, #4a9eff);
+  box-shadow: 0 0 0 2px rgba(74, 158, 255, 0.15);
+}
+
+.link-dialog-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+  margin-top: 16px;
+}
+
+.link-dialog-btn {
+  padding: 6px 16px;
+  border-radius: 6px;
+  font-size: 13px;
+  cursor: pointer;
+  border: none;
+}
+
+.link-dialog-btn-cancel {
+  background: var(--bg-secondary, #f0f0f0);
+  color: var(--text-secondary, #666);
+}
+
+.link-dialog-btn-cancel:hover {
+  background: var(--border-color, #e0e0e0);
+}
+
+.link-dialog-btn-confirm {
+  background: var(--accent-color, #4a9eff);
+  color: #fff;
+}
+
+.link-dialog-btn-confirm:hover {
+  opacity: 0.9;
+}
+
+.link-dialog-btn-confirm:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}

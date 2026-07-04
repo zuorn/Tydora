@@ -29,6 +29,31 @@ fn percent_decode(s: &str) -> String {
     String::from_utf8_lossy(&bytes).into_owned()
 }
 
+/// URL 百分号编码，将路径中的特殊字符编码为 %XX 格式，
+/// 确保路径可以安全地出现在 URL 查询字符串中
+fn percent_encode_path(s: &str) -> String {
+    let mut result = String::with_capacity(s.len());
+    for byte in s.bytes() {
+        match byte {
+            // 保留字母、数字、安全符号和路径分隔符
+            b'A'..=b'Z' | b'a'..=b'z' | b'0'..=b'9'
+            | b'-' | b'_' | b'.' | b'~'
+            | b'/' | b'\\' | b':' => {
+                result.push(byte as char);
+            }
+            // 空格编码为 %20
+            b' ' => {
+                result.push_str("%20");
+            }
+            // 其他字符统一百分号编码
+            _ => {
+                result.push_str(&format!("%{:02X}", byte));
+            }
+        }
+    }
+    result
+}
+
 /// 返回 Markdown 文件的默认内容
 #[tauri::command]
 fn get_default_content() -> String {
@@ -79,7 +104,6 @@ async fn open_file_in_new_window(
     width: Option<f64>,
     height: Option<f64>,
 ) -> Result<(), String> {
-    let encoded_path = file_path.replace('\\', "/");
     let file_name = file_path
         .split('\\')
         .last()
@@ -94,6 +118,10 @@ async fn open_file_in_new_window(
             .as_millis()
     );
 
+    // 对文件路径进行 URL 编码，确保特殊字符（#、&、空格、中文等）不会破坏查询字符串
+    // 先将反斜杠转为正斜杠，使其在 URL 中更规范
+    let safe_path = file_path.replace('\\', "/");
+    let encoded_path = percent_encode_path(&safe_path);
     let url = format!("index.html?window=editor&file={}", encoded_path);
     let title = format!("{} - Tydora", file_name);
 

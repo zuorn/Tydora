@@ -8,6 +8,22 @@ export const TableFloatingToolbar = Extension.create({
     const plugin = new Plugin({
       key: new PluginKey("tableFloatingToolbar"),
 
+      state: {
+        init: () => ({ inTable: false }),
+        apply: (tr, prev) => {
+          if (!tr.docChanged && !tr.selectionSet) return prev;
+          const { $from } = tr.selection;
+          let inTable = false;
+          for (let depth = $from.depth; depth >= 0; depth--) {
+            if ($from.node(depth).type.name === "table") {
+              inTable = true;
+              break;
+            }
+          }
+          return { inTable };
+        },
+      },
+
       props: {
         handleDOMEvents: {
           click: (_view, event) => {
@@ -24,6 +40,15 @@ export const TableFloatingToolbar = Extension.create({
           },
         },
       },
+
+      view: () => ({
+        update: (view) => {
+          const pluginState = plugin.getState(view.state);
+          if (pluginState && !pluginState.inTable) {
+            window.dispatchEvent(new CustomEvent("table-toolbar-hide"));
+          }
+        },
+      }),
     });
 
     return [plugin];

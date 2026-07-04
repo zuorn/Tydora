@@ -130,10 +130,13 @@ export function TableFloatingToolbar({ editor, tableElement, onClose, onContentC
   const handleAlign = (align: string) => {
     editor.chain().focus().command(({ tr, state }) => {
       const { $from } = state.selection;
-      const cell = $from.node(-1);
-      if (cell && (cell.type.name === "tableCell" || cell.type.name === "tableHeader")) {
-        tr.setNodeMarkup($from.before(-1), undefined, { ...cell.attrs, textAlign: align });
-        return true;
+      for (let depth = $from.depth; depth >= 0; depth--) {
+        const node = $from.node(depth);
+        if (node.type.name === "paragraph") {
+          const pos = $from.before(depth);
+          tr.setNodeMarkup(pos, undefined, { ...node.attrs, textAlign: align });
+          return true;
+        }
       }
       return false;
     }).run();

@@ -17,41 +17,38 @@ export function executeCommand(name: string, editor: Editor | null) {
       chain.setParagraph().run();
       break;
 
-    // 行内格式
-    case "bold":
+    // 行内格式：有选区时先应用标记再清除 stored marks，避免后续输入继承标记
+    case "bold": {
+      const hadSelection = !editor.state.selection.empty;
       chain.toggleBold().run();
+      if (hadSelection) editor.chain().unsetBold().run();
       break;
-    case "italic":
+    }
+    case "italic": {
+      const hadSelection = !editor.state.selection.empty;
       chain.toggleItalic().run();
+      if (hadSelection) editor.chain().unsetItalic().run();
       break;
-    case "strike":
+    }
+    case "strike": {
+      const hadSelection = !editor.state.selection.empty;
       chain.toggleStrike().run();
+      if (hadSelection) editor.chain().unsetStrike().run();
       break;
-    case "inline-code":
+    }
+    case "inline-code": {
+      const hadSelection = !editor.state.selection.empty;
       chain.toggleCode().run();
+      if (hadSelection) editor.chain().unsetCode().run();
       break;
+    }
     case "link": {
       const sel = window.getSelection();
-      const text = sel?.toString() || "";
-      if (text.includes("\n")) {
-        const firstLine = text.split("\n")[0];
-        if (!firstLine) return;
-        const url = prompt("链接地址:", "https://");
-        if (url) {
-          // 处理多行：只处理第一行
-          const md = (editor.storage as any).markdown.getMarkdown();
-          const idx = md.indexOf(firstLine);
-          if (idx !== -1) {
-            const newMd = md.slice(0, idx) + "[" + firstLine + "](" + url + ")" + md.slice(idx + firstLine.length);
-            editor.commands.setContent(newMd);
-          }
-        }
-        return;
-      }
-      const url = prompt("链接地址:", "https://");
-      if (url) {
-        chain.setLink({ href: url }).run();
-      }
+      const defaultText = sel?.toString() || "";
+      // 触发弹窗事件，让 TipTapEditor 组件显示 LinkDialog
+      window.dispatchEvent(new CustomEvent("link-dialog-open", {
+        detail: { defaultText }
+      }));
       break;
     }
 

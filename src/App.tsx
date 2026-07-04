@@ -120,6 +120,23 @@ function App({ initialFilePath }: { initialFilePath?: string | null }) {
     return () => window.removeEventListener("storage", handleStorage);
   }, []);
 
+  // 滚动条自动隐藏：滚动时立即显示，停止滚动 400ms 后快速隐藏
+  useEffect(() => {
+    let timer: ReturnType<typeof setTimeout>;
+    const handleScroll = () => {
+      document.documentElement.setAttribute('data-scrolling', '');
+      clearTimeout(timer);
+      timer = setTimeout(() => {
+        document.documentElement.removeAttribute('data-scrolling');
+      }, 400);
+    };
+    document.addEventListener('scroll', handleScroll, { capture: true, passive: true });
+    return () => {
+      document.removeEventListener('scroll', handleScroll, { capture: true });
+      clearTimeout(timer);
+    };
+  }, []);
+
   // 监听编辑器设置变化（设置窗口保存后实时生效）
   useEffect(() => {
     const handleEditorStorage = (e: StorageEvent) => {
@@ -983,7 +1000,8 @@ function App({ initialFilePath }: { initialFilePath?: string | null }) {
         />
 
         {/* 编辑区域 */}
-        <main className="editor-container">
+        <main className={`editor-container${!sidebarOpen ? ' sidebar-collapsed' : ''}`}>
+          <div className="editor-topbar-trigger" />
           {/* 顶部透明栏 */}
           <div className="editor-topbar">
             <div className="editor-topbar-left">
@@ -1109,6 +1127,7 @@ function App({ initialFilePath }: { initialFilePath?: string | null }) {
             )}
           </div>
 
+          <div className="editor-bottombar-trigger" />
           {/* 底部栏 */}
           <div className="editor-bottombar">
             <button

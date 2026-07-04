@@ -654,6 +654,29 @@ function App({ initialFilePath }: { initialFilePath?: string | null }) {
     setSidebarOpen((prev) => !prev);
   }, []);
 
+  // 切换侧栏快捷键（从 localStorage 读取）
+  useEffect(() => {
+    const handler = (e: KeyboardEvent) => {
+      let shortcutKeys = ["Ctrl", "\\"];
+      try {
+        const saved = localStorage.getItem(SHORTCUTS_KEY);
+        if (saved) {
+          const parsed = JSON.parse(saved);
+          const item = parsed.find((s: { id: string }) => s.id === "toggle-sidebar");
+          if (item) shortcutKeys = item.keys;
+        }
+      } catch {}
+      const key = shortcutKeys.join("+").toLowerCase();
+      const eventKey = `${e.ctrlKey || e.metaKey ? "ctrl+" : ""}${e.altKey ? "alt+" : ""}${e.shiftKey ? "shift+" : ""}${e.key.toLowerCase()}`;
+      if (eventKey === key) {
+        e.preventDefault();
+        handleSidebarToggle();
+      }
+    };
+    window.addEventListener("keydown", handler, { capture: true });
+    return () => window.removeEventListener("keydown", handler, { capture: true });
+  }, [handleSidebarToggle]);
+
   const handleNewWindow = useCallback(async (filePath: string) => {
     try {
       const el = document.querySelector('.editor-container');
@@ -914,7 +937,7 @@ function App({ initialFilePath }: { initialFilePath?: string | null }) {
     { id: "redo", label: "重做", category: "编辑", shortcut: "Ctrl+Y", action: () => document.execCommand("redo") },
 
     // 视图操作
-    { id: "toggle-sidebar", label: "切换侧栏", category: "视图", shortcut: "Ctrl+B", action: handleSidebarToggle },
+    { id: "toggle-sidebar", label: "切换侧栏", category: "视图", shortcut: "Ctrl+\\", action: handleSidebarToggle },
     { id: "toggle-mode", label: "切换编辑模式", category: "视图", shortcut: "Ctrl+/", action: cycleMode },
     { id: "toggle-typewriter", label: "切换打字机模式", category: "视图", shortcut: "Ctrl+Alt+T", action: toggleTypewriterMode },
     { id: "open-mindmap", label: "打开思维导图", category: "视图", shortcut: "Ctrl+M", action: () => {

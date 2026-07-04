@@ -22,7 +22,7 @@
 
 .settings-titlebar-btn {
   width: 46px;
-  height: 20px;
+  height: 36px;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -74,7 +74,7 @@
 
 /* ── 内容区域顶部栏 ── */
 .settings-main-topbar {
-  height: 20px;
+  height: 36px;
   flex-shrink: 0;
   background: transparent;
   -webkit-app-region: drag;
@@ -96,7 +96,7 @@
 
 /* ── 顶部透明拖拽区域 ── */
 .settings-nav-topbar {
-  height: 20px;
+  height: 36px;
   flex-shrink: 0;
   background: transparent;
   -webkit-app-region: drag;

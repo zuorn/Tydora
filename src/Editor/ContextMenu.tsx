@@ -319,7 +319,10 @@ export function ContextMenu({ editor, position, onClose }: ContextMenuProps) {
               >
                 <button
                   className="context-menu-icon-btn"
-                  onClick={() => handleItemClick(item.name)}
+                  onMouseDown={(e) => {
+                    e.preventDefault();
+                    handleItemClick(item.name);
+                  }}
                 >
                   {item.icon}
                 </button>
@@ -359,7 +362,10 @@ export function ContextMenu({ editor, position, onClose }: ContextMenuProps) {
                   <button
                     key={sub.name}
                     className="context-menu-item"
-                    onClick={() => sub.name && handleItemClick(sub.name)}
+                    onMouseDown={(e) => {
+                      e.preventDefault();
+                      if (sub.name) handleItemClick(sub.name);
+                    }}
                   >
                     {sub.icon && <span className="context-menu-icon">{sub.icon}</span>}
                     <span className="context-menu-label">{sub.label}</span>

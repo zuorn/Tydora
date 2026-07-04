@@ -173,14 +173,14 @@
 /* ── IR 模式右侧行号 ── */
 
 /* 直接块级子元素 + 列表项，每个计为一行（ul/ol 容器本身不计） */
-.tiptap-editor .tiptap > :where(p, h1, h2, h3, h4, h5, h6, blockquote, pre, hr, table, .code-block-toolbar-wrapper),
+.tiptap-editor .tiptap > :where(p, h1, h2, h3, h4, h5, h6, blockquote, pre, hr, table, .code-block-toolbar-wrapper, [data-type="frontmatter"]),
 .tiptap-editor .tiptap li {
   counter-increment: line;
   position: relative;
 }
 
 /* 行号统一用 rem，不受元素自身字号影响 */
-.tiptap-editor .tiptap > :where(p, h1, h2, h3, h4, h5, h6, blockquote, pre, hr, table, .code-block-toolbar-wrapper)::before,
+.tiptap-editor .tiptap > :where(p, h1, h2, h3, h4, h5, h6, blockquote, pre, hr, table, .code-block-toolbar-wrapper, [data-type="frontmatter"])::before,
 .tiptap-editor .tiptap li::before {
   content: counter(line);
   position: absolute;
@@ -280,6 +280,97 @@
   color: var(--text-secondary, #666);
 }
 
+/* ── Callouts (提示框 / Alerts) ── */
+
+/* 覆盖 blockquote 默认样式 */
+.tiptap-editor .callout {
+  border-left: 4px solid;
+  border-radius: 0 6px 6px 0;
+  padding: 12px 16px;
+  margin: 1em 0;
+  position: relative;
+  color: inherit;
+}
+
+/* 隐藏原始 [!TYPE] 标记文本 — 彻底移出布局流 */
+.tiptap-editor .callout-title-marker {
+  position: absolute;
+  visibility: hidden;
+  pointer-events: none;
+}
+
+/* 标题 widget（Decoration.widget 插入的真实 DOM） */
+.tiptap-editor .callout-title {
+  display: block;
+  font-weight: 600;
+  margin-bottom: 6px;
+  font-size: 0.9em;
+  font-family: var(--editor-font, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif);
+}
+
+/* 可折叠 callout */
+.tiptap-editor .callout-foldable .callout-title {
+  cursor: pointer;
+  user-select: none;
+}
+.tiptap-editor .callout-foldable .callout-title::after {
+  content: " ▾";
+  font-size: 0.75em;
+  vertical-align: middle;
+}
+.tiptap-editor .callout-foldable.callout-collapsed .callout-title {
+  margin-bottom: 0;
+}
+.tiptap-editor .callout-foldable.callout-collapsed .callout-title::after {
+  content: " ▸";
+}
+
+/* 折叠时隐藏内容（保留 widget 可见） */
+.tiptap-editor .callout-collapsed > *:is(p, ul, ol, pre, h1, h2, h3, h4, h5, h6, table) {
+  display: none;
+}
+
+/* ── 各类型配色 ── */
+.tiptap-editor .callout-note       { background: rgba(9, 105, 218, 0.08);   border-color: #0969da; }
+.tiptap-editor .callout-tip        { background: rgba(26, 127, 55, 0.08);   border-color: #1a7f37; }
+.tiptap-editor .callout-important  { background: rgba(130, 80, 223, 0.08);  border-color: #8250df; }
+.tiptap-editor .callout-warning    { background: rgba(191, 135, 0, 0.08);   border-color: #bf8700; }
+.tiptap-editor .callout-caution    { background: rgba(207, 34, 46, 0.08);   border-color: #cf222e; }
+.tiptap-editor .callout-abstract   { background: rgba(9, 105, 218, 0.08);   border-color: #0969da; }
+.tiptap-editor .callout-info       { background: rgba(9, 105, 218, 0.08);   border-color: #0969da; }
+.tiptap-editor .callout-success    { background: rgba(26, 127, 55, 0.08);   border-color: #1a7f37; }
+.tiptap-editor .callout-question   { background: rgba(130, 80, 223, 0.08);  border-color: #8250df; }
+.tiptap-editor .callout-failure    { background: rgba(207, 34, 46, 0.08);   border-color: #cf222e; }
+.tiptap-editor .callout-danger     { background: rgba(207, 34, 46, 0.08);   border-color: #cf222e; }
+.tiptap-editor .callout-bug        { background: rgba(207, 34, 46, 0.08);   border-color: #cf222e; }
+.tiptap-editor .callout-example    { background: rgba(130, 80, 223, 0.08);  border-color: #8250df; }
+.tiptap-editor .callout-quote      { background: rgba(157, 157, 157, 0.12); border-color: #9d9d9d; }
+
+/* 标题颜色 */
+.tiptap-editor .callout-title-note,
+.tiptap-editor .callout-title-abstract,
+.tiptap-editor .callout-title-info      { color: #0969da; }
+
+.tiptap-editor .callout-title-tip,
+.tiptap-editor .callout-title-success   { color: #1a7f37; }
+
+.tiptap-editor .callout-title-important,
+.tiptap-editor .callout-title-question,
+.tiptap-editor .callout-title-example   { color: #8250df; }
+
+.tiptap-editor .callout-title-warning   { color: #bf8700; }
+
+.tiptap-editor .callout-title-caution,
+.tiptap-editor .callout-title-failure,
+.tiptap-editor .callout-title-danger,
+.tiptap-editor .callout-title-bug       { color: #cf222e; }
+
+.tiptap-editor .callout-quote      { background: rgba(157, 157, 157, 0.12); border-color: #9d9d9d; }
+.tiptap-editor .callout-faq        { background: rgba(9, 105, 218, 0.08);   border-color: #0969da; }
+
+.tiptap-editor .callout-title-quote     { color: #9d9d9d; }
+.tiptap-editor .callout-title-faq       { color: #0969da; }
+
 /* 列表 */
 .tiptap-editor ul, .tiptap-editor ol {
   padding-left: 2em;
@@ -343,6 +434,49 @@
 
 .tiptap-editor a:hover {
   text-decoration: underline;
+}
+
+/* Frontmatter 块 */
+.tiptap-editor [data-type="frontmatter"] {
+  background: var(--bg-secondary, #f5f5f5);
+  border: 1px solid var(--border, #e0e0e0);
+  border-radius: 8px;
+  margin: 0 0 1em 0;
+  font-size: 0.85em;
+  position: relative;
+  overflow: hidden;
+}
+
+.frontmatter-label {
+  padding: 4px 12px;
+  font-size: 0.75em;
+  font-weight: 500;
+  color: var(--text-secondary, #999);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  border-bottom: 1px solid var(--border, #e0e0e0);
+  user-select: none;
+  font-family: var(--editor-font, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif);
+}
+
+.tiptap-editor [data-type="frontmatter"] pre {
+  margin: 0;
+  padding: 12px 16px;
+  overflow-x: auto;
+  background: transparent;
+  font-family: var(--editor-font, "JetBrains Mono", "Fira Code", "Consolas", monospace);
+  font-size: inherit;
+  line-height: 1.6;
+  border: none;
+  border-radius: 0;
+  tab-size: 2;
+}
+
+.tiptap-editor [data-type="frontmatter"] pre code {
+  background: none;
+  padding: 0;
+  font-size: inherit;
+  border-radius: 0;
 }
 
 /* 水平线 */
@@ -501,25 +635,19 @@
   border-color: var(--text-secondary, #999);
 }
 
-.code-block-lang-dropdown {
-  position: absolute;
-  top: 100%;
-  left: 0;
-  margin-top: 4px;
+/* 下拉菜单 portal：挂载到 document.body，不受任何 overflow 父级裁剪 */
+.code-block-lang-dropdown-portal {
+  position: fixed;
   min-width: 200px;
   max-height: 300px;
   background: var(--bg-primary, #fff);
   border: 1px solid var(--border, #d0d0d0);
   border-radius: 8px;
   box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
-  z-index: 100;
+  z-index: 10000;
   overflow: hidden;
   display: none;
   flex-direction: column;
-}
-
-.code-block-lang-dropdown.open {
-  display: flex;
 }
 
 .code-block-lang-search {
@@ -648,6 +776,11 @@
 }
 
 /* 折叠状态 */
+.code-block-toolbar-wrapper .code-block-content {
+  max-height: 5000px;
+  transition: max-height 0.25s ease;
+}
+
 .code-block-toolbar-wrapper.collapsed .code-block-content {
   max-height: 40px;
   overflow: hidden;

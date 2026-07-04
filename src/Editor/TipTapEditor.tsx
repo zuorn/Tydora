@@ -24,7 +24,10 @@ import Highlight from "@tiptap/extension-highlight";
 import Typography from "@tiptap/extension-typography";
 import Heading from "@tiptap/extension-heading";
 import { Markdown } from "tiptap-markdown";
+import { defaultMarkdownSerializer } from "prosemirror-markdown";
 import { common, createLowlight } from "lowlight";
+import { Frontmatter } from "./extensions/frontmatter";
+import { Callout } from "./extensions/callout";
 import { WikiLink } from "./extensions/wiki-link";
 import { SearchHighlight } from "./extensions/search-highlight";
 import { CodeBlockToolbar } from "./extensions/code-block-toolbar";
@@ -115,7 +118,46 @@ const TipTapEditor = forwardRef<EditorHandle, TipTapEditorProps>(
         Italic.extend({ addKeyboardShortcuts() { return {}; } }),
         Strike.extend({ addKeyboardShortcuts() { return {}; } }),
         Code.extend({ addKeyboardShortcuts() { return {}; } }),
-        Blockquote.extend({ addKeyboardShortcuts() { return {}; } }),
+        Blockquote.extend({ addKeyboardShortcuts() { return {}; } }).extend({
+          addStorage() {
+            const defaultSerialize = defaultMarkdownSerializer.nodes.blockquote;
+            return {
+              markdown: {
+                serialize(state: any, node: any, parent: any, index: number) {
+                  const firstChild = node.firstChild;
+                  if (firstChild?.type.name === "paragraph") {
+                    const text: string = firstChild.textContent;
+                    const match = text.match(/^\[!(NOTE|TIP|IMPORTANT|WARNING|CAUTION|ABSTRACT|INFO|SUCCESS|QUESTION|FAILURE|DANGER|BUG|EXAMPLE|QUOTE|FAQ)\][-+]?/i);
+                    if (match) {
+                      const calloutType = match[1].toUpperCase();
+                      const lines = text.split("\n");
+                      // 第一行：> [!TYPE] 剩余内容（不转义方括号）
+                      state.write("> [!");
+                      state.write(calloutType);
+                      state.write("]");
+                      state.write(lines[0].slice(match[0].length));
+                      state.ensureNewLine();
+                      // 第一段剩余行（硬换行）
+                      for (let j = 1; j < lines.length; j++) {
+                        state.write("> ");
+                        state.write(lines[j]);
+                        state.ensureNewLine();
+                      }
+                      // 后续子节点
+                      for (let i = 1; i < node.childCount; i++) {
+                        const child = node.child(i);
+                        state.wrapBlock("> ", null, child, () => state.renderContent(child));
+                      }
+                      state.closeBlock(node);
+                      return;
+                    }
+                  }
+                  defaultSerialize(state, node, parent, index);
+                },
+              },
+            };
+          },
+        }),
         BulletList.extend({ addKeyboardShortcuts() { return {}; } }),
         OrderedList.extend({ addKeyboardShortcuts() { return {}; } }),
         ListItem,
@@ -177,6 +219,8 @@ const TipTapEditor = forwardRef<EditorHandle, TipTapEditorProps>(
           transformPastedText: true,
           transformCopiedText: true,
         }),
+        Frontmatter,
+        Callout,
         WikiLink,
         SearchHighlight,
         CodeBlockToolbar,

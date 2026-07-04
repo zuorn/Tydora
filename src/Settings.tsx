@@ -207,6 +207,7 @@ const DEFAULT_SHORTCUTS: ShortcutItem[] = [
   { id: "select-all", label: "全选（代码块内）", keys: ["Ctrl", "A"], group: "编辑" },
 
   // 视图
+  { id: "toggle-sidebar", label: "切换侧栏", keys: ["Ctrl", "\\"], group: "视图" },
   { id: "fullscreen", label: "全屏", keys: ["Ctrl", "'"], group: "视图" },
   { id: "split-view", label: "分屏预览", keys: ["Ctrl", "P"], group: "视图" },
   { id: "typewriter", label: "打字机模式", keys: ["Ctrl", "Alt", "T"], group: "视图" },

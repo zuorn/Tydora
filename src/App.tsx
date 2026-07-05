@@ -79,8 +79,7 @@ function isEditableFile(fileName: string): boolean {
 
 function App({ initialFilePath }: { initialFilePath?: string | null }) {
   const { theme } = useTheme();
-  const initialContent = "# 欢迎使用 Tydora ✨\n\n开始编写你的 Markdown...\n";
-  const [content, setContent] = useState(initialContent);
+  const [content, setContent] = useState("");
   const [fileName, setFileName] = useState<string | null>(null);
   const [modified, setModified] = useState(false);
   const [editorSettings, setEditorSettings] = useState<EditorSettings>(() => loadEditorSettings());
@@ -817,18 +816,6 @@ function App({ initialFilePath }: { initialFilePath?: string | null }) {
     return () => window.removeEventListener("keydown", handler);
   }, [toggleIrSv]);
 
-  // Ctrl+T 插入表格
-  useEffect(() => {
-    const handler = (e: KeyboardEvent) => {
-      if ((e.ctrlKey || e.metaKey) && e.key === "t") {
-        e.preventDefault();
-        editorHandleRef.current?.executeCommand("table");
-      }
-    };
-    window.addEventListener("keydown", handler, { capture: true });
-    return () => window.removeEventListener("keydown", handler, { capture: true });
-  }, []);
-
   // 行内代码快捷键（从 localStorage 读取）
   useEffect(() => {
     const handler = (e: KeyboardEvent) => {
@@ -970,7 +957,7 @@ function App({ initialFilePath }: { initialFilePath?: string | null }) {
 
   const editorHandleRef = useRef<EditorHandle>(null);
   // 用于跟踪已加载文件的内容原文，避免把"打开新文件"误判为修改
-  const savedContentRef = useRef<string>(initialContent);
+  const savedContentRef = useRef<string>("");
   const pendingLineRef = useRef<number | null>(null);
   const pendingQueryRef = useRef<string | null>(null);
   const pendingHeadingRef = useRef<string | null>(null);

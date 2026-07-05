@@ -261,7 +261,7 @@ const TipTapEditor = forwardRef<EditorHandle, TipTapEditorProps>(
         CodeBlockToolbar,
         TableFloatingToolbar,
       ],
-      content: value,
+      content: value || "",
       onUpdate: ({ editor: ed }) => {
         const md = (ed.storage as Record<string, any>).markdown.getMarkdown();
 
@@ -280,10 +280,41 @@ const TipTapEditor = forwardRef<EditorHandle, TipTapEditorProps>(
       editorProps: {
         handleDOMEvents: {
           keydown: (_view: any, event: KeyboardEvent) => {
-            // 拦截 Ctrl+M / Ctrl+T
-            if ((event.ctrlKey || event.metaKey) && (event.key === "m" || event.key === "t")) {
+            // 拦截 Ctrl+M（防止打开思维导图窗口）
+            if ((event.ctrlKey || event.metaKey) && event.key === "m") {
               event.stopPropagation();
             }
+
+            // 自定义快捷键处理（在 ProseMirror keymap 之前执行）
+            const target = event.target as HTMLElement;
+            if (target.tagName !== "INPUT" && target.tagName !== "TEXTAREA") {
+              const shortcuts = loadShortcuts();
+              const commandMap: Record<string, string> = {
+                "bold": "bold", "italic": "italic", "strike": "strike",
+                "inline-code": "inline-code", "code-block": "code",
+                "link": "link", "highlight": "highlight", "quote": "quote",
+                "hr": "line", "unordered-list": "list",
+                "ordered-list": "ordered-list", "check-list": "check",
+                "indent": "indent", "outdent": "outdent", "task-toggle": "task-toggle",
+                "heading-1": "heading-1", "heading-2": "heading-2",
+                "heading-3": "heading-3", "heading-4": "heading-4",
+                "heading-5": "heading-5", "heading-6": "heading-6",
+                "paragraph": "paragraph", "table": "table",
+                "table-row-above": "table-row-above", "table-row-below": "table-row-below",
+                "table-col-left": "table-col-left", "table-col-right": "table-col-right",
+                "table-row-delete": "table-row-delete", "table-col-delete": "table-col-delete",
+                "footnotes": "footnotes", "math": "math",
+              };
+              for (const shortcut of shortcuts) {
+                const cmdName = commandMap[shortcut.id];
+                if (cmdName && matchShortcut(event, shortcut.keys)) {
+                  event.preventDefault();
+                  executeCommand(cmdName, editor);
+                  return true;
+                }
+              }
+            }
+
             return false;
           },
         },
@@ -603,72 +634,7 @@ const TipTapEditor = forwardRef<EditorHandle, TipTapEditorProps>(
       return () => window.removeEventListener("keydown", handleKeyDown);
     }, [editor, restoreLinkEdit]);
 
-    // 注册快捷键
-    useEffect(() => {
-      if (!editor) return;
-
-      const handleKeyDown = (e: KeyboardEvent) => {
-        // 忽略输入框内的快捷键
-        const target = e.target as HTMLElement;
-        if (target.tagName === "INPUT" || target.tagName === "TEXTAREA") return;
-
-        const shortcuts = loadShortcuts();
-
-        // 快捷键ID到命令的映射
-        const commandMap: Record<string, string> = {
-          // 格式
-          "bold": "bold",
-          "italic": "italic",
-          "strike": "strike",
-          "inline-code": "inline-code",
-          "code-block": "code",
-          "link": "link",
-          "quote": "quote",
-          "hr": "line",
-          // 列表
-          "unordered-list": "list",
-          "ordered-list": "ordered-list",
-          "check-list": "check",
-          "indent": "indent",
-          "outdent": "outdent",
-          "task-toggle": "task-toggle",
-          // 标题
-          "heading-1": "heading-1",
-          "heading-2": "heading-2",
-          "heading-3": "heading-3",
-          "heading-4": "heading-4",
-          "heading-5": "heading-5",
-          "heading-6": "heading-6",
-          "paragraph": "paragraph",
-          // 插入
-          "table": "table",
-          // 表格操作
-          "table-row-above": "table-row-above",
-          "table-row-below": "table-row-below",
-          "table-col-left": "table-col-left",
-          "table-col-right": "table-col-right",
-          "table-row-delete": "table-row-delete",
-          "table-col-delete": "table-col-delete",
-          // 编辑
-          // undo/redo 由 StarterKit 内置 keymap 处理，不再重复映射
-          // 其他
-          "footnotes": "footnotes",
-          "math": "math",
-        };
-
-        for (const shortcut of shortcuts) {
-          const cmdName = commandMap[shortcut.id];
-          if (cmdName && matchShortcut(e, shortcut.keys)) {
-            e.preventDefault();
-            executeCommand(cmdName, editor);
-            return;
-          }
-        }
-      };
-
-      document.addEventListener("keydown", handleKeyDown);
-      return () => document.removeEventListener("keydown", handleKeyDown);
-    }, [editor]);
+    // 快捷键已移至 handleDOMEvents.keydown 中处理
 
     // 暴露 API
     useImperativeHandle(ref, () => ({

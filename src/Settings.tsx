@@ -162,9 +162,10 @@ const DEFAULT_SHORTCUTS: ShortcutItem[] = [
   { id: "bold", label: "加粗", keys: ["Ctrl", "B"], group: "格式" },
   { id: "italic", label: "斜体", keys: ["Ctrl", "I"], group: "格式" },
   { id: "strike", label: "删除线", keys: ["Ctrl", "D"], group: "格式" },
-  { id: "inline-code", label: "行内代码", keys: ["Ctrl", "H"], group: "格式" },
+  { id: "inline-code", label: "行内代码", keys: ["Ctrl", "E"], group: "格式" },
   { id: "code-block", label: "代码块", keys: ["Ctrl", "U"], group: "格式" },
   { id: "link", label: "超链接", keys: ["Ctrl", "K"], group: "格式" },
+  { id: "highlight", label: "高亮", keys: ["Ctrl", "="], group: "格式" },
   { id: "quote", label: "引用", keys: ["Ctrl", ";"], group: "格式" },
   { id: "hr", label: "水平分割线", keys: ["Ctrl", "Shift", "H"], group: "格式" },
 
@@ -192,7 +193,7 @@ const DEFAULT_SHORTCUTS: ShortcutItem[] = [
 
   // 表格操作
   { id: "table-row-above", label: "表格：上方插入行", keys: ["Ctrl", "Shift", "F"], group: "表格" },
-  { id: "table-row-below", label: "表格：下方插入行", keys: ["Ctrl", "="], group: "表格" },
+  { id: "table-row-below", label: "表格：下方插入行", keys: ["Ctrl", "Shift", "."], group: "表格" },
   { id: "table-col-left", label: "表格：左侧插入列", keys: ["Ctrl", "Shift", "G"], group: "表格" },
   { id: "table-col-right", label: "表格：右侧插入列", keys: ["Ctrl", "Shift", "="], group: "表格" },
   { id: "table-row-delete", label: "表格：删除行", keys: ["Ctrl", "-"], group: "表格" },

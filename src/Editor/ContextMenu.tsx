@@ -123,6 +123,11 @@ const ICONS = {
       <polyline points="9 18 15 12 9 6" />
     </svg>
   ),
+  highlight: (
+    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M12 2L2 7l10 5 10-5-10-5z" /><path d="M2 17l10 5 10-5" /><path d="M2 12l10 5 10-5" />
+    </svg>
+  ),
 };
 
 // 三行图标按钮配置
@@ -148,6 +153,7 @@ const ICON_ROWS: IconItem[][] = [
     { name: "list", label: "无序列表", shortcutId: "unordered-list", icon: ICONS.listUnordered },
     { name: "ordered-list", label: "有序列表", shortcutId: "ordered-list", icon: ICONS.listOrdered },
     { name: "check", label: "任务列表", shortcutId: "check-list", icon: ICONS.checkSquare },
+    { name: "highlight", label: "高亮", shortcutId: "highlight", icon: ICONS.highlight },
   ],
 ];
 
@@ -191,6 +197,7 @@ function getShortcutLabel(shortcutId: string | null, shortcuts: any[]): string {
 export function ContextMenu({ editor, position, onClose }: ContextMenuProps) {
   const menuRef = useRef<HTMLDivElement>(null);
   const submenuRef = useRef<HTMLDivElement>(null);
+  const closeTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const [activeSubmenu, setActiveSubmenu] = useState<string | null>(null);
   const [submenuPos, setSubmenuPos] = useState<{ x: number; y: number } | null>(null);
   const [shortcuts, setShortcuts] = useState<any[]>([]);
@@ -268,8 +275,25 @@ export function ContextMenu({ editor, position, onClose }: ContextMenuProps) {
     setActiveSubmenu(null);
   };
 
+  const clearCloseTimer = () => {
+    if (closeTimerRef.current) {
+      clearTimeout(closeTimerRef.current);
+      closeTimerRef.current = null;
+    }
+  };
+
+  const scheduleClose = () => {
+    clearCloseTimer();
+    closeTimerRef.current = setTimeout(() => {
+      setActiveSubmenu(null);
+      setSubmenuPos(null);
+      closeTimerRef.current = null;
+    }, 200);
+  };
+
   const handleSubmenuEnter = (e: React.MouseEvent, item: any) => {
     if (!item.submenu) return;
+    clearCloseTimer();
     const wrapper = e.currentTarget as HTMLElement;
     const rect = wrapper.getBoundingClientRect();
     setActiveSubmenu(item.name || null);
@@ -293,9 +317,20 @@ export function ContextMenu({ editor, position, onClose }: ContextMenuProps) {
   };
 
   const handleSubmenuLeave = () => {
-    setActiveSubmenu(null);
-    setSubmenuPos(null);
+    scheduleClose();
   };
+
+  const handleSubmenuPanelEnter = () => {
+    clearCloseTimer();
+  };
+
+  const handleSubmenuPanelLeave = () => {
+    scheduleClose();
+  };
+
+  useEffect(() => {
+    return () => clearCloseTimer();
+  }, []);
 
   if (!position) return null;
 
@@ -353,6 +388,8 @@ export function ContextMenu({ editor, position, onClose }: ContextMenuProps) {
               ref={submenuRef}
               className="context-menu-submenu"
               style={{ left: submenuPos.x, top: submenuPos.y }}
+              onMouseEnter={handleSubmenuPanelEnter}
+              onMouseLeave={handleSubmenuPanelLeave}
             >
               {item.submenu.map((sub: any, subIdx: number) => {
                 if (sub.divider) {

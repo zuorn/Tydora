@@ -17,31 +17,22 @@ export function executeCommand(name: string, editor: Editor | null) {
       chain.setParagraph().run();
       break;
 
-    // 行内格式：有选区时先应用标记再清除 stored marks，避免后续输入继承标记
-    case "bold": {
-      const hadSelection = !editor.state.selection.empty;
+    // 行内格式
+    case "bold":
       chain.toggleBold().run();
-      if (hadSelection) editor.chain().unsetBold().run();
       break;
-    }
-    case "italic": {
-      const hadSelection = !editor.state.selection.empty;
+    case "italic":
       chain.toggleItalic().run();
-      if (hadSelection) editor.chain().unsetItalic().run();
       break;
-    }
-    case "strike": {
-      const hadSelection = !editor.state.selection.empty;
+    case "strike":
       chain.toggleStrike().run();
-      if (hadSelection) editor.chain().unsetStrike().run();
       break;
-    }
-    case "inline-code": {
-      const hadSelection = !editor.state.selection.empty;
+    case "inline-code":
       chain.toggleCode().run();
-      if (hadSelection) editor.chain().unsetCode().run();
       break;
-    }
+    case "highlight":
+      chain.toggleHighlight().run();
+      break;
     case "link": {
       const sel = window.getSelection();
       const defaultText = sel?.toString() || "";

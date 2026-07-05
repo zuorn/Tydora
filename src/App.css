@@ -708,34 +708,6 @@ html[data-scrolling] * {
   font-style: italic;
 }
 
-/* ========== Live Preview（原 decoration 方式 — 保留用于 split 模式 overlay） ========== */
-
-/*
- * 设计原则（参考 Obsidian Live Preview）：
- * 1. 光标不在的行：隐藏语法标记，显示预览样式
- * 2. 光标所在行：显示语法标记，可编辑
- * 3. 所有装饰样式与 .preview 保持一致
- * 4. 抑制非代码区语法高亮色，代码块内保留（CSS 层控制）
- */
-
-/* ── 全局：抑制非代码行的语法高亮颜色 ── */
-/* defaultHighlightStyle 为所有 token 着色；这里把非代码行的 span 颜色统一 */
-.cm-editor .cm-content span[class] {
-  color: var(--text-primary);
-  font-weight: normal;
-  font-style: normal;
-  text-decoration: none;
-}
-
-/* ── 代码块：恢复语法高亮颜色 ── */
-/* 代码块内的 span（语法 token）继承 highlight style 的原始颜色 */
-.cm-editor .cm-content .cm-live-code-block span[class] {
-  color: unset;
-  font-weight: unset;
-  font-style: unset;
-  text-decoration: unset;
-}
-
 /* ── 标题 ── */
 .cm-live-h {
   font-weight: 700;

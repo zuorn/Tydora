@@ -1,0 +1,23 @@
+diff --git a/node_modules/tiptap-markdown/src/parse/MarkdownParser.js b/node_modules/tiptap-markdown/src/parse/MarkdownParser.js
+index 514b590..3899a70 100644
+--- a/node_modules/tiptap-markdown/src/parse/MarkdownParser.js
++++ b/node_modules/tiptap-markdown/src/parse/MarkdownParser.js
+@@ -28,7 +28,17 @@ export class MarkdownParser {
+             );
+ 
+             const renderedHTML = this.md.render(content);
+-            const element = elementFromString(renderedHTML);
++            const decodedHTML = renderedHTML.replace(
++                /href="([^"]*?)"/g,
++                (match, href) => {
++                    try {
++                        return `href="${decodeURIComponent(href)}"`;
++                    } catch {
++                        return match;
++                    }
++                }
++            );
++            const element = elementFromString(decodedHTML);
+ 
+             this.editor.extensionManager.extensions.forEach(extension =>
+                 getMarkdownSpec(extension)?.parse?.updateDOM?.call({ editor:this.editor, options:extension.options }, element)

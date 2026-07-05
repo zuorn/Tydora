@@ -1,7 +1,7 @@
 use std::fs;
 use std::process::Command;
 use std::sync::Mutex;
-use tauri::{Manager, WebviewWindowBuilder, State};
+use tauri::{Emitter, Manager, WebviewWindowBuilder, State};
 
 mod commands;
 use commands::watcher_commands::{watch_vault, unwatch_vault, WatcherState};
@@ -139,7 +139,16 @@ async fn open_file_in_new_window(
     .build();
 
     match window {
-        Ok(_) => Ok(()),
+        Ok(_) => {
+            let app_handle = app.clone();
+            let fp = file_path.clone();
+            let lbl = label.clone();
+            std::thread::spawn(move || {
+                std::thread::sleep(std::time::Duration::from_millis(500));
+                let _ = app_handle.emit_to(&lbl, "open-file", &fp);
+            });
+            Ok(())
+        }
         Err(e) => Err(e.to_string()),
     }
 }

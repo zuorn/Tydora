@@ -8,14 +8,15 @@ import { tags } from "@lezer/highlight";
 import { searchKeymap, highlightSelectionMatches } from "@codemirror/search";
 import { autocompletion, completionKeymap } from "@codemirror/autocomplete";
 import { closeBrackets, closeBracketsKeymap } from "@codemirror/autocomplete";
+import { mermaidLanguage } from "./extensions/mermaid-language";
 
 // 自定义 Markdown 主题
 const markdownTheme = EditorView.theme({
   "&": {
     backgroundColor: "var(--bg-primary, #fff)",
     color: "var(--text-primary, #333)",
-    fontFamily: "var(--editor-font, 'JetBrains Mono', 'Fira Code', 'Consolas', monospace)",
-    fontSize: "var(--editor-font-size, 14px)",
+    fontFamily: "var(--editor-font, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif)",
+    fontSize: "var(--editor-font-size, 16px)",
     height: "100%",
   },
   ".cm-content": {
@@ -111,7 +112,7 @@ const markdownHighlighting = syntaxHighlighting(
     { tag: tags.atom, color: "var(--text-atom, #0550ae)" },
     { tag: tags.bool, color: "var(--text-bool, #0550ae)" },
     { tag: tags.comment, color: "var(--text-comment, #6e7781)", fontStyle: "italic" },
-    { tag: tags.monospace, fontFamily: "var(--editor-font, 'JetBrains Mono', 'Fira Code', monospace)", fontSize: "0.9em" },
+    { tag: tags.monospace, fontFamily: "var(--editor-font, 'Fira Code', 'Consolas', monospace)", fontSize: "0.9em" },
     { tag: tags.processingInstruction, color: "var(--text-code, #cf222e)" },
     { tag: tags.special(tags.string), color: "var(--text-code, #cf222e)" },
     { tag: tags.contentSeparator, color: "var(--text-secondary, #999)" },
@@ -122,6 +123,7 @@ const markdownHighlighting = syntaxHighlighting(
 interface CodeMirrorEditorProps {
   value: string;
   onChange: (value: string) => void;
+  onWordCount?: (count: number) => void;
 }
 
 export interface CodeMirrorEditorHandle {
@@ -131,13 +133,15 @@ export interface CodeMirrorEditorHandle {
 }
 
 const CodeMirrorEditor = forwardRef<CodeMirrorEditorHandle, CodeMirrorEditorProps>(
-  ({ value, onChange }, ref) => {
+  ({ value, onChange, onWordCount }, ref) => {
     const containerRef = useRef<HTMLDivElement>(null);
     const viewRef = useRef<EditorView | null>(null);
     const onChangeRef = useRef(onChange);
+    const onWordCountRef = useRef(onWordCount);
     const isInternalRef = useRef(false);
 
     onChangeRef.current = onChange;
+    onWordCountRef.current = onWordCount;
 
     useImperativeHandle(ref, () => ({
       getValue: () => {
@@ -171,6 +175,8 @@ const CodeMirrorEditor = forwardRef<CodeMirrorEditorHandle, CodeMirrorEditorProp
           }
           const newValue = update.state.doc.toString();
           onChangeRef.current(newValue);
+          const count = newValue.replace(/\s/g, "").length;
+          onWordCountRef.current?.(count);
         }
       });
 
@@ -187,7 +193,14 @@ const CodeMirrorEditor = forwardRef<CodeMirrorEditorHandle, CodeMirrorEditorProp
           closeBrackets(),
           autocompletion(),
           highlightSelectionMatches(),
-          markdown({ base: markdownLanguage }),
+          markdown({
+            base: markdownLanguage,
+            codeLanguages: (info: string) => {
+              if (info.trim().split(/\s+/)[0].toLowerCase() === "mermaid")
+                return mermaidLanguage;
+              return null;
+            },
+          }),
           markdownTheme,
           markdownHighlighting,
           keymap.of([

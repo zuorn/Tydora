@@ -3,14 +3,6 @@ import { Plugin, PluginKey } from "@tiptap/pm/state";
 import { NodeView } from "@tiptap/pm/view";
 import hljs from "highlight.js/lib/common";
 
-// ── 折叠按钮图标 ──
-const ICON_CHEVRON_DOWN = `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg>`;
-const ICON_CHEVRON_RIGHT = `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"/></svg>`;
-
-function getToggleIcon(collapsed: boolean): string {
-  return collapsed ? ICON_CHEVRON_RIGHT : ICON_CHEVRON_DOWN;
-}
-
 const LANGUAGES = [
   { value: "", label: "Plain Text" },
   { value: "javascript", label: "JavaScript" },
@@ -275,22 +267,6 @@ function installGlobalHandler() {
         return;
       }
 
-      // 展开/折叠
-      const toggleBtn = target.closest(".code-block-action-btn.toggle") as HTMLElement | null;
-      if (toggleBtn) {
-        e.preventDefault();
-        e.stopPropagation();
-        const wrapper = toggleBtn.closest(".code-block-toolbar-wrapper");
-        if (wrapper) {
-          wrapper.classList.toggle("collapsed");
-          const isCollapsed = wrapper.classList.contains("collapsed");
-          // 存储状态供 NodeView.update() 恢复
-          (wrapper as any)._collapsed = isCollapsed;
-          toggleBtn.innerHTML = getToggleIcon(isCollapsed);
-        }
-        return;
-      }
-
       // 删除
       const deleteBtn = target.closest(".code-block-action-btn.delete") as HTMLElement | null;
       if (deleteBtn) {
@@ -361,7 +337,6 @@ class CodeBlockToolbarView implements NodeView {
   private node: any;
   private wrapper: HTMLElement;
   private toolbar: HTMLElement;
-  private collapsed = false;
 
   constructor(node: any, getPos: () => number) {
     this.node = node;
@@ -371,8 +346,6 @@ class CodeBlockToolbarView implements NodeView {
     this.wrapper.setAttribute("data-language", node.attrs.language || "");
     // 存储 getPos 供全局处理器使用
     (this.wrapper as any)._getPos = getPos;
-    // 初始化折叠状态
-    (this.wrapper as any)._collapsed = false;
 
     this.toolbar = document.createElement("div");
     this.toolbar.className = "code-block-toolbar";
@@ -405,11 +378,6 @@ class CodeBlockToolbarView implements NodeView {
     const actions = document.createElement("div");
     actions.className = "code-block-actions";
 
-    const toggleButton = document.createElement("button");
-    toggleButton.className = "code-block-action-btn toggle";
-    toggleButton.title = "展开/折叠";
-    toggleButton.innerHTML = getToggleIcon(this.collapsed);
-
     const deleteButton = document.createElement("button");
     deleteButton.className = "code-block-action-btn delete";
     deleteButton.title = "删除";
@@ -420,7 +388,6 @@ class CodeBlockToolbarView implements NodeView {
     copyButton.title = "复制";
     copyButton.innerHTML = `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"/><path d="M5 15H4a2 2 0 01-2-2V4a2 2 0 012-2h9a2 2 0 012 2v1"/></svg>`;
 
-    actions.appendChild(toggleButton);
     actions.appendChild(deleteButton);
     actions.appendChild(copyButton);
     return actions;
@@ -434,13 +401,6 @@ class CodeBlockToolbarView implements NodeView {
     if (langBtn) {
       langBtn.textContent =
         LANGUAGES.find((l) => l.value === node.attrs.language)?.label || "Plain Text";
-    }
-    // 同步折叠状态：update() 被 ProseMirror 调用时 DOM class 和图标可能已被重置
-    this.collapsed = !!(this.wrapper as any)._collapsed;
-    this.wrapper.classList.toggle("collapsed", this.collapsed);
-    const toggleBtn = this.toolbar.querySelector(".code-block-action-btn.toggle");
-    if (toggleBtn) {
-      toggleBtn.innerHTML = getToggleIcon(this.collapsed);
     }
     return true;
   }

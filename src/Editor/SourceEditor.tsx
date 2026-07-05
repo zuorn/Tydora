@@ -43,6 +43,38 @@ hljs.registerLanguage("ruby", ruby);
 hljs.registerLanguage("swift", swift);
 hljs.registerLanguage("kotlin", kotlin);
 
+// 注册 Mermaid 语法高亮
+hljs.registerLanguage("mermaid", (hljsApi) => ({
+  name: "Mermaid",
+  aliases: ["mermaid"],
+  keywords: {
+    keyword:
+      "graph flowchart sequenceDiagram classDiagram stateDiagram erDiagram " +
+      "gantt pie gitGraph mindmap timeline requirementDiagram quadrantDiagram " +
+      "sankeyDiagram xychartDiagram blockDiagram architectureDiagram journeyDiagram " +
+      "TB TD BT RL LR subgraph end class style click link call callbacks " +
+      "title section dateFormat axisFormat tickInterval exclusive " +
+      "activate deactivate loop alt opt par and rect else note over participant " +
+      "autonumber namespace",
+    literal: "true false yes no",
+  },
+  contains: [
+    hljsApi.COMMENT("%%", "$"),
+    hljsApi.C_LINE_COMMENT_MODE,
+    hljsApi.QUOTE_STRING_MODE,
+    hljsApi.APOS_STRING_MODE,
+    {
+      className: "operator",
+      match: /-[-.]+>|==>|-->|---|\.\.->|-.->/,
+    },
+    {
+      className: "type",
+      match: /[\[\(\{][^\]]*[\]\)\}]/,
+    },
+    hljsApi.NUMBER_MODE,
+  ],
+}));
+
 interface SourceEditorProps {
   value: string;
   onChange: (value: string) => void;
@@ -88,7 +120,7 @@ const SourceEditor = forwardRef<SourceEditorHandle, SourceEditorProps>(
     const updateHighlight = (text: string) => {
       if (!highlightRef.current) return;
 
-      // 检测语言
+      // 1. 检测语言
       let detectedLang = "markdown";
       try {
         const result = hljs.highlightAuto(text, [
@@ -104,7 +136,7 @@ const SourceEditor = forwardRef<SourceEditorHandle, SourceEditorProps>(
         // 使用默认 markdown
       }
 
-      // 高亮代码
+      // 2. 高亮原始文本（不修改原文）
       let highlighted: string;
       try {
         highlighted = hljs.highlight(text, { language: detectedLang }).value;
@@ -115,7 +147,28 @@ const SourceEditor = forwardRef<SourceEditorHandle, SourceEditorProps>(
           .replace(/>/g, "&gt;");
       }
 
-      // 添加行号
+      // 3. 后处理：在高亮 HTML 中定位 mermaid 代码块并重新高亮
+      //    markdown 高亮后整个 fenced code block 包在单个 <span class="hljs-code"> 中
+      highlighted = highlighted.replace(
+        /<span class="hljs-code">```mermaid\n([\s\S]*?)```<\/span>/g,
+        (_block: string, codeContent: string) => {
+          // 反转义 HTML 实体 → 原始 mermaid 代码
+          const rawText = codeContent
+            .replace(/&amp;/g, "&")
+            .replace(/&lt;/g, "<")
+            .replace(/&gt;/g, ">")
+            .replace(/&quot;/g, "\"")
+            .replace(/&#x27;/g, "'");
+          try {
+            const mermaidResult = hljs.highlight(rawText, { language: "mermaid" });
+            return `<span class="hljs-code">\`\`\`mermaid\n${mermaidResult.value}\n\`\`\`</span>`;
+          } catch {
+            return _block;
+          }
+        }
+      );
+
+      // 4. 添加行号
       const lines = highlighted.split("\n");
       const numberedLines = lines.map((line) =>
         `<div class="source-line"><span class="source-line-content">${line}</span></div>`

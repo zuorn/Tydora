@@ -29,6 +29,7 @@ import { common, createLowlight } from "lowlight";
 import { Frontmatter } from "./extensions/frontmatter";
 import { Callout } from "./extensions/callout";
 import { Mermaid } from "./extensions/mermaid";
+import { mermaidHljsLang } from "./extensions/mermaid-language";
 import { WikiLink } from "./extensions/wiki-link";
 import { SearchHighlight } from "./extensions/search-highlight";
 import { CodeBlockToolbar } from "./extensions/code-block-toolbar";
@@ -38,7 +39,7 @@ import { executeCommand } from "./extensions/custom-commands";
 import { saveImageToLocal, loadImageSettings } from "../ImageManager";
 import { loadShortcuts, matchShortcut } from "./shortcuts";
 import { invoke } from "@tauri-apps/api/core";
-import SourceEditor, { type SourceEditorHandle } from "./SourceEditor";
+import CodeMirrorEditor, { type CodeMirrorEditorHandle } from "./CodeMirrorEditor";
 import { ContextMenu } from "./ContextMenu";
 import { LinkDialog } from "./LinkDialog";
 import type { ThemeName } from "../themes";
@@ -48,6 +49,7 @@ import type { EditorHandle, EditorMode } from "./types";
 import "./theme.css";
 
 const lowlight = createLowlight(common);
+lowlight.register("mermaid", mermaidHljsLang);
 
 interface TipTapEditorProps {
   value: string;
@@ -72,7 +74,7 @@ const TipTapEditor = forwardRef<EditorHandle, TipTapEditorProps>(
     const prevFilePathRef = useRef(currentFilePath);
     const activeVaultPathRef = useRef(activeVaultPath);
     const imageSettingsRef = useRef(imageSettings);
-    const sourceEditorRef = useRef<SourceEditorHandle>(null);
+    const sourceEditorRef = useRef<CodeMirrorEditorHandle>(null);
     const [contextMenuPos, setContextMenuPos] = useState<{ x: number; y: number } | null>(null);
     const [tableToolbar, setTableToolbar] = useState<{ table: HTMLElement } | null>(null);
     const linkEditRef = useRef<{ from: number; to: number } | null>(null);
@@ -772,7 +774,7 @@ const TipTapEditor = forwardRef<EditorHandle, TipTapEditorProps>(
 
     if (mode === "sv") {
       return (
-        <SourceEditor
+        <CodeMirrorEditor
           ref={sourceEditorRef}
           value={value}
           onChange={onChange}

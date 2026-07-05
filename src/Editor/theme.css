@@ -143,7 +143,8 @@
   color: var(--hljs-number, #005cc5);
 }
 
-.source-highlight-layer .hljs-built_in {
+.source-highlight-layer .hljs-built_in,
+.source-highlight-layer .hljs-operator {
   color: var(--hljs-built_in, #e36209);
 }
 
@@ -258,7 +259,8 @@
 .tiptap-editor .hljs-params {
   color: var(--hljs-number, #005cc5);
 }
-.tiptap-editor .hljs-built_in {
+.tiptap-editor .hljs-built_in,
+.tiptap-editor .hljs-operator {
   color: var(--hljs-built_in, #e36209);
 }
 
@@ -714,11 +716,6 @@
   color: var(--text-primary, #333);
 }
 
-.code-block-action-btn.toggle:hover {
-  background: #dbeafe;
-  color: #2563eb;
-}
-
 .code-block-action-btn.delete:hover {
   background: #fee2e2;
   color: #dc2626;
@@ -773,17 +770,6 @@
   border-radius: 0;
   font-size: inherit;
   color: inherit;
-}
-
-/* 折叠状态 */
-.code-block-toolbar-wrapper .code-block-content {
-  max-height: 5000px;
-  transition: max-height 0.25s ease;
-}
-
-.code-block-toolbar-wrapper.collapsed .code-block-content {
-  max-height: 40px;
-  overflow: hidden;
 }
 
 /* ── Mermaid 图表节点 ── */
@@ -848,27 +834,22 @@
 
 /* 源码编辑区 */
 .mermaid-source {
-  border-radius: 0;
+  position: relative;
+  border-radius: 0 0 8px 8px;
+  overflow: hidden;
 }
 
-.mermaid-source-pre {
-  margin: 0;
-  padding: 16px;
+/* CodeMirror 容器 */
+.mermaid-cm-container {
   background: var(--bg-secondary, #f8f9fa);
-  font-family: var(--editor-font, "JetBrains Mono", "Fira Code", monospace);
-  font-size: 13px;
-  line-height: 1.6;
-  tab-size: 2;
-  white-space: pre-wrap;
-  word-break: break-all;
-  min-height: 80px;
-  outline: none;
 }
 
-.mermaid-source-pre code {
-  background: transparent;
-  color: var(--text-primary, #333);
+.mermaid-cm-container .cm-editor {
+  min-height: 80px;
+  max-height: 400px;
+  overflow-y: auto;
 }
+
 
 /* 图表预览区 */
 .mermaid-preview {
@@ -1052,6 +1033,16 @@
   font-size: var(--editor-font-size, 14px);
   line-height: 1.7;
   color: var(--text-secondary, #999);
+}
+
+/* CodeMirror 编辑器 */
+.codemirror-editor-container {
+  height: 100%;
+  overflow: hidden;
+}
+
+.codemirror-editor {
+  height: 100%;
 }
 
 /* 右键菜单 */

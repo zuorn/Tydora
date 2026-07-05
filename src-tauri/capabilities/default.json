@@ -11,6 +11,10 @@
     "core:window:allow-unmaximize",
     "core:window:allow-is-maximized",
     "core:window:allow-close",
+    "core:event:default",
+    "core:event:allow-emit",
+    "core:event:allow-emit-to",
+    "core:event:allow-listen",
     "fs:default",
     {
       "identifier": "fs:allow-read-text-file",

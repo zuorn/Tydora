@@ -260,7 +260,21 @@ function App({ initialFilePath }: { initialFilePath?: string | null }) {
     }).catch(() => {});
   }, []);
 
-  // 新窗口：打开指定文件
+  // 将文件内容推送到编辑器（绕过 React state → useEffect 同步链的不可靠性）
+  const pushContentToEditor = useCallback((text: string, retries = 8) => {
+    const tryPush = (remaining: number) => {
+      if (editorHandleRef.current) {
+        editorHandleRef.current.setValue(text);
+        return;
+      }
+      if (remaining > 0) {
+        setTimeout(() => tryPush(remaining - 1), 50);
+      }
+    };
+    tryPush(retries);
+  }, []);
+
+  // 新窗口：打开指定文件（通过 URL 参数）
   useEffect(() => {
     if (!initialFilePath) return;
     const matchingVaultIndex = vaults.findIndex((v) =>
@@ -275,10 +289,47 @@ function App({ initialFilePath }: { initialFilePath?: string | null }) {
         setContent(text);
         setFileName(initialFilePath);
         setModified(false);
+        pushContentToEditor(text);
       })
       .catch((e) => {
         console.error("打开文件失败:", e);
+        const errText = `> 打开文件失败: ${String(e)}\n\n路径: ${initialFilePath}`;
+        setContent(errText);
+        setFileName(initialFilePath);
+        pushContentToEditor(errText);
       });
+  }, []);
+
+  // 备用方案：当 URL 参数未携带文件路径时，通过 Tauri Event 接收
+  useEffect(() => {
+    if (initialFilePath) return;
+    let unlisten: (() => void) | undefined;
+    (async () => {
+      try {
+        const { listen } = await import("@tauri-apps/api/event");
+        unlisten = await listen<string>("open-file", (event) => {
+          const filePath = event.payload;
+          readTextFile(filePath)
+            .then((text) => {
+              savedContentRef.current = text;
+              setContent(text);
+              setFileName(filePath);
+              setModified(false);
+               pushContentToEditor(text);
+            })
+            .catch((e) => {
+              console.error("通过事件打开文件失败:", e);
+              const errText = `> 打开文件失败: ${String(e)}\n\n路径: ${filePath}`;
+              setContent(errText);
+              setFileName(filePath);
+              pushContentToEditor(errText);
+            });
+        });
+      } catch (e) {
+        console.error("监听 open-file 事件失败:", e);
+      }
+    })();
+    return () => { unlisten?.(); };
   }, []);
 
   // 侧栏宽度变化后通知编辑器重新计算尺寸
@@ -1132,20 +1183,6 @@ function App({ initialFilePath }: { initialFilePath?: string | null }) {
                   activeVaultPath={activeVaultIndex >= 0 ? vaults[activeVaultIndex]?.path : null}
                   onWordCount={setWordCount}
                 />
-                {/* 欢迎提示 */}
-                {!fileName && content === initialContent && (
-                  <div className="welcome-overlay">
-                    <div className="welcome-hint">
-                      <div className="welcome-hint-icon">⌨️</div>
-                      <div className="welcome-hint-item">
-                        <kbd>Ctrl + O</kbd> 打开文件
-                      </div>
-                      <div className="welcome-hint-item">
-                        <kbd>Ctrl + P</kbd> 命令面板
-                      </div>
-                    </div>
-                  </div>
-                )}
               </EditorErrorBoundary>
             )}
           </div>

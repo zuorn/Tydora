@@ -36,9 +36,9 @@ import { CodeBlockToolbar } from "./extensions/code-block-toolbar";
 import { TableFloatingToolbar } from "./extensions/table-floating-toolbar";
 import { TableFloatingToolbar as TableFloatingToolbarComponent } from "./TableFloatingToolbar";
 import { executeCommand } from "./extensions/custom-commands";
-import { saveImageToLocal, loadImageSettings } from "../ImageManager";
+import { saveImageToLocal, loadImageSettings, resolveRelativePath, dirName } from "../ImageManager";
 import { loadShortcuts, matchShortcut } from "./shortcuts";
-import { invoke } from "@tauri-apps/api/core";
+import { invoke, convertFileSrc } from "@tauri-apps/api/core";
 import CodeMirrorEditor, { type CodeMirrorEditorHandle } from "./CodeMirrorEditor";
 import { ContextMenu } from "./ContextMenu";
 import { LinkDialog } from "./LinkDialog";
@@ -89,6 +89,7 @@ const TipTapEditor = forwardRef<EditorHandle, TipTapEditorProps>(
     const editor = useEditor({
       extensions: [
         StarterKit.configure({
+          paragraph: false,
           codeBlock: false,
           link: false,
           bold: false,
@@ -179,22 +180,52 @@ const TipTapEditor = forwardRef<EditorHandle, TipTapEditorProps>(
               "data-abs-path": { default: null },
             };
           },
+          addStorage() {
+            return {
+              markdown: {
+                serialize(state: any, node: any) {
+                  const src = node.attrs.src;
+                  if (!src) return;
+                  state.write(
+                    "![" + state.esc(node.attrs.alt || "") + "](" +
+                    src.replace(/[\(\)]/g, "\\$&") +
+                    (node.attrs.title ? ' "' + node.attrs.title.replace(/"/g, '\\"') + '"' : "") +
+                    ")"
+                  );
+                },
+                parse: {},
+              },
+            };
+          },
           addNodeView() {
             return ({ node }) => {
               const dom = document.createElement("img");
-              // 优先使用绝对路径（data-abs-path），否则用 src
               const absPath = node.attrs["data-abs-path"] as string | null;
               const src = node.attrs.src as string;
-              if (absPath) {
-                dom.src = `local-file://localhost/${encodeURIComponent(absPath)}`;
-              } else if (src && !src.startsWith("http") && !src.startsWith("data:") && !src.startsWith("local-file:")) {
-                dom.src = `local-file://localhost/${encodeURIComponent(src)}`;
-              } else {
-                dom.src = src;
-              }
               dom.alt = (node.attrs.alt as string) || "";
               dom.style.maxWidth = "100%";
               dom.style.height = "auto";
+              dom.loading = "lazy";
+
+              if (absPath) {
+                dom.src = convertFileSrc(absPath);
+              } else if (src && (src.startsWith("http://") || src.startsWith("https://"))) {
+                // 网络图片：通过 Rust 后端代理下载，绕过 CORS 和 WebView2 限制
+                invoke<string>("fetch_remote_image", { url: src })
+                  .then(dataUrl => { dom.src = dataUrl; })
+                  .catch(() => { dom.src = src; });
+              } else if (src && !src.startsWith("data:") && !src.startsWith("asset:")) {
+                let resolvedPath = src;
+                const basePath = currentFilePathRef.current
+                  ? dirName(currentFilePathRef.current)
+                  : activeVaultPathRef.current;
+                if (basePath && (src.startsWith("./") || src.startsWith("../") || !src.match(/^[a-zA-Z]:\\/))) {
+                  resolvedPath = resolveRelativePath(basePath, src);
+                }
+                dom.src = convertFileSrc(resolvedPath);
+              } else {
+                dom.src = src;
+              }
               return { dom };
             };
           },
@@ -619,8 +650,7 @@ const TipTapEditor = forwardRef<EditorHandle, TipTapEditorProps>(
           "table-row-delete": "table-row-delete",
           "table-col-delete": "table-col-delete",
           // 编辑
-          "undo": "undo",
-          "redo": "redo",
+          // undo/redo 由 StarterKit 内置 keymap 处理，不再重复映射
           // 其他
           "footnotes": "footnotes",
           "math": "math",
@@ -760,7 +790,7 @@ const TipTapEditor = forwardRef<EditorHandle, TipTapEditorProps>(
       prevFilePathRef.current = currentFilePath;
 
       if (fileChanged) {
-        // 文件切换时始终强制更新内容
+        // 文件切换时强制更新内容
         isInternalRef.current = true;
         editor.commands.setContent(value);
       } else {

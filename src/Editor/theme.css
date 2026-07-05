@@ -521,15 +521,6 @@
   border-radius: 2px;
 }
 
-/* 占位符 */
-.tiptap-editor .tiptap p.is-editor-empty:first-child::before {
-  content: attr(data-placeholder);
-  color: var(--text-secondary, #999);
-  pointer-events: none;
-  float: left;
-  height: 0;
-}
-
 /* 任务列表 */
 .tiptap-editor ul[data-type="taskList"] {
   list-style: none;

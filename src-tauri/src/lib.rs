@@ -5,6 +5,7 @@ use tauri::{Emitter, Manager, WebviewWindowBuilder, State};
 
 mod commands;
 use commands::watcher_commands::{watch_vault, unwatch_vault, WatcherState};
+use commands::remote_image::{fetch_remote_image, HttpClientState};
 
 struct PreviewServer(Mutex<Option<std::process::Child>>);
 
@@ -624,11 +625,13 @@ pub fn run() {
             run_markdown_publish,
             preview_site,
             stop_preview,
+            fetch_remote_image
         ])
         .setup(|app| {
             // 初始化文件监听器状态
             app.manage(WatcherState(std::sync::Mutex::new(None)));
             app.manage(PreviewServer(std::sync::Mutex::new(None)));
+            app.manage(HttpClientState::new());
 
             #[cfg(debug_assertions)]
             {

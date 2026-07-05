@@ -984,8 +984,8 @@ function App({ initialFilePath }: { initialFilePath?: string | null }) {
     { id: "new-window", label: "新窗口打开", category: "文件", action: () => { if (fileName) handleNewWindow(fileName); } },
 
     // 编辑操作
-    { id: "undo", label: "撤销", category: "编辑", shortcut: "Ctrl+Z", action: () => document.execCommand("undo") },
-    { id: "redo", label: "重做", category: "编辑", shortcut: "Ctrl+Y", action: () => document.execCommand("redo") },
+    { id: "undo", label: "撤销", category: "编辑", shortcut: "Ctrl+Z", action: () => editorHandleRef.current?.executeCommand("undo") },
+    { id: "redo", label: "重做", category: "编辑", shortcut: "Ctrl+Y", action: () => editorHandleRef.current?.executeCommand("redo") },
 
     // 视图操作
     { id: "toggle-sidebar", label: "切换侧栏", category: "视图", shortcut: "Ctrl+\\", action: handleSidebarToggle },

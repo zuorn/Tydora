@@ -39,6 +39,7 @@ const LANGUAGES = [
   { value: "shell", label: "Shell" },
   { value: "powershell", label: "PowerShell" },
   { value: "markdown", label: "Markdown" },
+  { value: "mermaid", label: "Mermaid" },
   { value: "dockerfile", label: "Dockerfile" },
   { value: "graphql", label: "GraphQL" },
   { value: "plaintext", label: "Plain Text" },
@@ -173,6 +174,22 @@ function applyLanguage(wrapper: HTMLElement, lang: string) {
 
   const nodeAtPos = pmView.state.doc.nodeAt(pos);
   if (!nodeAtPos) return;
+
+  // Mermaid：将 codeBlock 节点替换为 Mermaid 节点
+  if (lang === "mermaid") {
+    const content = nodeAtPos.textContent;
+    const nodeSize = nodeAtPos.nodeSize;
+    const mermaidNode = pmView.state.schema.nodes.mermaid?.create(
+      null,
+      pmView.state.schema.text(content),
+    );
+    if (mermaidNode) {
+      pmView.dispatch(
+        pmView.state.tr.replaceWith(pos, pos + nodeSize, mermaidNode),
+      );
+      return;
+    }
+  }
 
   // 先更新 DOM（立即反馈，不等 ProseMirror 重渲染）
   const label = LANGUAGES.find((l) => l.value === lang)?.label || "Plain Text";

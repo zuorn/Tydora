@@ -28,6 +28,7 @@ import { defaultMarkdownSerializer } from "prosemirror-markdown";
 import { common, createLowlight } from "lowlight";
 import { Frontmatter } from "./extensions/frontmatter";
 import { Callout } from "./extensions/callout";
+import { Mermaid } from "./extensions/mermaid";
 import { WikiLink } from "./extensions/wiki-link";
 import { SearchHighlight } from "./extensions/search-highlight";
 import { CodeBlockToolbar } from "./extensions/code-block-toolbar";
@@ -221,6 +222,7 @@ const TipTapEditor = forwardRef<EditorHandle, TipTapEditorProps>(
         }),
         Frontmatter,
         Callout,
+        Mermaid,
         WikiLink,
         SearchHighlight,
         CodeBlockToolbar,

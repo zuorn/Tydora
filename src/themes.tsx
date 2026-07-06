@@ -196,6 +196,9 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
         document.head.appendChild(style);
       }
     }
+
+    // 通知编辑器代码主题已变化
+    window.dispatchEvent(new CustomEvent("code-theme-changed"));
   }, [codeTheme, theme, customCodeThemes]);
 
   // ── Listen for theme changes from other windows ──

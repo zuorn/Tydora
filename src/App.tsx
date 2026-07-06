@@ -4,7 +4,7 @@ import { LogicalSize, LogicalPosition } from "@tauri-apps/api/dpi";
 import { readTextFile, writeTextFile } from "@tauri-apps/plugin-fs";
 import { save } from "@tauri-apps/plugin-dialog";
 import { invoke } from "@tauri-apps/api/core";
-import { TipTapEditor as Editor, type EditorHandle, type EditorMode, MODE_LABELS } from "./Editor";
+import { TipTapEditor as Editor, CodeMirrorEditor, type EditorHandle, type CodeMirrorEditorHandle, type EditorMode, MODE_LABELS } from "./Editor";
 import Sidebar, { VaultInfo } from "./Sidebar";
 import FilePreview from "./FilePreview";
 import QuickOpen from "./QuickOpen";
@@ -77,6 +77,12 @@ function isEditableFile(fileName: string): boolean {
   return editableExts.includes(ext);
 }
 
+// 判断文件是否为 Markdown 文件
+function isMarkdownFile(fileName: string): boolean {
+  const ext = fileName.split(".").pop()?.toLowerCase() || "";
+  return ["md", "markdown", "mdx"].includes(ext);
+}
+
 function App({ initialFilePath }: { initialFilePath?: string | null }) {
   const { theme } = useTheme();
   const [content, setContent] = useState("");
@@ -86,6 +92,8 @@ function App({ initialFilePath }: { initialFilePath?: string | null }) {
   const [viewMode, setViewMode] = useState<EditorMode>(editorSettings.defaultMode);
   const [typewriterMode, setTypewriterMode] = useState(editorSettings.typewriterMode);
   const [wordCount, setWordCount] = useState(0);
+  const [isCurrentFileMarkdown, setIsCurrentFileMarkdown] = useState(true);
+  const codeMirrorRef = useRef<CodeMirrorEditorHandle>(null);
 
   // 应用编辑器字体和字号设置
   useEffect(() => {
@@ -633,6 +641,7 @@ function App({ initialFilePath }: { initialFilePath?: string | null }) {
       setFileName(path);
       setModified(false);
       setPreviewFilePath(null); // 关闭预览模式
+      setIsCurrentFileMarkdown(isMarkdownFile(path));
 
       // 跳转到指定行并高亮搜索结果
       if (line != null || query) {
@@ -809,11 +818,13 @@ function App({ initialFilePath }: { initialFilePath?: string | null }) {
     const handler = (e: KeyboardEvent) => {
       if ((e.ctrlKey || e.metaKey) && e.key === "/") {
         e.preventDefault();
+        e.stopImmediatePropagation();
         toggleIrSv();
       }
     };
-    window.addEventListener("keydown", handler);
-    return () => window.removeEventListener("keydown", handler);
+    // 使用捕获阶段，在 ProseMirror 处理之前拦截 Ctrl+/
+    window.addEventListener("keydown", handler, true);
+    return () => window.removeEventListener("keydown", handler, true);
   }, [toggleIrSv]);
 
   // 行内代码快捷键（从 localStorage 读取）
@@ -1155,7 +1166,7 @@ function App({ initialFilePath }: { initialFilePath?: string | null }) {
                 filePath={previewFilePath}
                 onBack={() => setPreviewFilePath(null)}
               />
-            ) : (
+            ) : isCurrentFileMarkdown ? (
               <EditorErrorBoundary>
                 <Editor
                   ref={editorHandleRef}
@@ -1171,19 +1182,31 @@ function App({ initialFilePath }: { initialFilePath?: string | null }) {
                   onWordCount={setWordCount}
                 />
               </EditorErrorBoundary>
+            ) : (
+              <EditorErrorBoundary>
+                <CodeMirrorEditor
+                  ref={codeMirrorRef}
+                  value={content}
+                  onChange={handleChange}
+                  onWordCount={setWordCount}
+                  filePath={fileName}
+                />
+              </EditorErrorBoundary>
             )}
           </div>
 
           <div className="editor-bottombar-trigger" />
           {/* 底部栏 */}
           <div className="editor-bottombar">
-            <button
-              className="editor-mode-toggle source-mode-toggle"
-              onClick={cycleMode}
-              title={`当前: ${MODE_LABELS[viewMode]}，点击切换模式 (Ctrl+/)`}
-            >
-              {MODE_LABELS[viewMode]}
-            </button>
+            {isCurrentFileMarkdown && (
+              <button
+                className="editor-mode-toggle source-mode-toggle"
+                onClick={cycleMode}
+                title={`当前: ${MODE_LABELS[viewMode]}，点击切换模式 (Ctrl+/)`}
+              >
+                {MODE_LABELS[viewMode]}
+              </button>
+            )}
             <button
               className={`typewriter-indicator ${typewriterMode ? 'active' : ''}`}
               onClick={toggleTypewriterMode}

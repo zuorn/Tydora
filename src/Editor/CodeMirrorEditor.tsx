@@ -1,14 +1,66 @@
-import { useRef, useEffect, forwardRef, useImperativeHandle } from "react";
+import { useRef, useEffect, forwardRef, useImperativeHandle, useMemo } from "react";
 import { EditorView, keymap, lineNumbers, highlightActiveLine, highlightActiveLineGutter } from "@codemirror/view";
-import { EditorState } from "@codemirror/state";
+import { EditorState, Compartment } from "@codemirror/state";
 import { defaultKeymap, history, historyKeymap, indentWithTab } from "@codemirror/commands";
 import { markdown, markdownLanguage } from "@codemirror/lang-markdown";
-import { syntaxHighlighting, bracketMatching, foldGutter, indentOnInput } from "@codemirror/language";
+import { javascript } from "@codemirror/lang-javascript";
+import { html } from "@codemirror/lang-html";
+import { css } from "@codemirror/lang-css";
+import { json } from "@codemirror/lang-json";
+import { xml } from "@codemirror/lang-xml";
+import { syntaxHighlighting, bracketMatching, foldGutter, indentOnInput, HighlightStyle } from "@codemirror/language";
 import { tags } from "@lezer/highlight";
 import { searchKeymap, highlightSelectionMatches } from "@codemirror/search";
 import { autocompletion, completionKeymap } from "@codemirror/autocomplete";
 import { closeBrackets, closeBracketsKeymap } from "@codemirror/autocomplete";
-import { mermaidLanguage } from "./extensions/mermaid-language";
+
+
+// 判断是否为 Markdown 文件
+function isMarkdownFile(filePath: string | null | undefined): boolean {
+  if (!filePath) return false;
+  const ext = filePath.split(".").pop()?.toLowerCase() || "";
+  return ["md", "markdown", "mdx"].includes(ext);
+}
+
+// 根据文件扩展名获取 CodeMirror 语言扩展
+function getLanguageExtension(filePath: string | null | undefined) {
+  if (!filePath) return markdown({ base: markdownLanguage });
+
+  const ext = filePath.split(".").pop()?.toLowerCase() || "";
+  switch (ext) {
+    case "js":
+    case "jsx":
+    case "mjs":
+    case "cjs":
+      return javascript({ jsx: ext === "jsx" });
+    case "ts":
+    case "mts":
+    case "cts":
+      return javascript({ typescript: true });
+    case "tsx":
+      return javascript({ jsx: true, typescript: true });
+    case "html":
+    case "htm":
+    case "vue":
+    case "svelte":
+    case "astro":
+      return html();
+    case "css":
+    case "scss":
+    case "less":
+      return css();
+    case "json":
+    case "jsonc":
+    case "geojson":
+      return json();
+    case "xml":
+    case "svg":
+    case "xsd":
+      return xml();
+    default:
+      return markdown({ base: markdownLanguage });
+  }
+}
 
 // 自定义 Markdown 主题
 const markdownTheme = EditorView.theme({
@@ -18,6 +70,10 @@ const markdownTheme = EditorView.theme({
     fontFamily: "var(--editor-font, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif)",
     fontSize: "var(--editor-font-size, 16px)",
     height: "100%",
+  },
+  ".cm-scroller": {
+    fontFamily: "inherit",   // 覆盖 CodeMirror 默认的 monospace，继承 & 中设置的 CSS 变量字体
+    fontSize: "inherit",
   },
   ".cm-content": {
     caretColor: "var(--text-primary, #333)",
@@ -91,9 +147,7 @@ const markdownTheme = EditorView.theme({
   },
 });
 
-// Markdown 语法高亮
-import { HighlightStyle } from "@codemirror/language";
-
+// Markdown 语法高亮（使用 CSS 变量引用，浏览器自动响应变化）
 const markdownHighlighting = syntaxHighlighting(
   HighlightStyle.define([
     { tag: tags.heading1, color: "var(--text-heading, #1a1a1a)", fontSize: "1.5em", fontWeight: "bold" },
@@ -107,16 +161,38 @@ const markdownHighlighting = syntaxHighlighting(
     { tag: tags.strikethrough, textDecoration: "line-through", color: "var(--text-secondary, #999)" },
     { tag: tags.link, color: "var(--text-link, #0969da)" },
     { tag: tags.url, color: "var(--text-url, #0969da)", textDecoration: "underline" },
-    { tag: tags.string, color: "var(--text-string, #0a3069)" },
-    { tag: tags.keyword, color: "var(--text-keyword, #cf222e)" },
-    { tag: tags.atom, color: "var(--text-atom, #0550ae)" },
-    { tag: tags.bool, color: "var(--text-bool, #0550ae)" },
-    { tag: tags.comment, color: "var(--text-comment, #6e7781)", fontStyle: "italic" },
+    { tag: tags.string, color: "var(--hljs-string, #0a3069)" },
+    { tag: tags.keyword, color: "var(--hljs-keyword, #cf222e)" },
+    { tag: tags.atom, color: "var(--hljs-built_in, #0550ae)" },
+    { tag: tags.bool, color: "var(--hljs-keyword, #0550ae)" },
+    { tag: tags.number, color: "var(--hljs-number, #005cc5)" },
+    { tag: tags.comment, color: "var(--hljs-comment, #6e7781)", fontStyle: "italic" },
     { tag: tags.monospace, fontFamily: "var(--editor-font, 'Fira Code', 'Consolas', monospace)", fontSize: "0.9em" },
-    { tag: tags.processingInstruction, color: "var(--text-code, #cf222e)" },
-    { tag: tags.special(tags.string), color: "var(--text-code, #cf222e)" },
+    { tag: tags.processingInstruction, color: "var(--hljs-keyword, #cf222e)" },
+    { tag: tags.special(tags.string), color: "var(--hljs-string, #0a3069)" },
     { tag: tags.contentSeparator, color: "var(--text-secondary, #999)" },
-    { tag: tags.meta, color: "var(--text-meta, #6e7781)" },
+    { tag: tags.meta, color: "var(--hljs-comment, #6e7781)" },
+  ])
+);
+
+// 代码文件语法高亮（使用 CSS 变量引用）
+const codeHighlighting = syntaxHighlighting(
+  HighlightStyle.define([
+    { tag: tags.string, color: "var(--hljs-string, #0a3069)" },
+    { tag: tags.keyword, color: "var(--hljs-keyword, #cf222e)" },
+    { tag: tags.atom, color: "var(--hljs-built_in, #0550ae)" },
+    { tag: tags.bool, color: "var(--hljs-keyword, #0550ae)" },
+    { tag: tags.number, color: "var(--hljs-number, #005cc5)" },
+    { tag: tags.comment, color: "var(--hljs-comment, #6e7781)", fontStyle: "italic" },
+    { tag: tags.monospace, fontFamily: "var(--editor-font, 'Fira Code', 'Consolas', monospace)", fontSize: "0.9em" },
+    { tag: tags.processingInstruction, color: "var(--hljs-keyword, #cf222e)" },
+    { tag: tags.special(tags.string), color: "var(--hljs-string, #0a3069)" },
+    { tag: tags.meta, color: "var(--hljs-comment, #6e7781)" },
+    { tag: tags.function(tags.variableName), color: "var(--hljs-built_in, #6f42c1)" },
+    { tag: tags.definition(tags.variableName), color: "var(--hljs-built_in, #005cc5)" },
+    { tag: tags.typeName, color: "var(--hljs-built_in, #22863a)" },
+    { tag: tags.className, color: "var(--hljs-built_in, #6f42c1)" },
+    { tag: tags.propertyName, color: "var(--hljs-string, #005cc5)" },
   ])
 );
 
@@ -124,6 +200,7 @@ interface CodeMirrorEditorProps {
   value: string;
   onChange: (value: string) => void;
   onWordCount?: (count: number) => void;
+  filePath?: string | null;
 }
 
 export interface CodeMirrorEditorHandle {
@@ -132,13 +209,17 @@ export interface CodeMirrorEditorHandle {
   focus: () => void;
 }
 
+const highlightCompartment = new Compartment();
+
 const CodeMirrorEditor = forwardRef<CodeMirrorEditorHandle, CodeMirrorEditorProps>(
-  ({ value, onChange, onWordCount }, ref) => {
+  ({ value, onChange, onWordCount, filePath }, ref) => {
     const containerRef = useRef<HTMLDivElement>(null);
     const viewRef = useRef<EditorView | null>(null);
     const onChangeRef = useRef(onChange);
     const onWordCountRef = useRef(onWordCount);
     const isInternalRef = useRef(false);
+    const filePathRef = useRef(filePath);
+    filePathRef.current = filePath;
 
     onChangeRef.current = onChange;
     onWordCountRef.current = onWordCount;
@@ -164,6 +245,9 @@ const CodeMirrorEditor = forwardRef<CodeMirrorEditorHandle, CodeMirrorEditorProp
       },
     }));
 
+    // 根据 filePath 获取语言扩展
+    const languageExtension = useMemo(() => getLanguageExtension(filePath), [filePath]);
+
     useEffect(() => {
       if (!containerRef.current) return;
 
@@ -180,6 +264,9 @@ const CodeMirrorEditor = forwardRef<CodeMirrorEditorHandle, CodeMirrorEditorProp
         }
       });
 
+      // 根据语言类型选择高亮主题
+      const useMarkdownHighlighting = isMarkdownFile(filePathRef.current);
+
       const state = EditorState.create({
         doc: value,
         extensions: [
@@ -193,16 +280,12 @@ const CodeMirrorEditor = forwardRef<CodeMirrorEditorHandle, CodeMirrorEditorProp
           closeBrackets(),
           autocompletion(),
           highlightSelectionMatches(),
-          markdown({
-            base: markdownLanguage,
-            codeLanguages: (info: string) => {
-              if (info.trim().split(/\s+/)[0].toLowerCase() === "mermaid")
-                return mermaidLanguage;
-              return null;
-            },
-          }),
+          languageExtension,
           markdownTheme,
-          markdownHighlighting,
+          // 使用 Compartment 包装高亮，支持动态切换
+          highlightCompartment.of(
+            useMarkdownHighlighting ? markdownHighlighting : codeHighlighting
+          ),
           keymap.of([
             ...defaultKeymap,
             ...historyKeymap,
@@ -227,7 +310,7 @@ const CodeMirrorEditor = forwardRef<CodeMirrorEditorHandle, CodeMirrorEditorProp
         view.destroy();
         viewRef.current = null;
       };
-    }, []);
+    }, [languageExtension]);
 
     // 外部 value 同步
     useEffect(() => {
@@ -248,6 +331,21 @@ const CodeMirrorEditor = forwardRef<CodeMirrorEditorHandle, CodeMirrorEditorProp
         });
       }
     }, [value]);
+
+    // 监听代码主题变化，通过 Compartment reconfigure 实时切换高亮
+    useEffect(() => {
+      const handleCodeThemeChanged = () => {
+        if (!viewRef.current) return;
+        const useMarkdownHighlighting = isMarkdownFile(filePathRef.current);
+        viewRef.current.dispatch({
+          effects: highlightCompartment.reconfigure(
+            useMarkdownHighlighting ? markdownHighlighting : codeHighlighting
+          ),
+        });
+      };
+      window.addEventListener("code-theme-changed", handleCodeThemeChanged);
+      return () => window.removeEventListener("code-theme-changed", handleCodeThemeChanged);
+    }, [markdownHighlighting, codeHighlighting]);
 
     return (
       <div className="editor-wrapper">

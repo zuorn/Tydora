@@ -280,6 +280,13 @@ const TipTapEditor = forwardRef<EditorHandle, TipTapEditorProps>(
       editorProps: {
         handleDOMEvents: {
           keydown: (_view: any, event: KeyboardEvent) => {
+            // 拦截 Ctrl+/（防止被当作 HTML 注释快捷键，模式切换由 App.tsx 全局处理）
+            if ((event.ctrlKey || event.metaKey) && event.key === "/") {
+              event.preventDefault();
+              event.stopPropagation();
+              return true;
+            }
+
             // 拦截 Ctrl+M（防止打开思维导图窗口）
             if ((event.ctrlKey || event.metaKey) && event.key === "m") {
               event.stopPropagation();
@@ -506,7 +513,7 @@ const TipTapEditor = forwardRef<EditorHandle, TipTapEditorProps>(
 
       container.addEventListener("click", handleClick, true);
       return () => container.removeEventListener("click", handleClick, true);
-    }, [editor]);
+    }, [editor, mode]); // mode 变化时重新绑定，确保 DOM 重建后事件监听器有效
 
     // 点击链接时在 IR 模式下显示 markdown 源码并可编辑
     useEffect(() => {
@@ -616,7 +623,7 @@ const TipTapEditor = forwardRef<EditorHandle, TipTapEditorProps>(
 
       container.addEventListener("click", handleClick);
       return () => container.removeEventListener("click", handleClick);
-    }, [editor, restoreLinkEdit]);
+    }, [editor, restoreLinkEdit, mode]); // mode 变化时重新绑定，确保 DOM 重建后事件监听器有效
 
     // Escape 键恢复正在编辑的链接
     useEffect(() => {
@@ -746,17 +753,28 @@ const TipTapEditor = forwardRef<EditorHandle, TipTapEditorProps>(
     }));
 
     // 外部 value 同步
+    // 追踪上一次的 mode，用于检测 SV→IR 切换
+    const prevModeRef = useRef(mode);
     useEffect(() => {
       if (!editor) return;
+      if (mode === "sv") {
+        prevModeRef.current = mode;
+        return;
+      }
+      // 从 SV 切换到 IR 时，强制同步内容（编辑器 view 在 SV 期间被销毁重建）
+      const modeSwitchedToIR = prevModeRef.current === "sv" && mode === "ir";
+      prevModeRef.current = mode;
+
       if (isInternalRef.current) {
         isInternalRef.current = false;
-        return;
+        if (!modeSwitchedToIR) return;
+        // mode 切换导致的 isInternalRef 残留：清除标志但继续同步
       }
       const fileChanged = prevFilePathRef.current !== currentFilePath;
       prevFilePathRef.current = currentFilePath;
 
-      if (fileChanged) {
-        // 文件切换时强制更新内容
+      if (fileChanged || modeSwitchedToIR) {
+        // 文件切换或从 SV 切换回 IR 时强制更新内容
         isInternalRef.current = true;
         editor.commands.setContent(value);
       } else {
@@ -766,7 +784,7 @@ const TipTapEditor = forwardRef<EditorHandle, TipTapEditorProps>(
           editor.commands.setContent(value);
         }
       }
-    }, [value, editor, currentFilePath]);
+    }, [value, editor, currentFilePath, mode]);
 
     if (mode === "sv") {
       return (
@@ -775,6 +793,7 @@ const TipTapEditor = forwardRef<EditorHandle, TipTapEditorProps>(
           value={value}
           onChange={onChange}
           onWordCount={onWordCount}
+          filePath={currentFilePath}
         />
       );
     }

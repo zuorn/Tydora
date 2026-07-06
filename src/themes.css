@@ -5,6 +5,8 @@
   --bg-primary: #1e1e2e;
   --bg-secondary: #181825;
   --bg-surface: #313244;
+  --bg-code: #1e1e2e;
+  --bg-code-inline: rgba(255, 255, 255, 0.08);
   --text-primary: #000000;
   --text-secondary: #a6adc8;
   --accent: #89b4fa;
@@ -23,6 +25,8 @@
   --bg-primary: #ffffff;
   --bg-secondary: #f5f7fa;
   --bg-surface: #f1f5f9;
+  --bg-code: #f6f8fa;
+  --bg-code-inline: rgba(0, 0, 0, 0.06);
   --text-primary: #1e293b;
   --text-secondary: #64748b;
   --accent: #2563eb;
@@ -40,6 +44,8 @@
   --bg-primary: #ffffff;
   --bg-secondary: #d9ede5;
   --bg-surface: #ecf6f2;
+  --bg-code: #f0f7f4;
+  --bg-code-inline: rgba(78, 178, 137, 0.08);
   --text-primary: #1e293b;
   --text-secondary: #6B6B6B;
   --accent: #4eb289;
@@ -57,6 +63,8 @@
   --bg-primary: #272729;
   --bg-secondary: #232325;
   --bg-surface: #333336;
+  --bg-code: #2d2d30;
+  --bg-code-inline: rgba(78, 178, 137, 0.12);
   --text-primary: #cccccc;
   --text-secondary: #818286;
   --accent: #4eb289;
@@ -74,6 +82,8 @@
   --bg-primary: rgba(255, 255, 255, 0.82);
   --bg-secondary: rgba(255, 255, 255, 0.68);
   --bg-surface: rgba(255, 255, 255, 0.58);
+  --bg-code: rgba(0, 0, 0, 0.04);
+  --bg-code-inline: rgba(0, 0, 0, 0.05);
   --text-primary: #1d1d1f;
   --text-secondary: #6e6e73;
   --accent: #007AFF;
@@ -98,6 +108,8 @@
   --bg-primary: #faf8f5;
   --bg-secondary: #f0ece6;
   --bg-surface: #f5f1eb;
+  --bg-code: #f0ece6;
+  --bg-code-inline: rgba(196, 122, 42, 0.08);
   --text-primary: #1a1a1a;
   --text-secondary: #6b6560;
   --accent: #c47a2a;
@@ -116,6 +128,8 @@
   --bg-primary: #faf5ff;
   --bg-secondary: #f3e8ff;
   --bg-surface: #f5f0ff;
+  --bg-code: #f3f0ff;
+  --bg-code-inline: rgba(124, 58, 237, 0.08);
   --text-primary: #1e1b2e;
   --text-secondary: #6b6580;
   --accent: #7c3aed;
@@ -134,6 +148,8 @@
   --bg-primary: #f0f1ff;
   --bg-secondary: #e4e6ff;
   --bg-surface: #eaeaFF;
+  --bg-code: #eaeaFF;
+  --bg-code-inline: rgba(0, 0, 242, 0.08);
   --text-primary: #1a1a4e;
   --text-secondary: #5a5a8a;
   --accent: #0000f2;
@@ -152,6 +168,8 @@
   --bg-primary: #fffef8;
   --bg-secondary: #f8f7f2;
   --bg-surface: #f3f2ed;
+  --bg-code: #f3f2ed;
+  --bg-code-inline: rgba(0, 121, 107, 0.08);
   --text-primary: #4a4a4a;
   --text-secondary: #8a8a8a;
   --accent: #00796b;

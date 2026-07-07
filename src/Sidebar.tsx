@@ -602,7 +602,7 @@ function TreeNodeComp({
   }, []);
 
   const isActive = activePath === node.path;
-  const indent = depth * 16;
+  const indent = depth * 22;
   const isDragOver = node.isDirectory && dragOverPath === node.path;
 
   return (
@@ -610,7 +610,7 @@ function TreeNodeComp({
       <div
         ref={nodeRef}
         className={`tree-node${isActive ? " active" : ""}${isDragOver ? " drag-over" : ""}`}
-        style={{ paddingLeft: `${12 + indent}px` }}
+        style={{ paddingLeft: `${8 + indent}px` }}
         onClick={handleToggle}
         onContextMenu={handleContextMenu}
         onMouseDown={(e) => onMouseDown(e, node.path)}
@@ -618,17 +618,13 @@ function TreeNodeComp({
         data-path={node.path}
         data-is-dir={node.isDirectory ? "1" : "0"}
       >
-        <span className="tree-icon">
-          {node.isDirectory ? (
-            node.expanded ? (
-              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/><line x1="9" y1="14" x2="15" y2="14"/></svg>
-            ) : (
-              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/></svg>
-            )
-          ) : (
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
-          )}
-        </span>
+        {node.isDirectory && (
+          <span className={`tree-chevron${node.expanded ? " expanded" : ""}`}>
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+              <polyline points="9 18 15 12 9 6"/>
+            </svg>
+          </span>
+        )}
         {isEditing ? (
           <input
             ref={inputRef}
@@ -651,15 +647,10 @@ function TreeNodeComp({
         ) : (
           <span className="tree-name">{node.name}</span>
         )}
-        {node.isDirectory && (
-          <span className="tree-badge">
-            {node.children ? node.children.length : "…"}
-          </span>
-        )}
       </div>
 
       {node.isDirectory && node.expanded && node.children && (
-        <div className="tree-children">
+        <div className="tree-children" style={{ '--tree-depth': depth } as React.CSSProperties}>
           {node.children.map((child) => (
             <TreeNodeComp
               key={child.path}

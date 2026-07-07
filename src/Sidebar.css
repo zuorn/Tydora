@@ -67,7 +67,7 @@
   flex: 1;
   overflow-y: auto;
   overflow-x: hidden;
-  padding: 0;
+  padding: 0 0 0 6px;
 }
 
 .sidebar-tree.hidden {
@@ -94,8 +94,8 @@
 .tree-node {
   display: flex;
   align-items: center;
-  gap: 4px;
-  padding: 4px 10px 4px 12px;
+  gap: 2px;
+  padding: 5px 10px 5px 8px;
   cursor: pointer;
   font-size: 13px;
   color: var(--text-primary);
@@ -105,33 +105,28 @@
 }
 
 .tree-node:hover {
-  background: rgba(78, 178, 137, 0.08);
+  background: rgba(0, 0, 0, 0.04);
 }
 
 .tree-node.active {
-  background: rgba(78, 178, 137, 0.15);
+  background: rgba(0, 0, 0, 0.06);
   color: var(--text-primary);
-  font-weight: 600;
+  font-weight: 400;
 }
 
-.tree-node.active::before {
-  content: "";
-  position: absolute;
-  left: 0;
-  top: 50%;
-  transform: translateY(-50%);
-  width: 5px;
-  height: 90%;
-  background: var(--accent);
-  border-radius: 0 2px 2px 0;
-}
-
-.tree-icon {
+.tree-chevron {
   flex-shrink: 0;
-  width: 18px;
+  width: 16px;
+  height: 16px;
   display: flex;
   align-items: center;
   justify-content: center;
+  transition: transform 0.15s ease;
+  color: var(--text-secondary);
+}
+
+.tree-chevron.expanded {
+  transform: rotate(90deg);
 }
 
 .tree-name {
@@ -141,18 +136,19 @@
   min-width: 0;
 }
 
-.tree-badge {
-  color: var(--text-secondary);
-  font-size: 10px;
-  background: var(--bg-surface);
-  padding: 0 4px;
-  border-radius: 3px;
-  flex-shrink: 0;
-}
-
 /* ── Tree children ── */
 .tree-children {
-  /* nested under parent node */
+  position: relative;
+}
+
+.tree-children::before {
+  content: "";
+  position: absolute;
+  left: calc(16px + var(--tree-depth, 0) * 22px);
+  top: 0;
+  bottom: 0;
+  width: 1px;
+  background: var(--border);
 }
 
 /* ── Footer / Vault Switcher ── */
@@ -847,15 +843,11 @@
 
 /* ── Tree 节点 ── */
 [data-theme="liquid-glass"] .tree-node:hover {
-  background: rgba(0, 122, 255, 0.08);
+  background: rgba(0, 0, 0, 0.06);
 }
 
 [data-theme="liquid-glass"] .tree-node.active {
-  background: rgba(0, 122, 255, 0.14);
-}
-
-[data-theme="liquid-glass"] .tree-badge {
-  background: rgba(0, 0, 0, 0.05);
+  background: rgba(0, 0, 0, 0.08);
 }
 
 /* ── 侧栏 Footer ── */

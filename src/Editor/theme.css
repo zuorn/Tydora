@@ -393,10 +393,11 @@
   content: '';
   position: absolute;
   left: -1.35em;
-  top: 0.75em;
+  top: 4em;
   bottom: 0;
   width: 1px;
   background: var(--border, #d9ede5);
+  opacity: 0.6;
 }
 
 /* 表格 */

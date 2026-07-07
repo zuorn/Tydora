@@ -608,10 +608,11 @@ html[data-scrolling] * {
   content: '';
   position: absolute;
   left: -12px;
-  top: 0.75em;
+  top: 4em;
   bottom: 0;
   width: 1px;
   background: var(--border);
+  opacity: 0.6;
 }
 
 .live-block-view ul:has(li input[type="checkbox"]) {

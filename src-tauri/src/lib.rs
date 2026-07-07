@@ -61,10 +61,10 @@ fn get_default_content() -> String {
     String::new()
 }
 
-/// 获取应用版本号
+/// 获取应用版本号（从 tauri.conf.json 读取，单一版本源）
 #[tauri::command]
-fn get_app_version() -> String {
-    env!("CARGO_PKG_VERSION").to_string()
+fn get_app_version(app: tauri::AppHandle) -> String {
+    app.package_info().version.to_string()
 }
 
 /// 打开设置窗口

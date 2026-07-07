@@ -153,6 +153,27 @@ export function executeCommand(name: string, editor: Editor | null) {
     case "math":
       chain.insertContent("$$\n\n$$").run();
       break;
+    case "wiki-link": {
+      const { from } = editor.state.selection;
+      chain.insertContent("[[").run();
+      // 手动触发 WikiLink 自动补全
+      // from 是 [[ 插入前的位置，即 [[ 的起始位置
+      let screenPos: { x: number; y: number } | null = null;
+      try {
+        const coords = editor.view.coordsAtPos(from);
+        if (coords) {
+          screenPos = { x: coords.left, y: coords.bottom };
+        }
+      } catch {}
+      window.dispatchEvent(new CustomEvent("wiki-link-trigger", {
+        detail: {
+          query: "",
+          editorPosition: from,
+          screenPosition: screenPos,
+        }
+      }));
+      break;
+    }
 
     // 剪贴板
     case "cut":

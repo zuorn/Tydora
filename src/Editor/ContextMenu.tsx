@@ -128,6 +128,13 @@ const ICONS = {
       <path d="M12 2L2 7l10 5 10-5-10-5z" /><path d="M2 17l10 5 10-5" /><path d="M2 12l10 5 10-5" />
     </svg>
   ),
+  wikiLink: (
+    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M10 13a5 5 0 007.54.54l3-3a5 5 0 00-7.07-7.07l-1.72 1.71" />
+      <path d="M14 11a5 5 0 00-7.54-.54l-3 3a5 5 0 007.07 7.07l1.71-1.71" />
+      <text x="7" y="16" fontSize="8" fill="currentColor" stroke="none" fontFamily="monospace">[[</text>
+    </svg>
+  ),
 };
 
 // 三行图标按钮配置
@@ -184,6 +191,8 @@ const SUBMENU_ITEMS: any[] = [
       { name: "table", label: "表格", shortcutId: "table", icon: ICONS.table },
       { name: "code", label: "代码块", shortcutId: "code-block", icon: ICONS.codeBlock },
       { name: "math", label: "公式块", shortcutId: null, icon: ICONS.math },
+      { divider: true, label: "" },
+      { name: "wiki-link", label: "WikiLink", shortcutId: null, icon: ICONS.wikiLink },
     ],
   },
 ];

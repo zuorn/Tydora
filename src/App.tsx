@@ -471,7 +471,20 @@ function App({ initialFilePath }: { initialFilePath?: string | null }) {
     editorHandleRef.current?.clearHighlight();
     // Sync content to mindmap window if open
     syncMindmapContent(value);
-  }, [syncMindmapContent]);
+
+    // 如果自动补全已打开，检查 [[ 或 【【 是否还在光标附近
+    if (wikiAutocompleteVisible) {
+      const cursorPos = editorHandleRef.current?.getCursorOffset();
+      if (cursorPos !== undefined && cursorPos !== null) {
+        // 检查光标前是否有未闭合的 [[ 或 【【
+        const textBefore = value.slice(Math.max(0, cursorPos - 200), cursorPos);
+        const hasOpenWikiLink = /\[\[[^\]]*$/.test(textBefore) || /【【[^】]*$/.test(textBefore);
+        if (!hasOpenWikiLink) {
+          setWikiAutocompleteVisible(false);
+        }
+      }
+    }
+  }, [syncMindmapContent, wikiAutocompleteVisible]);
 
   // 用 ref 保存最新值，避免 Ctrl+S 回调频繁重建
   const contentRef = useRef(content);

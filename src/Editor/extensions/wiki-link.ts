@@ -92,7 +92,7 @@ export const WikiLink = Node.create({
 
   addInputRules() {
     return [
-      // Rule 1: 完整 [[note]]/[[note#heading]]/[[note|alias]] → WikiLink 节点
+      // Rule 1: 完整 [[note]]/[[note#heading]]/[[note|alias]] → WikiLink 节点（英文括号）
       new InputRule({
         find: /\[\[([^\]]+)\]\]$/,
         handler: ({ range, match, commands }) => {
@@ -132,12 +132,78 @@ export const WikiLink = Node.create({
           });
         },
       }),
-      // Rule 2: 部分 [[ 触发自动补全
+      // Rule 1b: 完整 【【note】】 → WikiLink 节点（中文括号，保存为英文括号）
+      new InputRule({
+        find: /【【([^】]+)】】$/,
+        handler: ({ range, match, commands }) => {
+          const content = match[1];
+
+          let noteName: string;
+          let heading: string | null = null;
+          let display: string | null = null;
+
+          // 解析 |别名
+          const pipeIndex = content.lastIndexOf('|');
+          if (pipeIndex >= 0) {
+            display = content.slice(pipeIndex + 1).trim() || null;
+            noteName = content.slice(0, pipeIndex);
+          } else {
+            noteName = content;
+          }
+
+          // 解析 #标题 (在别名部分之前)
+          const hashIndex = noteName.indexOf('#');
+          if (hashIndex >= 0) {
+            heading = noteName.slice(hashIndex + 1).trim() || null;
+            noteName = noteName.slice(0, hashIndex).trim();
+          } else {
+            noteName = noteName.trim();
+          }
+
+          if (!noteName) return;
+
+          commands.insertContentAt(range, {
+            type: 'wikiLink',
+            attrs: {
+              note: noteName,
+              heading: heading,
+              display: display,
+            },
+          });
+        },
+      }),
+      // Rule 2: 部分 [[ 触发自动补全（英文括号）
       new InputRule({
         find: /\[\[([^\]]*)$/,
         handler: ({ range, match }) => {
           const query = match[1];
           // 计算屏幕坐标用于下拉菜单定位
+          let screenPos: { x: number; y: number } | null = null;
+          try {
+            const editor = this.editor;
+            if (editor) {
+              const coords = editor.view.coordsAtPos(range.from);
+              if (coords) {
+                screenPos = { x: coords.left, y: coords.bottom };
+              }
+            }
+          } catch {
+            // coordsAtPos 可能失败，使用 null
+          }
+          window.dispatchEvent(new CustomEvent("wiki-link-trigger", {
+            detail: {
+              query,
+              editorPosition: range.from,
+              screenPosition: screenPos,
+            }
+          }));
+        },
+      }),
+      // Rule 2b: 部分 【【 触发自动补全（中文括号）
+      new InputRule({
+        find: /【【([^】]*)$/,
+        handler: ({ range, match }) => {
+          const query = match[1];
           let screenPos: { x: number; y: number } | null = null;
           try {
             const editor = this.editor;

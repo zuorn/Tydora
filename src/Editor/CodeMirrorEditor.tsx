@@ -8,6 +8,7 @@ import { html } from "@codemirror/lang-html";
 import { css } from "@codemirror/lang-css";
 import { json } from "@codemirror/lang-json";
 import { xml } from "@codemirror/lang-xml";
+import { yaml } from "@codemirror/lang-yaml";
 import { syntaxHighlighting, bracketMatching, foldGutter, indentOnInput, HighlightStyle } from "@codemirror/language";
 import { tags } from "@lezer/highlight";
 import { searchKeymap, highlightSelectionMatches } from "@codemirror/search";
@@ -57,6 +58,9 @@ function getLanguageExtension(filePath: string | null | undefined) {
     case "svg":
     case "xsd":
       return xml();
+    case "yml":
+    case "yaml":
+      return yaml();
     default:
       return markdown({ base: markdownLanguage });
   }

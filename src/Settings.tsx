@@ -1474,7 +1474,7 @@ function AboutSettingsContent() {
   const [downloadProgress, setDownloadProgress] = useState<{ downloaded: number; total: number | null }>({ downloaded: 0, total: null });
 
   useEffect(() => {
-    invoke<string>("get_app_version").then(setVersion).catch(() => setVersion("0.1.0"));
+    invoke<string>("get_app_version").then(setVersion).catch(() => setVersion("0.0.6"));
   }, []);
 
   const handleCheckUpdate = useCallback(async () => {

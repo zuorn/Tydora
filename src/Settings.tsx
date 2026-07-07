@@ -37,22 +37,7 @@ export interface EditorSettings {
   defaultMode: "ir" | "sv";
   typewriterMode: boolean;
   // 编辑行为
-  cache: boolean;
   counterType: "markdown" | "text";
-  resize: boolean;
-  // Markdown 渲染
-  autoSpace: boolean;
-  gfmAutoLink: boolean;
-  fixTermTypo: boolean;
-  footnotes: boolean;
-  toc: boolean;
-  paragraphBeginningSpace: boolean;
-  sanitize: boolean;
-  codeBlockPreview: boolean;
-  mathBlockPreview: boolean;
-  mark: boolean;
-  sup: boolean;
-  sub: boolean;
   // 代码高亮
   codeLineNumber: boolean;
   // 预览
@@ -61,30 +46,27 @@ export interface EditorSettings {
   mathEngine: "KaTeX" | "MathJax";
   // 链接行为
   linkOpenNewTab: boolean;
+  // 扩展功能
+  callout: boolean;
+  mermaid: boolean;
+  wikiLink: boolean;
+  frontmatter: boolean;
+  tableToolbar: boolean;
 }
 
 export const DEFAULT_EDITOR_SETTINGS: EditorSettings = {
   defaultMode: "ir",
   typewriterMode: false,
-  cache: false,
   counterType: "text",
-  resize: false,
-  autoSpace: false,
-  gfmAutoLink: true,
-  fixTermTypo: false,
-  footnotes: true,
-  toc: false,
-  paragraphBeginningSpace: false,
-  sanitize: true,
-  codeBlockPreview: true,
-  mathBlockPreview: true,
-  mark: false,
-  sup: false,
-  sub: false,
   codeLineNumber: false,
   previewMaxWidth: 800,
   mathEngine: "KaTeX",
   linkOpenNewTab: true,
+  callout: true,
+  mermaid: true,
+  wikiLink: true,
+  frontmatter: true,
+  tableToolbar: true,
 };
 
 export const EDITOR_SETTINGS_KEY = "zmd-editor-settings";
@@ -1353,13 +1335,6 @@ function EditorSettingsContent({
       {/* 编辑行为 */}
       <h3 className="settings-section-title">编辑行为</h3>
       <div className="settings-item">
-        <label className="settings-item-label">启用缓存</label>
-        <label className="settings-toggle">
-          <input type="checkbox" checked={settings.cache} onChange={(e) => update("cache", e.target.checked)} />
-          <span className="settings-toggle-slider" />
-        </label>
-      </div>
-      <div className="settings-item">
         <label className="settings-item-label">字数统计类型</label>
         <select
           className="settings-select"
@@ -1369,114 +1344,6 @@ function EditorSettingsContent({
           <option value="markdown">Markdown（含语法符号）</option>
           <option value="text">纯文本（仅文字）</option>
         </select>
-      </div>
-      <div className="settings-item">
-        <label className="settings-item-label">大小拖拽</label>
-        <label className="settings-toggle">
-          <input type="checkbox" checked={settings.resize} onChange={(e) => update("resize", e.target.checked)} />
-          <span className="settings-toggle-slider" />
-        </label>
-      </div>
-
-      {/* Markdown 渲染 */}
-      <h3 className="settings-section-title">Markdown 渲染</h3>
-      <div className="settings-item">
-        <label className="settings-item-label">自动空格（中西文间）</label>
-        <label className="settings-toggle">
-          <input type="checkbox" checked={settings.autoSpace} onChange={(e) => update("autoSpace", e.target.checked)} />
-          <span className="settings-toggle-slider" />
-        </label>
-      </div>
-      <div className="settings-item">
-        <label className="settings-item-label">自动链接</label>
-        <label className="settings-toggle">
-          <input type="checkbox" checked={settings.gfmAutoLink} onChange={(e) => update("gfmAutoLink", e.target.checked)} />
-          <span className="settings-toggle-slider" />
-        </label>
-      </div>
-      <div className="settings-item">
-        <label className="settings-item-label">自动矫正术语</label>
-        <label className="settings-toggle">
-          <input type="checkbox" checked={settings.fixTermTypo} onChange={(e) => update("fixTermTypo", e.target.checked)} />
-          <span className="settings-toggle-slider" />
-        </label>
-      </div>
-      <div className="settings-item">
-        <label className="settings-item-label">脚注</label>
-        <label className="settings-toggle">
-          <input type="checkbox" checked={settings.footnotes} onChange={(e) => update("footnotes", e.target.checked)} />
-          <span className="settings-toggle-slider" />
-        </label>
-      </div>
-      <div className="settings-item">
-        <label className="settings-item-label">插入目录</label>
-        <label className="settings-toggle">
-          <input type="checkbox" checked={settings.toc} onChange={(e) => update("toc", e.target.checked)} />
-          <span className="settings-toggle-slider" />
-        </label>
-      </div>
-      <div className="settings-item">
-        <label className="settings-item-label">段落开头空两格</label>
-        <label className="settings-toggle">
-          <input type="checkbox" checked={settings.paragraphBeginningSpace} onChange={(e) => update("paragraphBeginningSpace", e.target.checked)} />
-          <span className="settings-toggle-slider" />
-        </label>
-      </div>
-      <div className="settings-item">
-        <label className="settings-item-label">
-          XSS 过滤
-          <span style={{ fontSize: 11, color: "var(--text-secondary)", marginLeft: 6 }}>
-            ⚠️ 关闭后有安全风险
-          </span>
-        </label>
-        <label className="settings-toggle">
-          <input type="checkbox" checked={settings.sanitize} onChange={(e) => update("sanitize", e.target.checked)} />
-          <span className="settings-toggle-slider" />
-        </label>
-      </div>
-      <div className="settings-item">
-        <label className="settings-item-label">代码块预览</label>
-        <label className="settings-toggle">
-          <input type="checkbox" checked={settings.codeBlockPreview} onChange={(e) => update("codeBlockPreview", e.target.checked)} />
-          <span className="settings-toggle-slider" />
-        </label>
-      </div>
-      <div className="settings-item">
-        <label className="settings-item-label">数学公式块预览</label>
-        <label className="settings-toggle">
-          <input type="checkbox" checked={settings.mathBlockPreview} onChange={(e) => update("mathBlockPreview", e.target.checked)} />
-          <span className="settings-toggle-slider" />
-        </label>
-      </div>
-      <div className="settings-item">
-        <label className="settings-item-label">
-          mark 标记
-          <span style={{ fontSize: 11, color: "var(--text-secondary)", marginLeft: 6 }}>==text==</span>
-        </label>
-        <label className="settings-toggle">
-          <input type="checkbox" checked={settings.mark} onChange={(e) => update("mark", e.target.checked)} />
-          <span className="settings-toggle-slider" />
-        </label>
-      </div>
-      <div className="settings-item">
-        <label className="settings-item-label">
-          上标
-          <span style={{ fontSize: 11, color: "var(--text-secondary)", marginLeft: 6 }}>^sup^</span>
-        </label>
-        <label className="settings-toggle">
-          <input type="checkbox" checked={settings.sup} onChange={(e) => update("sup", e.target.checked)} />
-          <span className="settings-toggle-slider" />
-        </label>
-      </div>
-      <div className="settings-item">
-        <label className="settings-item-label">
-          下标
-          <span style={{ fontSize: 11, color: "var(--text-secondary)", marginLeft: 6 }}>~sub~</span>
-        </label>
-        <label className="settings-toggle">
-          <input type="checkbox" checked={settings.sub} onChange={(e) => update("sub", e.target.checked)} />
-          <span className="settings-toggle-slider" />
-        </label>
       </div>
 
       {/* 代码高亮 */}
@@ -1488,7 +1355,6 @@ function EditorSettingsContent({
           <span className="settings-toggle-slider" />
         </label>
       </div>
-
 
       {/* 预览 */}
       <h3 className="settings-section-title">预览</h3>
@@ -1532,10 +1398,68 @@ function EditorSettingsContent({
         </label>
       </div>
 
+      {/* 扩展功能 */}
+      <h3 className="settings-section-title">扩展功能</h3>
+      <div className="settings-item">
+        <label className="settings-item-label">
+          Callout 提示块
+          <span style={{ fontSize: 11, color: "var(--text-secondary)", marginLeft: 6 }}>
+            {'> [!NOTE]'}
+          </span>
+        </label>
+        <label className="settings-toggle">
+          <input type="checkbox" checked={settings.callout} onChange={(e) => update("callout", e.target.checked)} />
+          <span className="settings-toggle-slider" />
+        </label>
+      </div>
+      <div className="settings-item">
+        <label className="settings-item-label">
+          Mermaid 图表
+          <span style={{ fontSize: 11, color: "var(--text-secondary)", marginLeft: 6 }}>
+            flowchart / sequence / ...
+          </span>
+        </label>
+        <label className="settings-toggle">
+          <input type="checkbox" checked={settings.mermaid} onChange={(e) => update("mermaid", e.target.checked)} />
+          <span className="settings-toggle-slider" />
+        </label>
+      </div>
+      <div className="settings-item">
+        <label className="settings-item-label">
+          WikiLink 双向链接
+          <span style={{ fontSize: 11, color: "var(--text-secondary)", marginLeft: 6 }}>
+            [[note]]
+          </span>
+        </label>
+        <label className="settings-toggle">
+          <input type="checkbox" checked={settings.wikiLink} onChange={(e) => update("wikiLink", e.target.checked)} />
+          <span className="settings-toggle-slider" />
+        </label>
+      </div>
+      <div className="settings-item">
+        <label className="settings-item-label">
+          YAML Frontmatter
+          <span style={{ fontSize: 11, color: "var(--text-secondary)", marginLeft: 6 }}>
+            --- 元数据 ---
+          </span>
+        </label>
+        <label className="settings-toggle">
+          <input type="checkbox" checked={settings.frontmatter} onChange={(e) => update("frontmatter", e.target.checked)} />
+          <span className="settings-toggle-slider" />
+        </label>
+      </div>
+      <div className="settings-item">
+        <label className="settings-item-label">表格浮动工具栏</label>
+        <label className="settings-toggle">
+          <input type="checkbox" checked={settings.tableToolbar} onChange={(e) => update("tableToolbar", e.target.checked)} />
+          <span className="settings-toggle-slider" />
+        </label>
+      </div>
+
       {/* 提示 */}
       <div className="settings-item" style={{ flexDirection: "column", alignItems: "flex-start", gap: 4 }}>
         <p style={{ fontSize: 12, color: "var(--text-secondary)", margin: 0, lineHeight: 1.6 }}>
-          💡 大部分编辑器设置修改后需重新打开文件或切换编辑模式才会完全生效。
+          💡 扩展功能设置修改后需重新打开文件才会完全生效。
         </p>
       </div>
     </div>

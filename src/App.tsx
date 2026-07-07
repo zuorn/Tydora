@@ -1223,18 +1223,17 @@ function App({ initialFilePath }: { initialFilePath?: string | null }) {
             )}
           </div>
 
-          <div className="editor-bottombar-trigger" />
-          {/* 底部栏 */}
-          <div className="editor-bottombar">
-            {isCurrentFileMarkdown && (
-              <button
-                className="editor-mode-toggle source-mode-toggle"
-                onClick={cycleMode}
-                title={`当前: ${MODE_LABELS[viewMode]}，点击切换模式 (Ctrl+/)`}
-              >
-                {MODE_LABELS[viewMode]}
-              </button>
-            )}
+          {/* 底部浮动控件 */}
+          {isCurrentFileMarkdown && (
+            <button
+              className="editor-mode-toggle source-mode-toggle floating-mode-toggle"
+              onClick={cycleMode}
+              title={`当前: ${MODE_LABELS[viewMode]}，点击切换模式 (Ctrl+/)`}
+            >
+              {MODE_LABELS[viewMode]}
+            </button>
+          )}
+          <div className="editor-bottom-controls editor-bottom-right">
             <button
               className={`typewriter-indicator ${typewriterMode ? 'active' : ''}`}
               onClick={toggleTypewriterMode}

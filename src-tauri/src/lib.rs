@@ -412,6 +412,14 @@ async fn run_markdown_publish(
         .map_err(|e| format!("启动 markdown-publish 失败: {}", e))?;
 
     if output.status.success() {
+        // 构建完成后执行 postbuild 脚本（注入落地页样式等）
+        let postbuild_script = project_root.join("website").join("postbuild.mjs");
+        if postbuild_script.exists() {
+            let _ = Command::new("node")
+                .arg(postbuild_script.to_str().unwrap_or_default())
+                .output();
+        }
+
         let stdout = String::from_utf8_lossy(&output.stdout);
         Ok(stdout.to_string())
     } else {

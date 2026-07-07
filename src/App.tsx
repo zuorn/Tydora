@@ -88,6 +88,7 @@ function App({ initialFilePath }: { initialFilePath?: string | null }) {
   const [content, setContent] = useState("");
   const [fileName, setFileName] = useState<string | null>(null);
   const [modified, setModified] = useState(false);
+  const [saveStatus, setSaveStatus] = useState<"idle" | "modified" | "saved">("idle");
   const [editorSettings, setEditorSettings] = useState<EditorSettings>(() => loadEditorSettings());
   const [viewMode, setViewMode] = useState<EditorMode>(editorSettings.defaultMode);
   const [typewriterMode, setTypewriterMode] = useState(editorSettings.typewriterMode);
@@ -296,6 +297,7 @@ function App({ initialFilePath }: { initialFilePath?: string | null }) {
         setContent(text);
         setFileName(initialFilePath);
         setModified(false);
+        setSaveStatus("idle");
         pushContentToEditor(text);
       })
       .catch((e) => {
@@ -322,6 +324,7 @@ function App({ initialFilePath }: { initialFilePath?: string | null }) {
               setContent(text);
               setFileName(filePath);
               setModified(false);
+              setSaveStatus("idle");
                pushContentToEditor(text);
             })
             .catch((e) => {
@@ -466,7 +469,9 @@ function App({ initialFilePath }: { initialFilePath?: string | null }) {
 
   const handleChange = useCallback((value: string) => {
     setContent(value);
-    setModified(value !== savedContentRef.current);
+    const isModified = value !== savedContentRef.current;
+    setModified(isModified);
+    if (isModified) setSaveStatus("modified");
     // Clear search highlights when user edits
     editorHandleRef.current?.clearHighlight();
     // Sync content to mindmap window if open
@@ -509,6 +514,7 @@ function App({ initialFilePath }: { initialFilePath?: string | null }) {
       await writeTextFile(path, contentRef.current);
       savedContentRef.current = contentRef.current;
       setModified(false);
+      setSaveStatus("saved");
       // 更新链接索引
       const activeVault = activeVaultIndex >= 0 ? vaults[activeVaultIndex] : null;
       if (activeVault) {
@@ -519,6 +525,13 @@ function App({ initialFilePath }: { initialFilePath?: string | null }) {
       console.error("保存失败:", e);
     }
   }, []);
+
+  // 保存成功后绿灯闪烁效果
+  useEffect(() => {
+    if (saveStatus !== "saved") return;
+    const timer = setTimeout(() => setSaveStatus("idle"), 4000);
+    return () => clearTimeout(timer);
+  }, [saveStatus]);
 
   // Ctrl+S 保存
   useEffect(() => {
@@ -546,6 +559,7 @@ function App({ initialFilePath }: { initialFilePath?: string | null }) {
         await writeTextFile(path, contentRef.current);
         savedContentRef.current = contentRef.current;
         setModified(false);
+        setSaveStatus("saved");
         // 更新链接索引
         const activeVault = activeVaultIndex >= 0 ? vaults[activeVaultIndex] : null;
         if (activeVault) {
@@ -653,6 +667,7 @@ function App({ initialFilePath }: { initialFilePath?: string | null }) {
       setContent(text);
       setFileName(path);
       setModified(false);
+      setSaveStatus("idle");
       setPreviewFilePath(null); // 关闭预览模式
       setIsCurrentFileMarkdown(isMarkdownFile(path));
 
@@ -1109,7 +1124,7 @@ function App({ initialFilePath }: { initialFilePath?: string | null }) {
             </div>
             <span className="editor-file-name" title={fileName || "Tydora"}>
               {title}
-              {modified && <span className="editor-modified-dot">●</span>}
+              <span className={`traffic-light traffic-light--${fileName ? saveStatus : "idle"}`} />
             </span>
             {updateInfo && !updateDownloading && (
               <button className="update-btn" onClick={handleUpdateDownload} title={`有新版本 v${updateInfo.version}`}>

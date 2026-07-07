@@ -91,11 +91,7 @@ body {
   border-left: 1px solid var(--border);
 }
 
-.modified-dot {
-  color: var(--accent);
-  margin-left: 4px;
-  font-size: 12px;
-}
+
 
 .toolbar-btn {
   display: inline-flex;
@@ -1026,11 +1022,38 @@ html[data-scrolling] * {
   height: 16px;
 }
 
-.editor-modified-dot {
-  color: var(--accent);
-  margin-left: 2px;
-  font-size: 12px;
+/* 红绿灯指示器 */
+.traffic-light {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
   flex-shrink: 0;
+  transition: background-color 0.3s ease, opacity 0.3s ease;
+}
+
+.traffic-light--idle {
+  background-color: transparent;
+  opacity: 0;
+}
+
+.traffic-light--modified {
+  background-color: var(--danger, #f38ba8);
+  animation: traffic-light-blink 1s step-end infinite;
+}
+
+.traffic-light--saved {
+  background-color: #22c55e;
+  animation: traffic-light-flash 4s ease-out forwards;
+}
+
+@keyframes traffic-light-blink {
+  0%, 50% { opacity: 1; }
+  51%, 100% { opacity: 0; }
+}
+
+@keyframes traffic-light-flash {
+  0%, 62.5% { opacity: 1; transform: scale(1); }
+  100% { opacity: 0; transform: scale(0.8); }
 }
 
 .mindmap-open-btn {

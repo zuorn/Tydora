@@ -1,6 +1,6 @@
 // src/LinkIndexService.ts
 
-import { readDir, readTextFile } from "@tauri-apps/plugin-fs";
+import { readDir, readTextFile, writeTextFile } from "@tauri-apps/plugin-fs";
 import { parseWikiLinks } from "./LinkParser";
 
 export interface LinkIndex {
@@ -182,6 +182,76 @@ class LinkIndexServiceImpl {
     return bestPath;
   }
   
+  /**
+   * 获取受影响的链接数量（用于移动/重命名前的提示）
+   */
+  getAffectedLinkCount(oldPath: string, _newPath: string, vaultPath: string): { filesCount: number; linksCount: number } {
+    const oldNoteName = this.pathToNoteName(oldPath, vaultPath);
+    const backlinkFiles = this.index.backlinks.get(oldNoteName) || [];
+    let linksCount = 0;
+    for (const filePath of backlinkFiles) {
+      const targets = this.index.outlinks.get(filePath) || [];
+      linksCount += targets.filter(t => t === oldNoteName).length;
+    }
+    return { filesCount: backlinkFiles.length, linksCount };
+  }
+
+  /**
+   * 重写所有引用旧笔记名的 wiki links 为新笔记名
+   */
+  async rewriteWikiLinks(
+    oldPath: string,
+    newPath: string,
+    vaultPath: string
+  ): Promise<{ filesUpdated: number; linksUpdated: number }> {
+    const oldNoteName = this.pathToNoteName(oldPath, vaultPath);
+    const newNoteName = this.pathToNoteName(newPath, vaultPath);
+
+    if (oldNoteName === newNoteName) {
+      return { filesUpdated: 0, linksUpdated: 0 };
+    }
+
+    const backlinkFiles = this.index.backlinks.get(oldNoteName) || [];
+    if (backlinkFiles.length === 0) {
+      return { filesUpdated: 0, linksUpdated: 0 };
+    }
+
+    // 转义正则特殊字符
+    const escapeRegex = (s: string) => s.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+    const escapedOld = escapeRegex(oldNoteName);
+    // 匹配 [[noteName]] 或 ![[noteName]]，后面跟 ]、# 或 |
+    const linkPattern = "(!?\\[\\[" + escapedOld + ")(?=\\]\\]|[#\\|])";
+    const linkRegex = new RegExp(linkPattern, "g");
+
+    let filesUpdated = 0;
+    let linksUpdated = 0;
+
+    for (const filePath of backlinkFiles) {
+      try {
+        const content = await readTextFile(filePath);
+        const newContent = content.replace(linkRegex, (_match, prefix) => {
+          linksUpdated++;
+          return prefix.replace(oldNoteName, newNoteName);
+        });
+
+        if (newContent !== content) {
+          await writeTextFile(filePath, newContent);
+          filesUpdated++;
+          // 更新该文件的链接索引
+          await this.updateFileLinks(filePath, vaultPath);
+        }
+      } catch (e) {
+        console.error(`重写 wiki links 失败: ${filePath}`, e);
+      }
+    }
+
+    // 更新 fileByName 中的条目
+    this.index.fileByName.delete(oldNoteName);
+    this.index.fileByName.set(newNoteName, newPath);
+
+    return { filesUpdated, linksUpdated };
+  }
+
   /**
    * 搜索笔记（用于自动补全）
    */

@@ -70,6 +70,10 @@
   padding: 0 0 0 6px;
 }
 
+.sidebar-tree.dragging {
+  user-select: none;
+}
+
 .sidebar-tree.hidden {
   display: none;
 }
@@ -102,6 +106,7 @@
   transition: background 0.1s ease;
   white-space: nowrap;
   position: relative;
+  user-select: none;
 }
 
 .tree-node:hover {
@@ -391,11 +396,26 @@
 }
 
 /* ── Drag & Drop ── */
-.tree-node.drag-over {
-  background: rgba(137, 180, 250, 0.2) !important;
+.tree-branch:has(> .tree-node.drag-over) {
+  background: rgba(137, 180, 250, 0.15) !important;
+  border-radius: 4px;
   outline: 2px solid var(--accent);
   outline-offset: -2px;
-  border-radius: 4px;
+}
+
+.tree-node.drag-over {
+  background: transparent !important;
+  outline: none;
+}
+
+.tree-node.drag-over + .tree-children {
+  background: transparent !important;
+  border: none;
+  margin: 0;
+}
+
+.sidebar-tree.drag-over {
+  background: rgba(137, 180, 250, 0.1) !important;
 }
 
 
@@ -694,6 +714,40 @@
   color: white;
 }
 
+/* ── Update Link Dialog ── */
+.update-link-actions {
+  display: flex;
+  gap: 10px;
+  justify-content: center;
+}
+
+.update-link-btn {
+  padding: 8px 20px;
+  border-radius: 6px;
+  font-size: 13px;
+  font-weight: 500;
+  cursor: pointer;
+  border: 1px solid var(--border);
+  background: var(--bg-surface);
+  color: var(--text-primary);
+  transition: all 0.15s ease;
+  min-width: 80px;
+}
+
+.update-link-btn:hover {
+  background: var(--border);
+}
+
+.update-link-btn-primary {
+  background: var(--accent);
+  color: var(--bg-primary);
+  border-color: var(--accent);
+}
+
+.update-link-btn-primary:hover {
+  opacity: 0.9;
+}
+
 /* ── Toast ── */
 .sidebar-toast {
   position: fixed;
@@ -953,9 +1007,18 @@
 }
 
 /* ── 拖拽高亮 ── */
-[data-theme="liquid-glass"] .tree-node.drag-over {
-  background: rgba(0, 122, 255, 0.12) !important;
+[data-theme="liquid-glass"] .tree-branch:has(> .tree-node.drag-over) {
+  background: rgba(0, 122, 255, 0.1) !important;
   outline-color: var(--accent);
+}
+
+[data-theme="liquid-glass"] .tree-node.drag-over {
+  background: transparent !important;
+}
+
+[data-theme="liquid-glass"] .tree-node.drag-over + .tree-children {
+  background: transparent !important;
+  border: none;
 }
 
 /* ── 确认对话框 ── */

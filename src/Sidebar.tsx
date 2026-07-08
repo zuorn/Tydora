@@ -4,6 +4,8 @@ import { readDir, readTextFile, writeTextFile, mkdir, remove, rename } from "@ta
 import { open } from "@tauri-apps/plugin-dialog";
 import { invoke } from "@tauri-apps/api/core";
 import { ConfirmDialog } from "./ConfirmDialog";
+import { UpdateLinkDialog } from "./UpdateLinkDialog";
+import { LinkIndexService } from "./LinkIndexService";
 import "./Sidebar.css";
 
 // ── Types ────────────────────────────────────────────────────────────
@@ -727,8 +729,19 @@ function FileTree({
 
   // ── Drag state (mouse-event based) ──
   const [dragOverPath, setDragOverPath] = useState<string | null>(null);
+  const [isDragging, setIsDragging] = useState(false);
   const dragNodeRef = useRef<string | null>(null);
   const dragStartRef = useRef<{ x: number; y: number; path: string } | null>(null);
+
+  // ── Update link dialog state ──
+  const [linkUpdateDialog, setLinkUpdateDialog] = useState<{
+    srcPath: string;
+    targetPath: string;
+    filesCount: number;
+    linksCount: number;
+  } | null>(null);
+  const alwaysUpdateLinksRef = useRef(false);
+  const pendingRenameRef = useRef<{ path: string; newName: string } | null>(null);
 
   // 记录展开的目录，reload 后恢复
   const rootNodesRef = useRef<TreeNode[]>([]);
@@ -783,9 +796,20 @@ function FileTree({
     if (newName === currentName) return;
     const p = parentPath(path);
     const newPath = joinPath(p, newName);
+
+    // 检查是否有受影响的 wiki links（仅 .md 文件）
+    if (path.endsWith(".md") && !LinkIndexService.isEmpty()) {
+      const { filesCount, linksCount } = LinkIndexService.getAffectedLinkCount(path, newPath, rootPath);
+      if (filesCount > 0) {
+        pendingRenameRef.current = { path, newName };
+        setLinkUpdateDialog({ srcPath: path, targetPath: newPath, filesCount, linksCount });
+        return;
+      }
+    }
+
     try { await rename(path, newPath); await handleReload(); }
     catch (err) { console.error("重命名失败:", err); }
-  }, [handleReload]);
+  }, [handleReload, rootPath]);
 
   // ── Mouse-based Drag & Drop ──
   const handleMouseDown = useCallback((e: React.MouseEvent, nodePath: string) => {
@@ -795,6 +819,29 @@ function FileTree({
   }, []);
 
   useEffect(() => {
+    // Find the nearest directory ancestor for drop target
+    const findDropTargetDir = (el: Element | null): HTMLElement | null => {
+      if (!el) return null;
+      const treeNode = el.closest("[data-path]") as HTMLElement | null;
+      if (!treeNode) return null;
+      // If it's already a directory, return it
+      if (treeNode.dataset.isDir === "1") return treeNode;
+      // Otherwise, look for parent directory
+      // tree-node -> .tree-branch -> .tree-children -> parent .tree-branch -> parent dir node
+      const childBranch = treeNode.closest(".tree-branch");
+      if (childBranch) {
+        const treeChildren = childBranch.parentElement;
+        if (treeChildren && treeChildren.classList.contains("tree-children")) {
+          const parentBranch = treeChildren.parentElement;
+          if (parentBranch) {
+            const parentDir = parentBranch.querySelector(":scope > .tree-node[data-is-dir='1']") as HTMLElement | null;
+            if (parentDir) return parentDir;
+          }
+        }
+      }
+      return null;
+    };
+
     const handleMouseMove = (e: MouseEvent) => {
       if (!dragStartRef.current) return;
       const dx = e.clientX - dragStartRef.current.x;
@@ -805,13 +852,14 @@ function FileTree({
       // Dragging started
       if (!dragNodeRef.current) {
         dragNodeRef.current = dragStartRef.current.path;
+        setIsDragging(true);
       }
 
       // Find which tree-node the mouse is over
       const el = document.elementFromPoint(e.clientX, e.clientY);
-      const treeNode = el?.closest("[data-path]") as HTMLElement | null;
-      if (treeNode && treeNode.dataset.isDir === "1") {
-        const p = treeNode.dataset.path || "";
+      const dirNode = findDropTargetDir(el);
+      if (dirNode) {
+        const p = dirNode.dataset.path || "";
         if (p !== dragNodeRef.current) {
           setDragOverPath(p);
         }
@@ -826,19 +874,49 @@ function FileTree({
       if (dragNodeRef.current) {
         // Dragging was active — find drop target
         const el = document.elementFromPoint(e.clientX, e.clientY);
-        const treeNode = el?.closest("[data-path]") as HTMLElement | null;
-        if (treeNode && treeNode.dataset.isDir === "1") {
-          const targetDir = treeNode.dataset.path || "";
+        const dirNode = findDropTargetDir(el);
+        if (dirNode) {
+          const targetDir = dirNode.dataset.path || "";
           const srcPath = dragNodeRef.current;
           if (srcPath && targetDir && srcPath !== targetDir) {
             const fileName = srcPath.split(pathSep()).pop() || "untitled";
             const targetPath = joinPath(targetDir, fileName);
             if (srcPath !== targetPath) {
-              try {
-                await rename(srcPath, targetPath);
-                await handleReload();
-              } catch (err) {
-                console.error("移动失败:", err);
+              // 检查是否有受影响的 wiki links（仅 .md 文件）
+              if (srcPath.endsWith(".md") && !LinkIndexService.isEmpty()) {
+                const { filesCount, linksCount } = LinkIndexService.getAffectedLinkCount(srcPath, targetPath, rootPath);
+                if (filesCount > 0) {
+                  // 如果已选择"总是更新"，直接重写链接
+                  if (alwaysUpdateLinksRef.current) {
+                    try {
+                      await LinkIndexService.rewriteWikiLinks(srcPath, targetPath, rootPath);
+                      await rename(srcPath, targetPath);
+                      await handleReload();
+                    } catch (err) {
+                      console.error("移动失败:", err);
+                    }
+                  } else {
+                    // 弹出对话框
+                    pendingRenameRef.current = { path: srcPath, newName: fileName };
+                    setLinkUpdateDialog({ srcPath, targetPath, filesCount, linksCount });
+                  }
+                } else {
+                  // 无受影响链接，直接移动
+                  try {
+                    await rename(srcPath, targetPath);
+                    await handleReload();
+                  } catch (err) {
+                    console.error("移动失败:", err);
+                  }
+                }
+              } else {
+                // 非 .md 文件或索引为空，直接移动
+                try {
+                  await rename(srcPath, targetPath);
+                  await handleReload();
+                } catch (err) {
+                  console.error("移动失败:", err);
+                }
               }
             }
           }
@@ -849,6 +927,7 @@ function FileTree({
       dragStartRef.current = null;
       dragNodeRef.current = null;
       setDragOverPath(null);
+      setIsDragging(false);
     };
 
     document.addEventListener("mousemove", handleMouseMove);
@@ -917,8 +996,51 @@ function FileTree({
     lastScrollTopRef.current = st;
   }, [onScrollToTop]);
 
+  // ── Link update dialog handlers ──
+  const handleLinkUpdateAlways = useCallback(async () => {
+    alwaysUpdateLinksRef.current = true;
+    if (linkUpdateDialog) {
+      try {
+        await LinkIndexService.rewriteWikiLinks(linkUpdateDialog.srcPath, linkUpdateDialog.targetPath, rootPath);
+        await rename(linkUpdateDialog.srcPath, linkUpdateDialog.targetPath);
+        await handleReload();
+      } catch (err) {
+        console.error("移动失败:", err);
+      }
+    }
+    setLinkUpdateDialog(null);
+    pendingRenameRef.current = null;
+  }, [linkUpdateDialog, rootPath, handleReload]);
+
+  const handleLinkUpdateOnce = useCallback(async () => {
+    if (linkUpdateDialog) {
+      try {
+        await LinkIndexService.rewriteWikiLinks(linkUpdateDialog.srcPath, linkUpdateDialog.targetPath, rootPath);
+        await rename(linkUpdateDialog.srcPath, linkUpdateDialog.targetPath);
+        await handleReload();
+      } catch (err) {
+        console.error("移动失败:", err);
+      }
+    }
+    setLinkUpdateDialog(null);
+    pendingRenameRef.current = null;
+  }, [linkUpdateDialog, rootPath, handleReload]);
+
+  const handleLinkUpdateSkip = useCallback(async () => {
+    if (linkUpdateDialog) {
+      try {
+        await rename(linkUpdateDialog.srcPath, linkUpdateDialog.targetPath);
+        await handleReload();
+      } catch (err) {
+        console.error("移动失败:", err);
+      }
+    }
+    setLinkUpdateDialog(null);
+    pendingRenameRef.current = null;
+  }, [linkUpdateDialog, handleReload]);
+
   return (
-    <div ref={treeRef} className={`sidebar-tree${hidden ? " hidden" : ""}`} onContextMenu={handleBlankContextMenu} onScroll={handleScroll}>
+    <div ref={treeRef} className={`sidebar-tree${hidden ? " hidden" : ""}${isDragging ? " dragging" : ""}${dragOverPath === rootPath ? " drag-over" : ""}`} onContextMenu={handleBlankContextMenu} onScroll={handleScroll} data-path={rootPath} data-is-dir="1">
       {rootNodes.length > 0 &&
         rootNodes.map((node) => (
           <TreeNodeComp
@@ -947,6 +1069,15 @@ function FileTree({
           onClose={() => setCtxMenu(null)}
         />
       )}
+
+      <UpdateLinkDialog
+        isOpen={linkUpdateDialog !== null}
+        filesCount={linkUpdateDialog?.filesCount ?? 0}
+        linksCount={linkUpdateDialog?.linksCount ?? 0}
+        onAlwaysUpdate={handleLinkUpdateAlways}
+        onUpdateOnce={handleLinkUpdateOnce}
+        onSkip={handleLinkUpdateSkip}
+      />
     </div>
   );
 }

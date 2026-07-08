@@ -1160,7 +1160,7 @@ html[data-scrolling] * {
   left: 0;
   right: 0;
   bottom: 0;
-  background: rgba(0, 0, 0, 0.5);
+  background: rgba(0, 0, 0, 0.4);
   display: flex;
   align-items: flex-start;
   justify-content: center;
@@ -1172,8 +1172,10 @@ html[data-scrolling] * {
   width: 600px;
   max-width: 90vw;
   background: var(--bg-secondary);
+  backdrop-filter: blur(24px) saturate(180%);
+  -webkit-backdrop-filter: blur(24px) saturate(180%);
   border: 1px solid var(--border);
-  border-radius: 12px;
+  border-radius: 16px;
   box-shadow: 0 20px 60px rgba(0, 0, 0, 0.5);
   overflow: hidden;
 }
@@ -1213,17 +1215,52 @@ html[data-scrolling] * {
 }
 
 .quick-open-item {
+  position: relative;
   display: flex;
   align-items: center;
   padding: 12px 16px;
   cursor: pointer;
   gap: 10px;
-  transition: background 0.1s ease;
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+  border-radius: 8px;
+  margin: 2px 8px;
 }
 
-.quick-open-item:hover,
-.quick-open-item.selected {
+.quick-open-item:hover {
   background: var(--bg-surface);
+}
+
+.quick-open-item.selected {
+  background: linear-gradient(
+    135deg,
+    rgba(var(--accent-rgb, 137, 180, 250), 0.12) 0%,
+    rgba(255, 255, 255, 0.1) 100%
+  );
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.15),
+    inset 0 -1px 0 rgba(0, 0, 0, 0.05),
+    0 1px 4px rgba(0, 0, 0, 0.08);
+  border: 0.5px solid rgba(var(--accent-rgb, 137, 180, 250), 0.25);
+  padding-left: 12px;
+}
+
+.quick-open-item.selected::before {
+  content: "";
+  position: absolute;
+  left: 0;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 3px;
+  height: 20px;
+  border-radius: 0 3px 3px 0;
+  background: var(--accent);
+  box-shadow: 0 0 8px rgba(var(--accent-rgb, 137, 180, 250), 0.5);
+  animation: quick-open-active-bar 0.3s cubic-bezier(0.34, 1.56, 0.64, 1) forwards;
+}
+
+@keyframes quick-open-active-bar {
+  0% { height: 0; opacity: 0; }
+  100% { height: 20px; opacity: 1; }
 }
 
 .quick-open-item-icon {
@@ -1324,7 +1361,7 @@ html[data-scrolling] * {
   left: 0;
   right: 0;
   bottom: 0;
-  background: rgba(0, 0, 0, 0.5);
+  background: rgba(0, 0, 0, 0.4);
   display: flex;
   align-items: flex-start;
   justify-content: center;
@@ -1621,75 +1658,113 @@ html[data-scrolling] * {
 
 /* ── 快速打开弹窗 ── */
 [data-theme="liquid-glass"] .quick-open-overlay {
-  background: rgba(0, 0, 0, 0.25);
-  backdrop-filter: blur(8px);
-  -webkit-backdrop-filter: blur(8px);
+  background: rgba(0, 0, 0, 0.1);
+  backdrop-filter: blur(16px) saturate(150%);
+  -webkit-backdrop-filter: blur(16px) saturate(150%);
 }
 
 [data-theme="liquid-glass"] .quick-open-dialog {
-  background: rgba(255, 255, 255, 0.85);
-  backdrop-filter: blur(var(--glass-blur, 24px)) saturate(var(--glass-saturate, 200%));
-  -webkit-backdrop-filter: blur(var(--glass-blur, 24px)) saturate(var(--glass-saturate, 200%));
-  border: 1px solid rgba(255, 255, 255, 0.6);
-  box-shadow: 0 24px 64px rgba(0, 0, 0, 0.12), 0 8px 24px rgba(0, 0, 0, 0.06), inset 0 1px 0 rgba(255, 255, 255, 0.6);
+  background: rgba(255, 255, 255, 0.75);
+  backdrop-filter: blur(40px) saturate(200%);
+  -webkit-backdrop-filter: blur(40px) saturate(200%);
+  border: 1px solid rgba(255, 255, 255, 0.5);
+  box-shadow:
+    0 24px 80px rgba(0, 0, 0, 0.08),
+    0 8px 24px rgba(0, 0, 0, 0.04),
+    inset 0 1px 0 rgba(255, 255, 255, 0.6),
+    inset 0 -1px 0 rgba(0, 0, 0, 0.02);
 }
 
 [data-theme="liquid-glass"] .quick-open-header {
-  border-bottom: 1px solid rgba(0, 0, 0, 0.05);
+  border-bottom: 1px solid rgba(0, 0, 0, 0.06);
+  background: rgba(255, 255, 255, 0.2);
 }
 
-[data-theme="liquid-glass"] .quick-open-item:hover,
+[data-theme="liquid-glass"] .quick-open-results {
+  background: rgba(255, 255, 255, 0.08);
+}
+
+[data-theme="liquid-glass"] .quick-open-item:hover {
+  background: rgba(255, 255, 255, 0.2);
+}
+
 [data-theme="liquid-glass"] .quick-open-item.selected {
-  background: rgba(0, 122, 255, 0.1);
+  background: linear-gradient(
+    135deg,
+    rgba(var(--accent-rgb, 0, 122, 255), 0.1) 0%,
+    rgba(255, 255, 255, 0.25) 100%
+  );
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.4),
+    inset 0 -1px 0 rgba(0, 0, 0, 0.02),
+    0 1px 4px rgba(0, 0, 0, 0.04);
+  border: 0.5px solid rgba(var(--accent-rgb, 0, 122, 255), 0.2);
+}
+
+[data-theme="liquid-glass"] .quick-open-item.selected::before {
+  box-shadow: 0 0 10px rgba(var(--accent-rgb, 0, 122, 255), 0.6);
 }
 
 [data-theme="liquid-glass"] .quick-open-footer {
-  background: rgba(255, 255, 255, 0.4);
-  border-top: 1px solid rgba(0, 0, 0, 0.05);
+  background: rgba(255, 255, 255, 0.25);
+  border-top: 1px solid rgba(0, 0, 0, 0.06);
+}
+
+[data-theme="liquid-glass"] .quick-open-hint kbd {
+  background: rgba(255, 255, 255, 0.3);
+  border: 0.5px solid rgba(0, 0, 0, 0.06);
+}
+
+[data-theme="liquid-glass"] .quick-open-footer {
+  background: rgba(255, 255, 255, 0.45);
+  border-top: 1px solid rgba(0, 0, 0, 0.06);
 }
 
 [data-theme="liquid-glass"] .quick-open-hint kbd {
   background: rgba(0, 0, 0, 0.04);
-  border: 1px solid rgba(0, 0, 0, 0.06);
+  border: 0.5px solid rgba(0, 0, 0, 0.06);
 }
 
 /* ── 命令面板 ── */
 [data-theme="liquid-glass"] .command-palette-overlay {
-  background: rgba(0, 0, 0, 0.25);
-  backdrop-filter: blur(8px);
-  -webkit-backdrop-filter: blur(8px);
+  background: rgba(0, 0, 0, 0.15);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
 }
 
 [data-theme="liquid-glass"] .command-palette-dialog {
-  background: rgba(255, 255, 255, 0.85);
-  backdrop-filter: blur(var(--glass-blur, 24px)) saturate(var(--glass-saturate, 200%));
-  -webkit-backdrop-filter: blur(var(--glass-blur, 24px)) saturate(var(--glass-saturate, 200%));
-  border: 1px solid rgba(255, 255, 255, 0.6);
-  box-shadow: 0 24px 64px rgba(0, 0, 0, 0.12), 0 8px 24px rgba(0, 0, 0, 0.06), inset 0 1px 0 rgba(255, 255, 255, 0.6);
+  background: rgba(255, 255, 255, 0.82);
+  backdrop-filter: blur(40px) saturate(180%);
+  -webkit-backdrop-filter: blur(40px) saturate(180%);
+  border: 1px solid rgba(255, 255, 255, 0.5);
+  box-shadow:
+    0 24px 80px rgba(0, 0, 0, 0.12),
+    0 8px 24px rgba(0, 0, 0, 0.06),
+    inset 0 1px 0 rgba(255, 255, 255, 0.6);
 }
 
 [data-theme="liquid-glass"] .command-palette-header {
-  border-bottom: 1px solid rgba(0, 0, 0, 0.05);
+  border-bottom: 1px solid rgba(0, 0, 0, 0.06);
 }
 
 [data-theme="liquid-glass"] .command-palette-item:hover,
 [data-theme="liquid-glass"] .command-palette-item.selected {
-  background: rgba(0, 122, 255, 0.1);
+  background: rgba(var(--accent-rgb, 0, 122, 255), 0.08);
 }
 
 [data-theme="liquid-glass"] .command-palette-kbd {
   background: rgba(0, 0, 0, 0.04);
-  border: 1px solid rgba(0, 0, 0, 0.06);
+  border: 0.5px solid rgba(0, 0, 0, 0.06);
 }
 
 [data-theme="liquid-glass"] .command-palette-footer {
-  background: rgba(255, 255, 255, 0.4);
-  border-top: 1px solid rgba(0, 0, 0, 0.05);
+  background: rgba(255, 255, 255, 0.45);
+  border-top: 1px solid rgba(0, 0, 0, 0.06);
 }
 
 [data-theme="liquid-glass"] .command-palette-hint kbd {
   background: rgba(0, 0, 0, 0.04);
-  border: 1px solid rgba(0, 0, 0, 0.06);
+  border: 0.5px solid rgba(0, 0, 0, 0.06);
 }
 
 /* ── 代码块行（liquid-glass 块级样式） ── */

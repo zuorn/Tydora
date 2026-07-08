@@ -23,9 +23,21 @@ import TaskItem from "@tiptap/extension-task-item";
 import Highlight from "@tiptap/extension-highlight";
 import Typography from "@tiptap/extension-typography";
 import Heading from "@tiptap/extension-heading";
+import HardBreak from "@tiptap/extension-hard-break";
 import { Markdown } from "tiptap-markdown";
 import { defaultMarkdownSerializer } from "prosemirror-markdown";
 import { common, createLowlight } from "lowlight";
+import vimLang from "highlight.js/lib/languages/vim";
+import dockerfileLang from "highlight.js/lib/languages/dockerfile";
+import powershellLang from "highlight.js/lib/languages/powershell";
+import latexLang from "highlight.js/lib/languages/latex";
+import nginxLang from "highlight.js/lib/languages/nginx";
+import cmakeLang from "highlight.js/lib/languages/cmake";
+import scalaLang from "highlight.js/lib/languages/scala";
+import haskellLang from "highlight.js/lib/languages/haskell";
+import elixirLang from "highlight.js/lib/languages/elixir";
+import juliaLang from "highlight.js/lib/languages/julia";
+import tclLang from "highlight.js/lib/languages/tcl";
 import { Frontmatter } from "./extensions/frontmatter";
 import { Callout } from "./extensions/callout";
 import { Mermaid } from "./extensions/mermaid";
@@ -49,6 +61,17 @@ import type { EditorHandle, EditorMode } from "./types";
 import "./theme.css";
 
 const lowlight = createLowlight(common);
+lowlight.register("vim", vimLang);
+lowlight.register("dockerfile", dockerfileLang);
+lowlight.register("powershell", powershellLang);
+lowlight.register("latex", latexLang);
+lowlight.register("nginx", nginxLang);
+lowlight.register("cmake", cmakeLang);
+lowlight.register("scala", scalaLang);
+lowlight.register("haskell", haskellLang);
+lowlight.register("elixir", elixirLang);
+lowlight.register("julia", juliaLang);
+lowlight.register("tcl", tclLang);
 lowlight.register("mermaid", mermaidHljsLang);
 
 interface TipTapEditorProps {
@@ -101,6 +124,7 @@ const TipTapEditor = forwardRef<EditorHandle, TipTapEditorProps>(
           orderedList: false,
           listItem: false,
           heading: false,
+          hardBreak: false,
         }),
         // 单独添加扩展，禁用内置快捷键，paragraph 添加 textAlign 属性
         Paragraph.extend({
@@ -165,6 +189,43 @@ const TipTapEditor = forwardRef<EditorHandle, TipTapEditorProps>(
         BulletList.extend({ addKeyboardShortcuts() { return {}; } }),
         OrderedList.extend({ addKeyboardShortcuts() { return {}; } }),
         ListItem,
+        HardBreak.extend({
+          addKeyboardShortcuts() {
+            return {
+              // Enter → 插入硬换行（普通段落中），光标在段落末尾且为空行时创建新段落
+              Enter: () => {
+                const { state } = this.editor;
+                const { $from } = state.selection;
+
+                // 列表/任务列表/代码块/表格中不拦截，交给默认行为
+                for (let d = $from.depth; d >= 0; d--) {
+                  const nodeType = $from.node(d).type.name;
+                  if (
+                    nodeType === "listItem" ||
+                    nodeType === "taskItem" ||
+                    nodeType === "codeBlock" ||
+                    nodeType === "tableCell" ||
+                    nodeType === "tableHeader"
+                  ) {
+                    return false;
+                  }
+                }
+
+                // 段落末尾且为空行（或光标在末尾）时创建新段落
+                const pos = $from.pos;
+                const parentEnd = $from.parent.content.size + $from.start();
+                if (pos >= parentEnd - 1) {
+                  return this.editor.commands.splitBlock();
+                }
+
+                return this.editor.commands.setHardBreak();
+              },
+
+              // Shift+Enter → 创建新段落
+              "Shift-Enter": () => this.editor.commands.splitBlock(),
+            };
+          },
+        }),
         Heading.extend({ addKeyboardShortcuts() { return {}; } }),
         Placeholder.configure({
           placeholder: "开始输入 Markdown...",
@@ -250,6 +311,7 @@ const TipTapEditor = forwardRef<EditorHandle, TipTapEditorProps>(
         Typography,
         Markdown.configure({
           html: true,
+          breaks: true,
           transformPastedText: true,
           transformCopiedText: true,
         }),
@@ -319,6 +381,32 @@ const TipTapEditor = forwardRef<EditorHandle, TipTapEditorProps>(
                   executeCommand(cmdName, editor);
                   return true;
                 }
+              }
+            }
+
+            // Tab / Shift-Tab：列表缩进/反缩进
+            if (event.key === "Tab" && !event.ctrlKey && !event.metaKey && !event.altKey) {
+              const { state } = editor;
+              const { $from } = state.selection;
+
+              // 判断光标是否在列表项内（listItem 或 taskItem）
+              let listType: string | null = null;
+              for (let d = $from.depth; d >= 0; d--) {
+                const node = $from.node(d);
+                if (node.type.name === "listItem" || node.type.name === "taskItem") {
+                  listType = node.type.name;
+                  break;
+                }
+              }
+
+              if (listType) {
+                event.preventDefault();
+                if (event.shiftKey) {
+                  editor.chain().focus().liftListItem(listType).run();
+                } else {
+                  editor.chain().focus().sinkListItem(listType).run();
+                }
+                return true;
               }
             }
 

@@ -316,8 +316,15 @@ function App({ initialFilePath }: { initialFilePath?: string | null }) {
     (async () => {
       try {
         const { listen } = await import("@tauri-apps/api/event");
-        unlisten = await listen<string>("open-file", (event) => {
-          const filePath = event.payload;
+        unlisten = await listen<unknown>("open-file", (event) => {
+          const payload = event.payload;
+          const filePath = typeof payload === "string"
+            ? payload
+            : typeof payload === "object" && payload !== null && "path" in payload
+              ? String((payload as { path: unknown }).path)
+              : typeof payload === "object" && payload !== null
+                ? JSON.stringify(payload)
+                : String(payload ?? "");
           readTextFile(filePath)
             .then((text) => {
               savedContentRef.current = text;
@@ -656,13 +663,16 @@ function App({ initialFilePath }: { initialFilePath?: string | null }) {
       pendingQueryRef.current = query ?? null;
       setSaveConfirmOpen(true);
     } else {
+      openFileGenerationRef.current++;
       openFile(path, line, query);
     }
   }, [modified]);
 
   const openFile = useCallback(async (path: string, line?: number, query?: string) => {
+    const myGeneration = openFileGenerationRef.current;
     try {
       const text = await readTextFile(path);
+      if (openFileGenerationRef.current !== myGeneration) return; // 被更新的文件切换覆盖
       savedContentRef.current = text;
       setContent(text);
       setFileName(path);
@@ -720,6 +730,7 @@ function App({ initialFilePath }: { initialFilePath?: string | null }) {
       const query = pendingQueryRef.current;
       pendingLineRef.current = null;
       pendingQueryRef.current = null;
+      openFileGenerationRef.current++;
       openFile(pendingFilePath, line ?? undefined, query ?? undefined);
       setPendingFilePath(null);
     }
@@ -732,6 +743,7 @@ function App({ initialFilePath }: { initialFilePath?: string | null }) {
       const query = pendingQueryRef.current;
       pendingLineRef.current = null;
       pendingQueryRef.current = null;
+      openFileGenerationRef.current++;
       openFile(pendingFilePath, line ?? undefined, query ?? undefined);
       setPendingFilePath(null);
     }
@@ -1000,7 +1012,8 @@ function App({ initialFilePath }: { initialFilePath?: string | null }) {
   const pendingLineRef = useRef<number | null>(null);
   const pendingQueryRef = useRef<string | null>(null);
   const pendingHeadingRef = useRef<string | null>(null);
-  const title = fileName ? fileName.split(/[/\\]/).pop() || "untitled.md" : "Tydora";
+  const openFileGenerationRef = useRef(0);
+  const title = fileName && typeof fileName === "string" ? fileName.split(/[/\\]/).pop() || "untitled.md" : "Tydora";
 
   // ── 命令面板命令列表 ──
   const commands = useMemo(() => [

@@ -3,6 +3,7 @@
 .tiptap-editor {
   height: 100%;
   overflow-y: auto;
+  overscroll-behavior-y: contain;
 }
 
 /* 编辑器滚动条尺寸（显隐由全局 data-scrolling 控制） */
@@ -83,6 +84,7 @@
   white-space: pre-wrap;
   word-wrap: break-word;
   overflow: auto;
+  overscroll-behavior-y: contain;
   z-index: 2;
 }
 
@@ -262,6 +264,12 @@
 .tiptap-editor .hljs-built_in,
 .tiptap-editor .hljs-operator {
   color: var(--hljs-built_in, #e36209);
+}
+
+/* 加粗文本 */
+.tiptap-editor strong {
+  font-weight: 700;
+  color: var(--text-strong, #e06c75);
 }
 
 /* 行内代码 */

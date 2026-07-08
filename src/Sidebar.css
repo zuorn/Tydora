@@ -134,6 +134,12 @@
   transform: rotate(90deg);
 }
 
+.tree-icon-spacer {
+  flex-shrink: 0;
+  width: 16px;
+  height: 16px;
+}
+
 .tree-name {
   flex: 1;
   overflow: hidden;
@@ -437,66 +443,47 @@
 .sidebar-header {
   display: flex;
   align-items: center;
-  justify-content: center;
-  padding: 0 0 10px;
+  padding: 0 4px 6px;
   border-bottom: none;
   flex-shrink: 0;
-  position: relative;
-}
-
-.sidebar-search-trigger {
-  position: absolute;
-  left: 20px;
-  background: none;
-  border: none;
-  color: var(--text-secondary);
-  cursor: pointer;
-  padding: 2px 8px;
-  border-radius: 4px;
-  flex-shrink: 0;
-  display: flex;
-  align-items: center;
-  opacity: 0;
-  transition: opacity 0.15s ease, background 0.15s ease, color 0.15s ease;
-}
-
-.sidebar:hover .sidebar-search-trigger {
-  opacity: 1;
-}
-
-.sidebar-search-trigger:hover {
-  background: var(--bg-surface);
-  color: var(--accent);
-}
-
-.sidebar-search-trigger.active {
-  opacity: 1;
-  color: var(--accent);
 }
 
 .sidebar-tabs-wrapper {
   display: flex;
   align-items: center;
-  gap: 30px;
+  width: 100%;
+  gap: 0;
 }
 
 .sidebar-tab {
-  flex: none;
+  flex: 1;
   position: relative;
   display: flex;
+  flex-direction: column;
+  align-items: center;
   justify-content: center;
   background: none;
   border: none;
   color: var(--text-secondary);
-  font-size: 16px;
-  font-weight: 600;
-  padding: 0 14px 4px;
+  padding: 6px 0 4px;
   cursor: pointer;
-  transition: color 0.15s ease;
+  border-radius: 6px;
+  transition: color 0.15s ease, background 0.15s ease;
+}
+
+.sidebar-tab svg {
+  width: 18px;
+  height: 18px;
+}
+
+.sidebar-tab span {
+  font-size: 11px;
+  margin-top: 2px;
 }
 
 .sidebar-tab:hover {
   color: var(--text-primary);
+  background: var(--bg-surface);
 }
 
 .sidebar-tab.active {
@@ -509,7 +496,7 @@
   bottom: 0;
   left: 50%;
   transform: translateX(-50%);
-  width: 46px;
+  width: 20px;
   height: 2px;
   background: var(--accent);
   border-radius: 1px;
@@ -1080,15 +1067,6 @@
 [data-theme="liquid-glass"] .settings-popup-select {
   background: rgba(255, 255, 255, 0.6);
   border: 1px solid rgba(0, 0, 0, 0.08);
-}
-
-/* ── 搜索触发按钮 ── */
-[data-theme="liquid-glass"] .sidebar-search-trigger:hover {
-  background: rgba(0, 122, 255, 0.08);
-}
-
-[data-theme="liquid-glass"] .sidebar-search-trigger.active {
-  color: var(--accent);
 }
 
 /* ── 内联编辑输入框 ── */

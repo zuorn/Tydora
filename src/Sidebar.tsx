@@ -620,12 +620,14 @@ function TreeNodeComp({
         data-path={node.path}
         data-is-dir={node.isDirectory ? "1" : "0"}
       >
-        {node.isDirectory && (
+        {node.isDirectory ? (
           <span className={`tree-chevron${node.expanded ? " expanded" : ""}`}>
             <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
               <polyline points="9 18 15 12 9 6"/>
             </svg>
           </span>
+        ) : (
+          <span className="tree-icon-spacer" />
         )}
         {isEditing ? (
           <input
@@ -1345,8 +1347,7 @@ export default function Sidebar({
 }: SidebarProps) {
   const activeVault = activeVaultIndex >= 0 ? vaults[activeVaultIndex] : null;
   const [isResizing, setIsResizing] = useState(false);
-  const [activeTab, setActiveTab] = useState<"files" | "outline">("files");
-  const [searchOpen, setSearchOpen] = useState(false);
+  const [activeTab, setActiveTab] = useState<"files" | "search" | "outline" | "bookmarks">("files");
   const [searchQuery, setSearchQuery] = useState("");
 
   const handleSelectFile = useCallback(
@@ -1354,17 +1355,23 @@ export default function Sidebar({
     [onSelectFile],
   );
 
-  const closeSearch = useCallback(() => {
-    setSearchOpen(false);
-    setSearchQuery("");
+  const switchTab = useCallback((tab: "files" | "search" | "outline" | "bookmarks") => {
+    setActiveTab(tab);
+    if (tab !== "search") {
+      setSearchQuery("");
+    }
   }, []);
 
-  // Ctrl+Shift+F to toggle search
+  // Ctrl+Shift+F to toggle search tab
   useEffect(() => {
     const handler = (e: KeyboardEvent) => {
       if ((e.ctrlKey || e.metaKey) && e.shiftKey && e.key === "F") {
         e.preventDefault();
-        setSearchOpen((prev) => !prev);
+        setActiveTab((prev) => {
+          const next = prev === "search" ? "files" : "search";
+          if (next !== "search") setSearchQuery("");
+          return next;
+        });
       }
     };
     window.addEventListener("keydown", handler);
@@ -1423,65 +1430,61 @@ export default function Sidebar({
       <div className="sidebar-topbar" />
 
       <div className="sidebar-header">
-        <button
-          className={`sidebar-search-trigger${searchOpen ? " active" : ""}`}
-          title="搜索 (Ctrl+Shift+F)"
-          onClick={() => {
-            if (searchOpen) {
-              closeSearch();
-            } else {
-              setSearchOpen(true);
-            }
-          }}
-        >
-          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-            <circle cx="11" cy="11" r="8" />
-            <path d="M21 21l-4.35-4.35" />
-          </svg>
-        </button>
         <div className="sidebar-tabs-wrapper">
           <button
             className={`sidebar-tab${activeTab === "files" ? " active" : ""}`}
-            onClick={() => { setActiveTab("files"); if (searchOpen) closeSearch(); }}
+            onClick={() => switchTab("files")}
           >
-            文件
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z" />
+            </svg>
+            <span>文件</span>
+          </button>
+          <button
+            className={`sidebar-tab${activeTab === "search" ? " active" : ""}`}
+            onClick={() => switchTab("search")}
+          >
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <circle cx="11" cy="11" r="8" />
+              <path d="M21 21l-4.35-4.35" />
+            </svg>
+            <span>搜索</span>
           </button>
           <button
             className={`sidebar-tab${activeTab === "outline" ? " active" : ""}`}
-            onClick={() => { if (searchOpen) { closeSearch(); } else { setActiveTab("outline"); } }}
+            onClick={() => switchTab("outline")}
           >
-            {searchOpen ? "搜索" : "大纲"}
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <line x1="8" y1="6" x2="21" y2="6" />
+              <line x1="8" y1="12" x2="21" y2="12" />
+              <line x1="8" y1="18" x2="21" y2="18" />
+              <line x1="3" y1="6" x2="3.01" y2="6" />
+              <line x1="3" y1="12" x2="3.01" y2="12" />
+              <line x1="3" y1="18" x2="3.01" y2="18" />
+            </svg>
+            <span>大纲</span>
+          </button>
+          <button
+            className={`sidebar-tab${activeTab === "bookmarks" ? " active" : ""}`}
+            onClick={() => switchTab("bookmarks")}
+          >
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <path d="M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z" />
+            </svg>
+            <span>书签</span>
           </button>
         </div>
       </div>
 
       {activeTab === "files" && (
         activeVault ? (
-          <>
-            {searchOpen && (
-              <SearchBar
-                query={searchQuery}
-                onQueryChange={setSearchQuery}
-                onClose={closeSearch}
-              />
-            )}
-            {searchOpen && searchQuery.trim() ? (
-              <SearchResults
-                vaultPath={activeVault.path}
-                query={searchQuery}
-                onSelectFile={handleSelectFile}
-              />
-            ) : (
-              <FileTree
-                rootPath={activeVault.path}
-                activePath={currentFilePath}
-                onSelect={handleSelectFile}
-                refreshKey={refreshKey}
-                onNewWindow={onNewWindow}
-                onScrollToTop={() => { setSearchOpen(true); }}
-              />
-            )}
-          </>
+          <FileTree
+            rootPath={activeVault.path}
+            activePath={currentFilePath}
+            onSelect={handleSelectFile}
+            refreshKey={refreshKey}
+            onNewWindow={onNewWindow}
+          />
         ) : (
           <div className="sidebar-tree">
             <div className="tree-empty">尚未打开仓库</div>
@@ -1490,8 +1493,35 @@ export default function Sidebar({
         )
       )}
 
+      {activeTab === "search" && (
+        <>
+          <SearchBar
+            query={searchQuery}
+            onQueryChange={setSearchQuery}
+            onClose={() => switchTab("files")}
+          />
+          {searchQuery.trim() ? (
+            <SearchResults
+              vaultPath={activeVault?.path ?? ""}
+              query={searchQuery}
+              onSelectFile={handleSelectFile}
+            />
+          ) : (
+            <div className="sidebar-tree">
+              <div className="tree-empty">输入关键词搜索文件</div>
+            </div>
+          )}
+        </>
+      )}
+
       {activeTab === "outline" && (
         <Outline content={content} onSelectHeading={onSelectHeading} />
+      )}
+
+      {activeTab === "bookmarks" && (
+        <div className="sidebar-tree">
+          <div className="tree-empty">书签功能即将推出</div>
+        </div>
       )}
 
       <VaultSwitcher

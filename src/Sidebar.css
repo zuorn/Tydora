@@ -22,7 +22,7 @@
 
 /* ── 顶部透明栏 ── */
 .sidebar-topbar {
-  height: 20px;
+  height: 13px;
   flex-shrink: 0;
   background: transparent;
   -webkit-app-region: drag;
@@ -47,19 +47,26 @@
   border: none;
   color: var(--text-secondary);
   cursor: pointer;
-  font-size: 12px;
-  padding: 2px 0;
-  border-radius: 4px;
+  padding: 7px;
+  border-radius: 11px;
   flex-shrink: 0;
-  width: 20px;
   display: flex;
   align-items: center;
   justify-content: center;
+  transition: color 0.2s cubic-bezier(0.4, 0, 0.2, 1),
+              background 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+  -webkit-tap-highlight-color: transparent;
+  user-select: none;
 }
 
 .sidebar-toggle-btn:hover {
-  background: var(--bg-surface);
   color: var(--text-primary);
+  background: rgba(255, 255, 255, 0.08);
+}
+
+.sidebar-toggle-btn:active {
+  transform: scale(0.93);
+  transition-duration: 0.1s;
 }
 
 /* ── Tree 区域 ── */
@@ -566,9 +573,10 @@
 .sidebar-header {
   display: flex;
   align-items: center;
-  padding: 6px 8px 6px;
+  padding: 0px 8px 6px;
   border-bottom: none;
   flex-shrink: 0;
+  -webkit-app-region: drag;
 }
 
 .sidebar-tabs-wrapper {
@@ -576,6 +584,7 @@
   display: flex;
   align-items: center;
   width: 100%;
+  -webkit-app-region: no-drag;
   gap: 0;
   padding: 3px;
   border-radius: 14px;

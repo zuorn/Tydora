@@ -1,0 +1,707 @@
+/* Canvas Window */
+.canvas-window {
+  width: 100vw;
+  height: 100vh;
+  display: flex;
+  flex-direction: column;
+  background: var(--bg-primary);
+  color: var(--text-primary);
+}
+
+.canvas-window-titlebar {
+  height: 36px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 8px;
+  background: transparent;
+  user-select: none;
+  -webkit-user-select: none;
+  -webkit-app-region: drag;
+  flex-shrink: 0;
+}
+
+.canvas-window-title {
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--text-secondary);
+  display: flex;
+  align-items: center;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.canvas-window-controls {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  -webkit-app-region: no-drag;
+}
+
+.canvas-window-btn {
+  width: 28px;
+  height: 28px;
+  border: none;
+  background: transparent;
+  color: var(--text-secondary);
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 4px;
+  transition: background 0.15s, color 0.15s;
+}
+
+.canvas-window-btn:hover {
+  background: var(--bg-tertiary);
+  color: var(--text-primary);
+}
+
+.canvas-window-close:hover {
+  background: #e81123;
+  color: white;
+}
+
+.canvas-window-divider {
+  width: 1px;
+  height: 16px;
+  background: var(--border);
+  margin: 0 4px;
+}
+
+/* Traffic light indicator */
+.traffic-light {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  flex-shrink: 0;
+  transition: background-color 0.3s ease, opacity 0.3s ease;
+  margin-right: 6px;
+}
+
+.traffic-light--idle {
+  background-color: transparent;
+  opacity: 0;
+}
+
+.traffic-light--modified {
+  background-color: var(--danger, #f38ba8);
+  animation: traffic-light-blink 1s step-end infinite;
+}
+
+.traffic-light--saved {
+  background-color: #22c55e;
+  animation: traffic-light-flash 4s ease-out forwards;
+}
+
+@keyframes traffic-light-blink {
+  0%, 50% { opacity: 1; }
+  51%, 100% { opacity: 0; }
+}
+
+@keyframes traffic-light-flash {
+  0%, 62.5% { opacity: 1; transform: scale(1); }
+  100% { opacity: 0; transform: scale(0.8); }
+}
+
+.canvas-window-content {
+  flex: 1;
+  overflow: hidden;
+}
+
+/* React Flow overrides for dark theme */
+.react-flow__node {
+  border-radius: 8px;
+  overflow: hidden;
+}
+
+.react-flow__edge-path {
+  stroke: var(--text-secondary);
+}
+
+.react-flow__controls {
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.2);
+}
+
+.react-flow__controls button {
+  background: var(--bg-secondary);
+  border-color: var(--border);
+  color: var(--text-primary);
+}
+
+.react-flow__controls button:hover {
+  background: var(--bg-tertiary);
+}
+
+/* Undo/Redo Panel - positioned above React Flow controls */
+.undo-redo-panel {
+  position: absolute;
+  top: 135px;
+  right: 15px;
+  z-index: 5;
+  display: flex;
+  flex-direction: column;
+  background: var(--bg-secondary);
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.2);
+  overflow: hidden;
+}
+
+.undo-redo-btn {
+  width: 26px;
+  height: 26px;
+  padding: 4px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: none;
+  background: transparent;
+  color: var(--text-primary);
+  cursor: pointer;
+  border-bottom: 1px solid var(--border);
+  transition: background 0.15s;
+}
+
+.undo-redo-btn:last-child {
+  border-bottom: none;
+}
+
+.undo-redo-btn:hover:not(:disabled) {
+  background: var(--bg-tertiary);
+}
+
+.undo-redo-btn:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+.react-flow__minimap {
+  background: var(--bg-secondary);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+}
+
+.react-flow__background {
+  background: var(--bg-primary);
+}
+
+.react-flow__attribution {
+  display: none;
+}
+
+/* Canvas Node Styles */
+.canvas-node {
+  width: 100%;
+  height: 100%;
+  border: 2px solid var(--border);
+  border-radius: 8px;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  transition: border-color 0.15s;
+}
+
+.canvas-node.selected {
+  border-color: var(--accent);
+}
+
+.canvas-node:hover {
+  border-color: var(--accent);
+  opacity: 1 !important;
+}
+
+/* Handle styles - matching Obsidian Canvas */
+.canvas-handle {
+  width: 10px;
+  height: 10px;
+  background: var(--bg-primary);
+  border: 2px solid var(--accent, #6366f1);
+  opacity: 0;
+  transition: all 0.15s ease;
+}
+
+/* Show handles on node hover or selection */
+.canvas-node:hover .canvas-handle,
+.canvas-node.selected .canvas-handle {
+  opacity: 0.6;
+}
+
+/* Enlarge and fill handle on hover */
+.canvas-handle:hover {
+  width: 14px;
+  height: 14px;
+  background: var(--accent, #6366f1);
+  border-color: var(--accent, #6366f1);
+  opacity: 1;
+}
+
+/* Resize Handle */
+.canvas-resize-handle {
+  width: 10px !important;
+  height: 10px !important;
+  background: var(--accent, #6366f1) !important;
+  border: 2px solid var(--bg-primary) !important;
+  border-radius: 2px !important;
+}
+
+.canvas-resize-handle:hover {
+  width: 12px !important;
+  height: 12px !important;
+}
+
+/* Text Node */
+.canvas-text-node {
+  background: var(--bg-primary);
+}
+
+.canvas-text-edit {
+  width: 100%;
+  height: 100%;
+  border: none;
+  background: transparent;
+  color: var(--text-primary);
+  font-family: inherit;
+  font-size: 13px;
+  line-height: 1.6;
+  padding: 12px;
+  resize: none;
+  outline: none;
+}
+
+.canvas-text-preview {
+  padding: 12px;
+  font-size: 13px;
+  line-height: 1.6;
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+
+.canvas-placeholder {
+  color: var(--text-tertiary);
+  font-style: italic;
+  font-size: 12px;
+}
+
+/* File Node */
+.canvas-file-node {
+  background: var(--bg-primary);
+}
+
+.canvas-node-header {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 12px;
+  border-bottom: 1px solid var(--border);
+  background: var(--bg-secondary);
+  font-size: 12px;
+  color: var(--text-secondary);
+}
+
+.canvas-file-name {
+  font-weight: 500;
+  color: var(--text-primary);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.canvas-file-subpath {
+  color: var(--text-tertiary);
+  font-size: 11px;
+}
+
+.canvas-file-content {
+  flex: 1;
+  overflow: auto;
+}
+
+.canvas-file-preview {
+  margin: 0;
+  padding: 8px 12px;
+  font-size: 11px;
+  line-height: 1.5;
+  color: var(--text-secondary);
+  white-space: pre-wrap;
+  word-break: break-all;
+  font-family: 'SF Mono', 'Consolas', 'Monaco', monospace;
+}
+
+/* URL Node */
+.canvas-url-node {
+  background: var(--bg-primary);
+}
+
+.canvas-url-label {
+  font-weight: 500;
+  color: var(--text-primary);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.canvas-url-content {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.canvas-url-display {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 12px;
+}
+
+.canvas-url-favicon img {
+  width: 16px;
+  height: 16px;
+}
+
+.canvas-url-text {
+  font-size: 11px;
+  color: var(--text-tertiary);
+  word-break: break-all;
+}
+
+/* Image Node */
+.canvas-image-node {
+  background: var(--bg-primary);
+  padding: 0;
+}
+
+.canvas-image-display {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+}
+
+.canvas-image-placeholder {
+  width: 100%;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  color: var(--text-tertiary);
+}
+
+/* Group Node */
+.canvas-group-node {
+  background: rgba(128, 128, 128, 0.1);
+  border-style: dashed;
+}
+
+/* Override ReactFlow's pointerEvents: 'all' on ALL node wrappers */
+/* This allows right-click drag to pan when clicking on any node */
+.react-flow__node {
+  pointer-events: none !important;
+}
+
+/* Restore pointer events on the actual node content for left-click */
+.canvas-node {
+  pointer-events: auto;
+}
+
+/* Restore pointer events on handles for connections */
+.canvas-handle {
+  pointer-events: auto;
+}
+
+/* Restore pointer events on interactive elements inside nodes */
+.canvas-node-header,
+.canvas-text-edit,
+.canvas-text-preview {
+  pointer-events: auto;
+}
+
+.canvas-group-label {
+  position: absolute;
+  top: 8px;
+  left: 12px;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text-secondary);
+  pointer-events: none;
+}
+
+/* Edge Label */
+.canvas-edge-label {
+  background: var(--bg-secondary);
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  padding: 2px 8px;
+  font-size: 11px;
+  color: var(--text-secondary);
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.canvas-edge-label:hover {
+  border-color: var(--accent);
+}
+
+.canvas-edge-label-input {
+  border: none;
+  background: transparent;
+  color: var(--text-primary);
+  font-size: 11px;
+  padding: 0;
+  outline: none;
+  width: 80px;
+}
+
+.canvas-edge-label-text {
+  font-size: 11px;
+}
+
+/* Node color presets */
+.canvas-color-red { background: #ef4444; }
+.canvas-color-orange { background: #f97316; }
+.canvas-color-yellow { background: #eab308; }
+.canvas-color-green { background: #22c55e; }
+.canvas-color-cyan { background: #06b6d4; }
+.canvas-color-purple { background: #a855f7; }
+
+/* Canvas Toolbar - Obsidian style floating */
+.canvas-toolbar {
+  position: absolute;
+  bottom: 12px;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 10;
+  display: flex;
+  align-items: center;
+  padding: 8px 12px;
+  background: var(--bg-secondary, #ffffff);
+  border: 1px solid var(--border, #e0e0e0);
+  border-radius: 12px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+  gap: 8px;
+}
+
+.canvas-toolbar-tooltip {
+  position: absolute;
+  bottom: 100%;
+  left: 50%;
+  transform: translateX(-50%);
+  margin-bottom: 8px;
+  padding: 6px 12px;
+  background: #1a1a1a;
+  color: #fff;
+  font-size: 12px;
+  border-radius: 6px;
+  white-space: nowrap;
+  pointer-events: none;
+  opacity: 0;
+  transition: opacity 0.2s;
+}
+
+.canvas-toolbar:hover .canvas-toolbar-tooltip {
+  opacity: 1;
+}
+
+.canvas-toolbar-tooltip::after {
+  content: '';
+  position: absolute;
+  top: 100%;
+  left: 50%;
+  transform: translateX(-50%);
+  border: 5px solid transparent;
+  border-top-color: #1a1a1a;
+}
+
+.canvas-toolbar-btn {
+  width: 40px;
+  height: 40px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+  border: none;
+  background: transparent;
+  color: var(--text-primary, #333);
+  cursor: pointer;
+  border-radius: 8px;
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+  position: relative;
+}
+
+.canvas-toolbar-btn:hover {
+  background: rgba(99, 102, 241, 0.15);
+  color: var(--accent, #6366f1);
+  transform: translateY(-8px) scale(1.15);
+}
+
+.canvas-toolbar-btn:active {
+  transform: translateY(-4px) scale(1.1);
+}
+
+.canvas-toolbar-btn.active {
+  background: var(--accent, #6366f1);
+  color: white;
+}
+
+/* Context Menu */
+.canvas-context-menu {
+  position: fixed;
+  background: var(--bg-secondary);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 4px;
+  min-width: 180px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+  z-index: 1000;
+}
+
+.canvas-context-menu-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  padding: 8px 12px;
+  border: none;
+  background: transparent;
+  color: var(--text-primary);
+  font-size: 13px;
+  cursor: pointer;
+  border-radius: 4px;
+  transition: background 0.1s;
+  text-align: left;
+}
+
+.canvas-context-menu-item:hover:not(:disabled) {
+  background: var(--bg-tertiary);
+}
+
+.canvas-context-menu-item:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+.canvas-context-menu-divider {
+  height: 1px;
+  background: var(--border);
+  margin: 4px 0;
+}
+
+/* Node Toolbar */
+.node-toolbar {
+  position: absolute;
+  pointer-events: auto;
+  z-index: 1000;
+}
+
+.node-toolbar-buttons {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  padding: 4px;
+  background: var(--bg-secondary);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+}
+
+.node-toolbar-btn {
+  width: 32px;
+  height: 32px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: none;
+  background: transparent;
+  color: var(--text-secondary);
+  cursor: pointer;
+  border-radius: 6px;
+  transition: background 0.15s, color 0.15s;
+}
+
+.node-toolbar-btn:hover {
+  background: var(--bg-tertiary);
+  color: var(--text-primary);
+}
+
+.node-toolbar-color-picker {
+  position: absolute;
+  top: 100%;
+  left: 50%;
+  transform: translateX(-50%);
+  margin-top: 4px;
+}
+
+/* Color Picker */
+.color-picker {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding: 8px;
+  background: var(--bg-secondary);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+}
+
+.color-picker-btn {
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  border: 2px solid transparent;
+  cursor: pointer;
+  transition: transform 0.15s, border-color 0.15s;
+}
+
+.color-picker-btn:hover {
+  transform: scale(1.15);
+  border-color: var(--text-primary);
+}
+
+/* Alignment Toolbar */
+.alignment-toolbar {
+  position: fixed;
+  top: 80px;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 1000;
+}
+
+.alignment-toolbar-buttons {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  padding: 4px;
+  background: var(--bg-secondary);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+}
+
+.alignment-toolbar-btn {
+  width: 32px;
+  height: 32px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: none;
+  background: transparent;
+  color: var(--text-secondary);
+  cursor: pointer;
+  border-radius: 6px;
+  transition: background 0.15s, color 0.15s;
+}
+
+.alignment-toolbar-btn:hover {
+  background: var(--bg-tertiary);
+  color: var(--text-primary);
+}
+
+.alignment-toolbar-divider {
+  width: 1px;
+  height: 20px;
+  background: var(--border);
+  margin: 0 4px;
+}

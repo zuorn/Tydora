@@ -649,6 +649,13 @@ function App({ initialFilePath }: { initialFilePath?: string | null }) {
   const handleSelectFile = useCallback((path: string, line?: number, query?: string) => {
     // 判断文件类型
     const fileName = path.split(/[/\\]/).pop() || path;
+
+    // .canvas 文件：打开白板窗口
+    if (fileName.endsWith('.canvas')) {
+      invoke("open_canvas_window", { canvasPath: path });
+      return;
+    }
+
     if (!isEditableFile(fileName)) {
       // 非文本文件，直接预览，同时更新 fileName 以显示选中状态
       setFileName(path);
@@ -1178,6 +1185,13 @@ function App({ initialFilePath }: { initialFilePath?: string | null }) {
                   <line x1="9.5" y1="6.5" x2="5.5" y2="16.5" />
                   <line x1="14.5" y1="6.5" x2="18.5" y2="16.5" />
                   <line x1="7" y1="19" x2="17" y2="19" />
+                </svg>
+              </button>
+              <button className="window-control-btn" title="打开白板" onClick={() => invoke("open_canvas_window", { canvasPath: null })}>
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <rect x="3" y="3" width="18" height="18" rx="2" />
+                  <line x1="3" y1="9" x2="21" y2="9" />
+                  <line x1="9" y1="21" x2="9" y2="9" />
                 </svg>
               </button>
               <div className="window-controls-divider" />

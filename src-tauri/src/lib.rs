@@ -221,6 +221,45 @@ async fn open_graph_window(
     }
 }
 
+/// 打开白板窗口
+#[tauri::command]
+async fn open_canvas_window(
+    app: tauri::AppHandle,
+    canvas_path: Option<String>,
+) -> Result<(), String> {
+    let label = "canvas";
+
+    if let Some(existing) = app.get_webview_window(label) {
+        let _ = existing.set_focus();
+        return Ok(());
+    }
+
+    let mut url = "index.html?window=canvas".to_string();
+    if let Some(path) = &canvas_path {
+        let safe_path = path.replace('\\', "/");
+        let encoded_path = percent_encode_path(&safe_path);
+        url = format!("{}&file={}", url, encoded_path);
+    }
+
+    let window = WebviewWindowBuilder::new(
+        &app,
+        label,
+        tauri::WebviewUrl::App(url.into()),
+    )
+    .title("白板 - Tydora")
+    .inner_size(1200.0, 800.0)
+    .min_inner_size(500.0, 400.0)
+    .visible(false)
+    .decorations(false)
+    .resizable(true)
+    .build();
+
+    match window {
+        Ok(_win) => Ok(()),
+        Err(e) => Err(e.to_string()),
+    }
+}
+
 /// 在系统文件管理器中打开文件位置并选中文件
 #[tauri::command]
 fn open_file_location(file_path: String) -> Result<(), String> {
@@ -628,6 +667,7 @@ pub fn run() {
             open_directory,
             open_mindmap_window,
             open_graph_window,
+            open_canvas_window,
             watch_vault,
             unwatch_vault,
             run_markdown_publish,

@@ -1,26 +1,41 @@
-import { useState, useCallback, memo } from 'react';
+import { useEffect, memo } from 'react';
 import { Handle, Position, NodeResizer, type NodeProps } from '@xyflow/react';
+import { useEditor, EditorContent } from '@tiptap/react';
+import StarterKit from '@tiptap/starter-kit';
+import Placeholder from '@tiptap/extension-placeholder';
 import { getCanvasColor } from '../canvas-utils';
+import { useCanvasStore } from '../canvas-store';
 
-function TextNode({ data, selected }: NodeProps) {
-  const [isEditing, setIsEditing] = useState(false);
-  const [text, setText] = useState((data as any)?.text || '');
+function TextNode({ data, selected, id }: NodeProps) {
+  const text = (data as any)?.text || '';
+  const updateNodeData = useCanvasStore((s) => s.updateNodeData);
 
-  const handleDoubleClick = useCallback(() => {
-    setIsEditing(true);
-  }, []);
+  const editor = useEditor({
+    extensions: [
+      StarterKit.configure({
+        heading: { levels: [1, 2, 3, 4, 5, 6] },
+      }),
+      Placeholder.configure({
+        placeholder: '输入内容...',
+      }),
+    ],
+    content: text || '',
+    editorProps: {
+      attributes: {
+        class: 'canvas-text-editor',
+      },
+    },
+    onUpdate: ({ editor: ed }) => {
+      updateNodeData(id as string, { text: ed.getText() });
+    },
+  });
 
-  const handleBlur = useCallback(() => {
-    setIsEditing(false);
-    (data as any).text = text;
-  }, [text, data]);
-
-  const handleKeyDown = useCallback((e: React.KeyboardEvent) => {
-    if (e.key === 'Escape') {
-      setIsEditing(false);
-      (data as any).text = text;
+  // Sync external changes
+  useEffect(() => {
+    if (editor && editor.getText() !== text) {
+      editor.commands.setContent(text || '');
     }
-  }, [text, data]);
+  }, [text, editor]);
 
   const color = getCanvasColor((data as any)?.color);
 
@@ -41,7 +56,6 @@ function TextNode({ data, selected }: NodeProps) {
         background: backgroundColor,
         borderColor: borderColor,
       }}
-      onDoubleClick={handleDoubleClick}
     >
       {/* Node Resizer - only shows when selected */}
       <NodeResizer
@@ -58,19 +72,11 @@ function TextNode({ data, selected }: NodeProps) {
       <Handle type="source" position={Position.Bottom} id="bottom" className="canvas-handle" />
 
       <div className="canvas-node-content">
-        {isEditing ? (
-          <textarea
-            className="canvas-text-edit"
-            value={text}
-            onChange={(e) => setText(e.target.value)}
-            onBlur={handleBlur}
-            onKeyDown={handleKeyDown}
-            autoFocus
-            placeholder="输入 Markdown 内容..."
-          />
+        {editor ? (
+          <EditorContent editor={editor} className="canvas-text-editor-wrapper" />
         ) : (
           <div className="canvas-text-preview">
-            {text || <span className="canvas-placeholder">双击编辑</span>}
+            {text || <span className="canvas-placeholder">输入内容...</span>}
           </div>
         )}
       </div>

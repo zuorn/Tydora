@@ -284,6 +284,101 @@
   font-size: 12px;
 }
 
+/* TipTap IR Mode Editor */
+.canvas-text-editor-wrapper {
+  width: 100%;
+  height: 100%;
+  overflow: auto;
+}
+
+.canvas-text-editor {
+  width: 100%;
+  height: 100%;
+  padding: 12px;
+  font-size: 13px;
+  line-height: 1.6;
+  color: var(--text-primary);
+  outline: none;
+  min-height: 100%;
+}
+
+.canvas-text-editor:focus {
+  outline: none;
+}
+
+/* TipTap content styles */
+.canvas-text-editor h1 {
+  font-size: 1.5em;
+  font-weight: 700;
+  margin: 0.5em 0;
+}
+
+.canvas-text-editor h2 {
+  font-size: 1.3em;
+  font-weight: 600;
+  margin: 0.5em 0;
+}
+
+.canvas-text-editor h3 {
+  font-size: 1.1em;
+  font-weight: 600;
+  margin: 0.5em 0;
+}
+
+.canvas-text-editor p {
+  margin: 0.5em 0;
+}
+
+.canvas-text-editor ul,
+.canvas-text-editor ol {
+  padding-left: 1.5em;
+  margin: 0.5em 0;
+}
+
+.canvas-text-editor li {
+  margin: 0.25em 0;
+}
+
+.canvas-text-editor code {
+  background: var(--bg-tertiary);
+  padding: 2px 4px;
+  border-radius: 3px;
+  font-family: 'SF Mono', 'Consolas', monospace;
+  font-size: 0.9em;
+}
+
+.canvas-text-editor pre {
+  background: var(--bg-tertiary);
+  padding: 8px 12px;
+  border-radius: 4px;
+  overflow-x: auto;
+}
+
+.canvas-text-editor pre code {
+  background: transparent;
+  padding: 0;
+}
+
+.canvas-text-editor blockquote {
+  border-left: 3px solid var(--border);
+  padding-left: 12px;
+  margin: 0.5em 0;
+  color: var(--text-secondary);
+}
+
+.canvas-text-editor strong {
+  font-weight: 600;
+}
+
+.canvas-text-editor em {
+  font-style: italic;
+}
+
+.canvas-text-editor a {
+  color: var(--accent);
+  text-decoration: underline;
+}
+
 /* File Node */
 .canvas-file-node {
   background: var(--bg-primary);
@@ -327,6 +422,43 @@
   white-space: pre-wrap;
   word-break: break-all;
   font-family: 'SF Mono', 'Consolas', 'Monaco', monospace;
+}
+
+/* Note Node */
+.canvas-note-node {
+  background: var(--bg-primary);
+}
+
+.canvas-note-header {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 10px 12px;
+  border-bottom: 1px solid var(--border);
+  background: var(--bg-secondary);
+  font-size: 13px;
+  color: var(--text-primary);
+  font-weight: 500;
+}
+
+.canvas-note-title {
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.canvas-note-content {
+  flex: 1;
+  overflow: auto;
+  padding: 10px 12px;
+}
+
+.canvas-note-preview {
+  font-size: 12px;
+  line-height: 1.6;
+  color: var(--text-secondary);
+  white-space: pre-wrap;
+  word-break: break-word;
 }
 
 /* URL Node */
@@ -390,32 +522,73 @@
   color: var(--text-tertiary);
 }
 
+/* Media Node */
+.canvas-media-node {
+  background: var(--bg-primary);
+  padding: 0;
+}
+
+.canvas-media-image {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+}
+
+.canvas-media-video {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+}
+
+.canvas-media-audio {
+  width: 100%;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  color: var(--text-secondary);
+}
+
+.canvas-audio-player {
+  width: 80%;
+}
+
+.canvas-media-pdf {
+  width: 100%;
+  height: 100%;
+  border: none;
+}
+
+.canvas-media-placeholder {
+  width: 100%;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  color: var(--text-tertiary);
+}
+
 /* Group Node */
 .canvas-group-node {
   background: rgba(128, 128, 128, 0.1);
   border-style: dashed;
 }
 
-/* Override ReactFlow's pointerEvents: 'all' on ALL node wrappers */
-/* This allows right-click drag to pan when clicking on any node */
+/* Normal pointer events - React Flow handles selection */
 .react-flow__node {
-  pointer-events: none !important;
+  pointer-events: all;
 }
 
-/* Restore pointer events on the actual node content for left-click */
-.canvas-node {
-  pointer-events: auto;
-}
-
-/* Restore pointer events on handles for connections */
+/* Restore pointer events on interactive elements */
 .canvas-handle {
   pointer-events: auto;
 }
 
-/* Restore pointer events on interactive elements inside nodes */
-.canvas-node-header,
-.canvas-text-edit,
-.canvas-text-preview {
+.canvas-text-edit {
   pointer-events: auto;
 }
 
@@ -704,4 +877,144 @@
   height: 20px;
   background: var(--border);
   margin: 0 4px;
+}
+
+/* Canvas Settings Modal */
+.canvas-settings-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.5);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+}
+
+.canvas-settings-modal {
+  background: var(--bg-primary);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  width: 90%;
+  max-width: 500px;
+  max-height: 80vh;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+}
+
+.canvas-settings-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 16px 20px;
+  border-bottom: 1px solid var(--border);
+}
+
+.canvas-settings-header h2 {
+  margin: 0;
+  font-size: 16px;
+  font-weight: 600;
+}
+
+.canvas-settings-close {
+  width: 28px;
+  height: 28px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: none;
+  background: transparent;
+  color: var(--text-secondary);
+  cursor: pointer;
+  border-radius: 4px;
+}
+
+.canvas-settings-close:hover {
+  background: var(--bg-tertiary);
+}
+
+.canvas-settings-content {
+  padding: 20px;
+  overflow-y: auto;
+}
+
+.canvas-settings-section {
+  margin-bottom: 24px;
+}
+
+.canvas-settings-section:last-child {
+  margin-bottom: 0;
+}
+
+.canvas-settings-section h3 {
+  margin: 0 0 12px 0;
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--text-primary);
+}
+
+.canvas-settings-group {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.canvas-settings-radio,
+.canvas-settings-toggle {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  cursor: pointer;
+  font-size: 13px;
+}
+
+.canvas-settings-radio input,
+.canvas-settings-toggle input {
+  margin: 0;
+}
+
+.canvas-settings-inline {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 13px;
+  margin-left: 24px;
+}
+
+.canvas-settings-input {
+  width: 100%;
+  padding: 8px 12px;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  background: var(--bg-secondary);
+  color: var(--text-primary);
+  font-size: 13px;
+}
+
+.canvas-settings-input:focus {
+  outline: none;
+  border-color: var(--accent);
+}
+
+.canvas-settings-input-small {
+  width: 60px;
+  padding: 4px 8px;
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  background: var(--bg-secondary);
+  color: var(--text-primary);
+  font-size: 13px;
+  text-align: center;
+}
+
+.canvas-settings-select {
+  padding: 4px 8px;
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  background: var(--bg-secondary);
+  color: var(--text-primary);
+  font-size: 13px;
 }

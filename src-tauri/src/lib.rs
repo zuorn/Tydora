@@ -644,8 +644,21 @@ pub fn run() {
             let encoded_path = &request.uri().path()[1..];
             let path = percent_decode(encoded_path);
             if let Ok(data) = std::fs::read(&path) {
+                // 根据文件扩展名设置 Content-Type
+                let content_type = match path.to_lowercase().as_str() {
+                    p if p.ends_with(".png") => "image/png",
+                    p if p.ends_with(".jpg") || p.ends_with(".jpeg") => "image/jpeg",
+                    p if p.ends_with(".gif") => "image/gif",
+                    p if p.ends_with(".webp") => "image/webp",
+                    p if p.ends_with(".svg") => "image/svg+xml",
+                    p if p.ends_with(".bmp") => "image/bmp",
+                    p if p.ends_with(".ico") => "image/x-icon",
+                    p if p.ends_with(".avif") => "image/avif",
+                    _ => "application/octet-stream",
+                };
                 tauri::http::Response::builder()
                     .status(200)
+                    .header("Content-Type", content_type)
                     .body(data)
                     .unwrap()
             } else {

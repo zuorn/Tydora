@@ -2,7 +2,7 @@ import type { Node, Edge } from '@xyflow/react';
 
 // JSON Canvas Spec types (jsoncanvas.org)
 export type CanvasColor = '1' | '2' | '3' | '4' | '5' | '6' | string;
-export type CanvasNodeType = 'text' | 'file' | 'link' | 'group';
+export type CanvasNodeType = 'text' | 'file' | 'note' | 'media' | 'link' | 'group';
 export type Direction = 'top' | 'right' | 'left' | 'bottom';
 export type MarkerType = 'none' | 'arrow';
 
@@ -186,4 +186,39 @@ export function generateId(): string {
 export function getCanvasColor(color: CanvasColor | undefined): string | undefined {
   if (!color) return undefined;
   return CANVAS_COLORS[color] || color;
+}
+
+// Resolve file path relative to vault path
+export function resolveFilePath(basePath: string, relativePath: string): string {
+  // If already absolute path, return as-is
+  if (relativePath.match(/^[A-Z]:\\/i) || relativePath.startsWith('/')) {
+    return relativePath;
+  }
+
+  // Normalize separators
+  const base = basePath.replace(/\\/g, '/');
+  const rel = relativePath.replace(/\\/g, '/');
+
+  // Handle ../ and ./
+  const baseParts = base.split('/').filter(Boolean);
+  const relParts = rel.split('/');
+
+  for (const part of relParts) {
+    if (part === '..') {
+      baseParts.pop();
+    } else if (part !== '.') {
+      baseParts.push(part);
+    }
+  }
+
+  // Reconstruct path with original separator style
+  const sep = basePath.includes('\\') ? '\\' : '/';
+  let result = baseParts.join(sep);
+
+  // Ensure Windows drive letter format
+  if (result.match(/^[A-Z]:$/i)) {
+    result += sep;
+  }
+
+  return result;
 }

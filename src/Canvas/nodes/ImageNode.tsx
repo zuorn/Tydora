@@ -1,17 +1,39 @@
 import { useState, useEffect, memo } from 'react';
 import { Handle, Position, type NodeProps } from '@xyflow/react';
-import { getCanvasColor } from '../canvas-utils';
+import { convertFileSrc } from '@tauri-apps/api/core';
+import { getCanvasColor, resolveFilePath } from '../canvas-utils';
 
 function ImageNode({ data, selected }: NodeProps) {
   const [imageSrc, setImageSrc] = useState('');
   const filePath = (data as any)?.file || '';
 
+  // Get vault path from localStorage
+  const getVaultPath = (): string => {
+    try {
+      const raw = localStorage.getItem('zmd-vaults');
+      const activeIndex = parseInt(localStorage.getItem('zmd-active-vault') || '-1');
+      if (raw && activeIndex >= 0) {
+        const vaults = JSON.parse(raw);
+        return vaults[activeIndex]?.path || '';
+      }
+    } catch {}
+    return '';
+  };
+
   useEffect(() => {
     if (!filePath) return;
 
-    // Convert file path to local-file:// URI
-    const normalizedPath = filePath.replace(/\\/g, '/');
-    setImageSrc(`local-file://${normalizedPath}`);
+    // Resolve the path - if it's relative, resolve against vault path
+    let resolvedPath = filePath;
+    if (!filePath.match(/^[A-Z]:\\/i) && !filePath.startsWith('/')) {
+      const vaultPath = getVaultPath();
+      if (vaultPath) {
+        resolvedPath = resolveFilePath(vaultPath, filePath);
+      }
+    }
+
+    // Use convertFileSrc from Tauri
+    setImageSrc(convertFileSrc(resolvedPath));
   }, [filePath]);
 
   const color = getCanvasColor((data as any)?.color);

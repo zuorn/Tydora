@@ -6,6 +6,7 @@ import { invoke } from "@tauri-apps/api/core";
 import { ConfirmDialog } from "./ConfirmDialog";
 import { UpdateLinkDialog } from "./UpdateLinkDialog";
 import { LinkIndexService } from "./LinkIndexService";
+import { BookmarksPanel } from "./Bookmarks";
 import "./Sidebar.css";
 
 // ── Types ────────────────────────────────────────────────────────────
@@ -40,6 +41,7 @@ interface SidebarProps {
   refreshKey: number;
   width: number;
   onWidthChange: (width: number) => void;
+  onBookmark: (filePath: string, isDirectory: boolean) => void;
 }
 
 interface ContextMenuItem {
@@ -301,12 +303,14 @@ interface FileActions {
   onCopyPath: () => void;
   onOpenLocation: () => void;
   onNewWindow: () => void;
+  onBookmark: () => void;
 }
 
 function getFileMenuItems(actions: FileActions): ContextMenuItem[] {
   return [
     { label: "打开", onClick: actions.onOpen },
     { label: "在新窗口中打开", onClick: actions.onNewWindow },
+    { label: "收藏", onClick: actions.onBookmark },
     { label: "新建文件", onClick: actions.onNewFile, separator: true },
     { label: "新建文件夹", onClick: actions.onNewFolder },
     { label: "搜索", onClick: actions.onSearch },
@@ -322,6 +326,7 @@ function getFolderMenuItems(actions: FileActions): ContextMenuItem[] {
   return [
     { label: "新建文件", onClick: actions.onNewFile },
     { label: "新建文件夹", onClick: actions.onNewFolder },
+    { label: "收藏", onClick: actions.onBookmark },
     { label: "搜索", onClick: actions.onSearch },
     { label: "重命名", onClick: actions.onRename, separator: true },
     { label: "删除", onClick: actions.onDelete, danger: true, separator: true },
@@ -488,6 +493,7 @@ function TreeNodeComp({
   onStartEdit,
   onFinishEdit,
   onNewWindow,
+  onBookmark,
 }: {
   node: TreeNode;
   depth: number;
@@ -502,6 +508,7 @@ function TreeNodeComp({
   onStartEdit: (path: string) => void;
   onFinishEdit: (path: string, newName: string) => void;
   onNewWindow: (filePath: string) => void;
+  onBookmark: (filePath: string, isDirectory: boolean) => void;
 }) {
   const [ctxMenu, setCtxMenu] = useState<{ x: number; y: number } | null>(null);
   const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false);
@@ -591,6 +598,7 @@ function TreeNodeComp({
     onDelete: handleDelete,
     onCopyPath: handleCopyPath,
     onOpenLocation: handleOpenLocation,
+    onBookmark: () => onBookmark(node.path, node.isDirectory),
   };
 
   const menuItems = node.isDirectory
@@ -671,6 +679,7 @@ function TreeNodeComp({
               onStartEdit={onStartEdit}
               onFinishEdit={onFinishEdit}
               onNewWindow={onNewWindow}
+              onBookmark={onBookmark}
             />
           ))}
         </div>
@@ -709,6 +718,7 @@ function FileTree({
   onNewWindow,
   onScrollToTop,
   hidden,
+  onBookmark,
 }: {
   rootPath: string;
   activePath: string | null;
@@ -717,6 +727,7 @@ function FileTree({
   onNewWindow: (filePath: string) => void;
   onScrollToTop?: () => void;
   hidden?: boolean;
+  onBookmark: (filePath: string, isDirectory: boolean) => void;
 }) {
   const [rootNodes, setRootNodes] = useState<TreeNode[]>([]);
   const [, forceUpdate] = useState(0);
@@ -977,6 +988,7 @@ function FileTree({
     onDelete: () => {},
     onCopyPath: handleCopyRootPath,
     onOpenLocation: handleOpenRootLocation,
+    onBookmark: () => {},
   };
 
   const handleBlankContextMenu = useCallback((e: React.MouseEvent) => {
@@ -1060,6 +1072,7 @@ function FileTree({
             onStartEdit={handleStartEdit}
             onFinishEdit={handleFinishEdit}
             onNewWindow={onNewWindow}
+            onBookmark={onBookmark}
           />
         ))}
 
@@ -1358,6 +1371,7 @@ export default function Sidebar({
   refreshKey,
   width,
   onWidthChange,
+  onBookmark,
 }: SidebarProps) {
   const activeVault = activeVaultIndex >= 0 ? vaults[activeVaultIndex] : null;
   const [isResizing, setIsResizing] = useState(false);
@@ -1494,6 +1508,7 @@ export default function Sidebar({
             onSelect={handleSelectFile}
             refreshKey={refreshKey}
             onNewWindow={onNewWindow}
+            onBookmark={onBookmark}
           />
         ) : (
           <div className="sidebar-tree">
@@ -1529,9 +1544,12 @@ export default function Sidebar({
       )}
 
       {activeTab === "bookmarks" && (
-        <div className="sidebar-tree">
-          <div className="tree-empty">书签功能即将推出</div>
-        </div>
+        <BookmarksPanel
+          vaultPath={activeVault?.path ?? null}
+          vaults={vaults}
+          onSelectFile={handleSelectFile}
+          onNewWindow={onNewWindow}
+        />
       )}
 
       <VaultSwitcher

@@ -20,6 +20,7 @@ import { WikiLinkAutocomplete } from "./WikiLinkAutocomplete";
 import { GraphView } from "./GraphView";
 import { useVaultWatcher } from "./useVaultWatcher";
 import PublishPanel from "./PublishPanel";
+import { BookmarkDialog, BookmarksService } from "./Bookmarks";
 import "./App.css";
 import "./FilePreview.css";
 import "./WikiLink.css";
@@ -95,6 +96,19 @@ function App({ initialFilePath }: { initialFilePath?: string | null }) {
   const [wordCount, setWordCount] = useState(0);
   const [isCurrentFileMarkdown, setIsCurrentFileMarkdown] = useState(true);
   const codeMirrorRef = useRef<CodeMirrorEditorHandle>(null);
+
+  // 书签弹窗状态
+  const [bookmarkDialogState, setBookmarkDialogState] = useState<{
+    isOpen: boolean;
+    filePath: string;
+    fileName: string;
+    isDirectory: boolean;
+  }>({ isOpen: false, filePath: "", fileName: "", isDirectory: false });
+
+  const handleShowBookmarkDialog = useCallback((filePath: string, isDirectory: boolean) => {
+    const name = filePath.split(/[/\\]/).pop() || filePath;
+    setBookmarkDialogState({ isOpen: true, filePath, fileName: name, isDirectory });
+  }, []);
 
   // 应用编辑器字体和字号设置
   useEffect(() => {
@@ -1117,6 +1131,7 @@ function App({ initialFilePath }: { initialFilePath?: string | null }) {
           refreshKey={treeRefreshKey}
           width={sidebarWidth}
           onWidthChange={setSidebarWidth}
+          onBookmark={handleShowBookmarkDialog}
         />
 
         {/* 编辑区域 */}
@@ -1312,6 +1327,25 @@ function App({ initialFilePath }: { initialFilePath?: string | null }) {
         cancelText="不保存"
         onConfirm={handleSaveConfirm}
         onCancel={handleSaveCancel}
+      />
+
+      <BookmarkDialog
+        isOpen={bookmarkDialogState.isOpen}
+        filePath={bookmarkDialogState.filePath}
+        fileName={bookmarkDialogState.fileName}
+        isDirectory={bookmarkDialogState.isDirectory}
+        vaultPath={activeVaultIndex >= 0 ? vaults[activeVaultIndex]?.path ?? "" : ""}
+        existingGroups={activeVaultIndex >= 0 ? BookmarksService.getGroupsForVault(vaults[activeVaultIndex]?.path ?? "") : []}
+        onSave={(title, groupId) => {
+          if (activeVaultIndex >= 0) {
+            const vaultPath = vaults[activeVaultIndex]?.path ?? "";
+            if (bookmarkDialogState.isOpen) {
+              BookmarksService.addBookmark(vaultPath, bookmarkDialogState.filePath, title, groupId);
+            }
+          }
+          setBookmarkDialogState((s) => ({ ...s, isOpen: false }));
+        }}
+        onCancel={() => setBookmarkDialogState((s) => ({ ...s, isOpen: false }))}
       />
 
       {/* WikiLink 自动补全 */}

@@ -14,11 +14,13 @@ export default function CanvasToolbar() {
     return { x: centerX - 200, y: centerY - 100 };
   }, [getViewport]);
 
+  // Text card
   const handleAddText = useCallback(() => {
     addNode('text', getCenterPosition());
   }, [addNode, getCenterPosition]);
 
-  const handleAddFile = useCallback(async () => {
+  // Note card - creates noteNode type
+  const handleAddNote = useCallback(async () => {
     try {
       const selected = await open({
         filters: [{ name: 'Markdown', extensions: ['md', 'markdown'] }],
@@ -27,25 +29,28 @@ export default function CanvasToolbar() {
       if (selected) {
         const filePath = selected as string;
         const fileName = filePath.split(/[/\\]/).pop() || '';
-        addNode('file', getCenterPosition(), { file: filePath, label: fileName });
+        addNode('note', getCenterPosition(), { file: filePath, label: fileName });
       }
     } catch (err) {
-      console.error('Failed to open file:', err);
+      console.error('Failed to open note:', err);
     }
   }, [addNode, getCenterPosition]);
 
-  const handleAddImage = useCallback(async () => {
+  // Media card - creates mediaNode type
+  const handleAddMedia = useCallback(async () => {
     try {
       const selected = await open({
-        filters: [{ name: 'Images', extensions: ['png', 'jpg', 'jpeg', 'gif', 'webp', 'svg'] }],
+        filters: [
+          { name: 'Media', extensions: ['png', 'jpg', 'jpeg', 'gif', 'webp', 'svg', 'mp4', 'webm', 'ogg', 'mp3', 'wav', 'pdf'] }
+        ],
         multiple: false,
       });
       if (selected) {
         const filePath = selected as string;
-        addNode('text', getCenterPosition(), { text: `![image](${filePath})` });
+        addNode('media', getCenterPosition(), { file: filePath });
       }
     } catch (err) {
-      console.error('Failed to open image:', err);
+      console.error('Failed to open media:', err);
     }
   }, [addNode, getCenterPosition]);
 
@@ -53,7 +58,7 @@ export default function CanvasToolbar() {
     <div className="canvas-toolbar">
       <div className="canvas-toolbar-tooltip">添加卡片（点击或拖动）</div>
 
-      {/* Text card - Obsidian style */}
+      {/* Text card */}
       <button className="canvas-toolbar-btn" title="文本卡片" onClick={handleAddText}>
         <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
           <rect x="3" y="3" width="18" height="18" rx="2" />
@@ -63,16 +68,18 @@ export default function CanvasToolbar() {
         </svg>
       </button>
 
-      {/* File card - Obsidian style */}
-      <button className="canvas-toolbar-btn" title="文件卡片" onClick={handleAddFile}>
+      {/* Note card */}
+      <button className="canvas-toolbar-btn" title="笔记卡片" onClick={handleAddNote}>
         <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
           <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
           <polyline points="14 2 14 8 20 8" />
+          <line x1="16" y1="13" x2="8" y2="13" />
+          <line x1="16" y1="17" x2="8" y2="17" />
         </svg>
       </button>
 
-      {/* Image card - Obsidian style */}
-      <button className="canvas-toolbar-btn" title="图片卡片" onClick={handleAddImage}>
+      {/* Media card */}
+      <button className="canvas-toolbar-btn" title="多媒体卡片" onClick={handleAddMedia}>
         <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
           <rect x="3" y="3" width="18" height="18" rx="2" ry="2" />
           <circle cx="8.5" cy="8.5" r="1.5" />

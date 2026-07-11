@@ -1,14 +1,33 @@
 import { useState, useEffect, memo } from 'react';
 import { Handle, Position, type NodeProps } from '@xyflow/react';
 import { emit } from '@tauri-apps/api/event';
-import { getCanvasColor } from '../canvas-utils';
+import { readTextFile } from '@tauri-apps/plugin-fs';
+import { convertFileSrc } from '@tauri-apps/api/core';
+import { getCanvasColor, resolveFilePath } from '../canvas-utils';
+
+const IMAGE_EXTENSIONS = new Set(['png', 'jpg', 'jpeg', 'gif', 'webp', 'bmp', 'svg', 'avif', 'ico']);
 
 function FileNode({ data, selected }: NodeProps) {
   const [content, setContent] = useState('');
   const [fileName, setFileName] = useState('');
+  const [isImage, setIsImage] = useState(false);
+  const [imageSrc, setImageSrc] = useState('');
 
   const filePath = (data as any)?.file || '';
   const subpath = (data as any)?.subpath || '';
+
+  // Get vault path from localStorage
+  const getVaultPath = (): string => {
+    try {
+      const raw = localStorage.getItem('zmd-vaults');
+      const activeIndex = parseInt(localStorage.getItem('zmd-active-vault') || '-1');
+      if (raw && activeIndex >= 0) {
+        const vaults = JSON.parse(raw);
+        return vaults[activeIndex]?.path || '';
+      }
+    } catch {}
+    return '';
+  };
 
   useEffect(() => {
     if (!filePath) return;
@@ -17,14 +36,33 @@ function FileNode({ data, selected }: NodeProps) {
     const name = filePath.split(/[/\\]/).pop() || filePath;
     setFileName(name);
 
-    // Try to load file content for preview
+    // Check if it's an image file
+    const ext = name.split('.').pop()?.toLowerCase() || '';
+    const isImageFile = IMAGE_EXTENSIONS.has(ext);
+    setIsImage(isImageFile);
+
     const loadContent = async () => {
       try {
-        const { readTextFile } = await import('@tauri-apps/plugin-fs');
-        const text = await readTextFile(filePath);
-        // Show first 500 chars as preview
-        setContent(text.slice(0, 500));
-      } catch {
+        // Resolve the path - if it's relative, resolve against vault path
+        let resolvedPath = filePath;
+        if (!filePath.match(/^[A-Z]:\\/i) && !filePath.startsWith('/')) {
+          const vaultPath = getVaultPath();
+          if (vaultPath) {
+            resolvedPath = resolveFilePath(vaultPath, filePath);
+          }
+        }
+
+        if (isImageFile) {
+          // For images, use convertFileSrc from Tauri
+          setImageSrc(convertFileSrc(resolvedPath));
+          setContent('');
+        } else {
+          // For text files, read content
+          const text = await readTextFile(resolvedPath);
+          setContent(text.slice(0, 500));
+        }
+      } catch (err) {
+        console.error('Failed to load file:', err);
         setContent('无法加载文件内容');
       }
     };
@@ -42,7 +80,7 @@ function FileNode({ data, selected }: NodeProps) {
 
   // Calculate background: light tint of the color, or default
   const backgroundColor = color
-    ? `${color}15` // 15 = ~8% opacity in hex
+    ? `${color}15`
     : 'var(--bg-primary)';
 
   // Calculate border color: use node color if set, otherwise accent when selected
@@ -56,6 +94,7 @@ function FileNode({ data, selected }: NodeProps) {
         height: '100%',
         background: backgroundColor,
         borderColor: borderColor,
+        overflow: 'hidden',
       }}
     >
       <Handle type="target" position={Position.Top} id="top" className="canvas-handle" />
@@ -63,19 +102,31 @@ function FileNode({ data, selected }: NodeProps) {
       <Handle type="source" position={Position.Right} id="right" className="canvas-handle" />
       <Handle type="source" position={Position.Bottom} id="bottom" className="canvas-handle" />
 
-      <div className="canvas-node-header" onClick={handleClick} style={{ cursor: 'pointer' }}>
-        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-          <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
-          <polyline points="14 2 14 8 20 8" />
-        </svg>
-        <span className="canvas-file-name" title={filePath}>
-          {fileName || '未选择文件'}
-        </span>
-        {subpath && <span className="canvas-file-subpath">{subpath}</span>}
-      </div>
+      {/* Only show header for non-image files */}
+      {!isImage && (
+        <div className="canvas-node-header" onClick={handleClick} style={{ cursor: 'pointer' }}>
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+            <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
+            <polyline points="14 2 14 8 20 8" />
+          </svg>
+          <span className="canvas-file-name" title={filePath}>
+            {fileName || '未选择文件'}
+          </span>
+          {subpath && <span className="canvas-file-subpath">{subpath}</span>}
+        </div>
+      )}
 
       <div className="canvas-node-content canvas-file-content">
-        {content ? (
+        {isImage && imageSrc ? (
+          <img
+            src={imageSrc}
+            alt={fileName}
+            className="canvas-image-display"
+            onError={(e) => {
+              (e.target as HTMLImageElement).style.display = 'none';
+            }}
+          />
+        ) : content ? (
           <pre className="canvas-file-preview">{content}</pre>
         ) : (
           <span className="canvas-placeholder">点击选择文件</span>

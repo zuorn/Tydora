@@ -13,6 +13,8 @@ import '@xyflow/react/dist/style.css';
 
 import TextNode from './nodes/TextNode';
 import FileNode from './nodes/FileNode';
+import NoteNode from './nodes/NoteNode';
+import MediaNode from './nodes/MediaNode';
 import UrlNode from './nodes/UrlNode';
 import ImageNode from './nodes/ImageNode';
 import GroupNode from './nodes/GroupNode';
@@ -23,11 +25,14 @@ import NodeToolbar from './NodeToolbar';
 import AlignmentToolbar from './AlignmentToolbar';
 import UndoRedoPanel from './UndoRedoPanel';
 import { useCanvasStore, scheduleAutoSave } from './canvas-store';
+import { saveImageToLocal, loadImageSettings, type ImageSettings } from '../ImageManager';
 
 // Register custom node types
 const nodeTypes = {
   textNode: TextNode,
   fileNode: FileNode,
+  noteNode: NoteNode,
+  mediaNode: MediaNode,
   urlNode: UrlNode,
   imageNode: ImageNode,
   groupNode: GroupNode,
@@ -67,6 +72,7 @@ export default function CanvasView({ onNodeClick }: CanvasViewProps) {
   const redo = useCanvasStore((s) => s.redo);
   const copySelected = useCanvasStore((s) => s.copySelected);
   const paste = useCanvasStore((s) => s.paste);
+  const vaultPath = useCanvasStore((s) => s.vaultPath);
 
   // Context menu state
   const [contextMenu, setContextMenu] = useState<{ x: number; y: number } | null>(null);
@@ -184,6 +190,12 @@ export default function CanvasView({ onNodeClick }: CanvasViewProps) {
   // Keyboard shortcuts
   useEffect(() => {
     const handler = (e: KeyboardEvent) => {
+      // Don't handle shortcuts when typing in input fields
+      const target = e.target as HTMLElement;
+      if (target.tagName === 'INPUT' || target.tagName === 'TEXTAREA' || target.isContentEditable) {
+        return;
+      }
+
       // Undo: Ctrl+Z
       if ((e.ctrlKey || e.metaKey) && e.key === 'z' && !e.shiftKey) {
         e.preventDefault();
@@ -196,7 +208,6 @@ export default function CanvasView({ onNodeClick }: CanvasViewProps) {
       }
       // Copy: Ctrl+C
       if ((e.ctrlKey || e.metaKey) && e.key === 'c' && !e.shiftKey) {
-        // Get selected node IDs from ReactFlow
         const selectedNodes = nodes.filter(n => n.selected);
         if (selectedNodes.length > 0) {
           copySelected(selectedNodes.map(n => n.id));
@@ -207,10 +218,99 @@ export default function CanvasView({ onNodeClick }: CanvasViewProps) {
         e.preventDefault();
         paste();
       }
+      // Select All: Ctrl+A
+      if ((e.ctrlKey || e.metaKey) && e.key === 'a') {
+        e.preventDefault();
+        const allNodeIds = nodes.map(n => n.id);
+        setSelectedNodeIds(allNodeIds);
+        // Update node selection state
+        const updatedNodes = nodes.map(n => ({ ...n, selected: true }));
+        useCanvasStore.getState().setNodes(updatedNodes);
+      }
+      // Escape: Deselect all
+      if (e.key === 'Escape') {
+        setSelectedNodeId(null);
+        setToolbarPosition(null);
+        setShowAlignmentToolbar(false);
+        setSelectedNodeIds([]);
+        // Clear node selection
+        const updatedNodes = nodes.map(n => ({ ...n, selected: false }));
+        useCanvasStore.getState().setNodes(updatedNodes);
+      }
+      // Arrow keys: Move selected nodes
+      if (['ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight'].includes(e.key)) {
+        const selectedNodes = nodes.filter(n => n.selected);
+        if (selectedNodes.length > 0) {
+          e.preventDefault();
+          const step = e.shiftKey ? 1 : 15;
+          let dx = 0, dy = 0;
+          switch (e.key) {
+            case 'ArrowUp': dy = -step; break;
+            case 'ArrowDown': dy = step; break;
+            case 'ArrowLeft': dx = -step; break;
+            case 'ArrowRight': dx = step; break;
+          }
+          const updatedNodes = nodes.map(n => {
+            if (n.selected) {
+              return {
+                ...n,
+                position: {
+                  x: n.position.x + dx,
+                  y: n.position.y + dy,
+                },
+              };
+            }
+            return n;
+          });
+          useCanvasStore.getState().setNodes(updatedNodes);
+        }
+      }
     };
     window.addEventListener('keydown', handler);
     return () => window.removeEventListener('keydown', handler);
   }, [undo, redo, copySelected, paste, nodes]);
+
+  // Handle image paste
+  const handleImagePaste = useCallback(async (file: File) => {
+    try {
+      const settings: ImageSettings = loadImageSettings();
+      const result = await saveImageToLocal(file, settings, null, vaultPath);
+
+      // Create image node at the center of the viewport
+      const viewport = getViewport();
+      const centerX = (window.innerWidth / 2 - viewport.x) / viewport.zoom;
+      const centerY = (window.innerHeight / 2 - viewport.y) / viewport.zoom;
+
+      addNode('text', { x: centerX - 200, y: centerY - 100 }, {
+        text: `![${file.name}](${result.savedPath})`,
+      });
+    } catch (err) {
+      console.error('Failed to save pasted image:', err);
+      alert('保存图片失败: ' + (err as Error).message);
+    }
+  }, [addNode, getViewport, vaultPath]);
+
+  // Paste event listener for images
+  useEffect(() => {
+    const handler = (e: ClipboardEvent) => {
+      const items = e.clipboardData?.items;
+      if (!items) return;
+
+      for (const item of items) {
+        if (item.type.startsWith('image/')) {
+          e.preventDefault();
+          const file = item.getAsFile();
+          if (file && file.size > 0) {
+            handleImagePaste(file);
+          }
+          return;
+        }
+      }
+    };
+
+    window.addEventListener('paste', handler);
+    return () => window.removeEventListener('paste', handler);
+  }, [handleImagePaste]);
 
   // Auto-save on changes
   useEffect(() => {
@@ -257,6 +357,8 @@ export default function CanvasView({ onNodeClick }: CanvasViewProps) {
           deleteKeyCode="Delete"
           selectionOnDrag
           panOnDrag={[1, 2]} // Middle and right click
+          panActivationKeyCode="Space"
+          paneClickDistance={5}
         >
           <Controls position="top-right" />
           <MiniMap

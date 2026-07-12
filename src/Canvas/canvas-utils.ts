@@ -2,7 +2,7 @@ import type { Node, Edge } from '@xyflow/react';
 
 // JSON Canvas Spec types (jsoncanvas.org)
 export type CanvasColor = '1' | '2' | '3' | '4' | '5' | '6' | string;
-export type CanvasNodeType = 'text' | 'file' | 'note' | 'media' | 'link' | 'group';
+export type CanvasNodeType = 'text' | 'file' | 'note' | 'media' | 'canvas' | 'link' | 'group';
 export type Direction = 'top' | 'right' | 'left' | 'bottom';
 export type MarkerType = 'none' | 'arrow';
 
@@ -56,10 +56,20 @@ export const CANVAS_COLORS: Record<string, string> = {
 };
 
 // Convert JSON Canvas to React Flow nodes
-function jsonCanvasNodeTypeToReactFlow(type: CanvasNodeType): string {
+function jsonCanvasNodeTypeToReactFlow(type: CanvasNodeType, nodeData?: any): string {
   switch (type) {
     case 'text': return 'textNode';
-    case 'file': return 'fileNode';
+    case 'file':
+      // Check if the file is a markdown file - render as noteNode
+      if (nodeData?.file && /\.(md|markdown)$/i.test(nodeData.file)) {
+        return 'noteNode';
+      }
+      // Check if the file is a canvas file - render as canvasNode
+      if (nodeData?.file && /\.canvas$/i.test(nodeData.file)) {
+        return 'canvasNode';
+      }
+      return 'fileNode';
+    case 'canvas': return 'canvasNode';
     case 'link': return 'urlNode';
     case 'group': return 'groupNode';
     default: return 'textNode';
@@ -72,7 +82,7 @@ export function jsonCanvasToReactFlow(canvas: JsonCanvasFile): {
 } {
   const nodes: Node[] = (canvas.nodes || []).map((n) => ({
     id: n.id,
-    type: jsonCanvasNodeTypeToReactFlow(n.type),
+    type: jsonCanvasNodeTypeToReactFlow(n.type, n),
     position: { x: n.x, y: n.y },
     data: {
       label: n.label || '',
@@ -110,10 +120,32 @@ export function jsonCanvasToReactFlow(canvas: JsonCanvasFile): {
   return { nodes, edges };
 }
 
+// Convert absolute path to relative path (relative to vault)
+function toRelativePath(absolutePath: string, vaultPath: string): string {
+  if (!vaultPath || !absolutePath) return absolutePath;
+  
+  // Normalize paths
+  const normalizedAbsolute = absolutePath.replace(/\\/g, '/');
+  const normalizedVault = vaultPath.replace(/\\/g, '/');
+  
+  // Check if the path starts with vault path
+  if (normalizedAbsolute.startsWith(normalizedVault)) {
+    let relative = normalizedAbsolute.slice(normalizedVault.length);
+    if (relative.startsWith('/')) {
+      relative = relative.slice(1);
+    }
+    return relative;
+  }
+  
+  // If not under vault, return as-is
+  return absolutePath;
+}
+
 // Convert React Flow nodes/edges back to JSON Canvas
 export function reactFlowToJsonCanvas(
   nodes: Node[],
-  edges: Edge[]
+  edges: Edge[],
+  vaultPath?: string
 ): JsonCanvasFile {
   const canvasNodes: CanvasNodeData[] = nodes
     .filter(n => n.type !== 'groupNode' || true) // Include all node types
@@ -134,7 +166,11 @@ export function reactFlowToJsonCanvas(
         case 'text':
           return { ...base, text: data?.text || '' };
         case 'file':
-          return { ...base, file: data?.file || '', subpath: data?.subpath || undefined };
+          return { ...base, file: toRelativePath(data?.file || '', vaultPath || ''), subpath: data?.subpath || undefined };
+        case 'note':
+          return { ...base, file: toRelativePath(data?.file || '', vaultPath || ''), label: data?.label || undefined };
+        case 'media':
+          return { ...base, file: toRelativePath(data?.file || '', vaultPath || '') };
         case 'link':
           return { ...base, url: data?.url || '' };
         case 'group':
@@ -171,6 +207,9 @@ function reactFlowTypeToCanvasType(type: string): CanvasNodeType {
   switch (type) {
     case 'textNode': return 'text';
     case 'fileNode': return 'file';
+    case 'noteNode': return 'file'; // Save as 'file' for Obsidian compatibility
+    case 'mediaNode': return 'file'; // Save as 'file' for Obsidian compatibility
+    case 'canvasNode': return 'file'; // Save as 'file' for Obsidian compatibility
     case 'urlNode': return 'link';
     case 'groupNode': return 'group';
     default: return 'text';

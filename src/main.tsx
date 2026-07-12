@@ -1,8 +1,8 @@
 import ReactDOM from "react-dom/client";
 import App from "./App";
 import Settings from "./Settings";
-import MindmapWindow from "./MindmapWindow";
-import GraphWindow from "./GraphWindow";
+import { MindmapWindow } from "./mindmap";
+import { GraphWindow } from "./graph";
 import CanvasWindow from "./Canvas/CanvasWindow";
 import { ThemeProvider } from "./themes";
 import "./themes.css";

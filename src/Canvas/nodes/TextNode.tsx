@@ -1,4 +1,4 @@
-import { useEffect, memo } from 'react';
+import { useState, useEffect, useCallback, memo } from 'react';
 import { Handle, Position, NodeResizer, type NodeProps } from '@xyflow/react';
 import { useEditor, EditorContent } from '@tiptap/react';
 import StarterKit from '@tiptap/starter-kit';
@@ -9,6 +9,10 @@ import { useCanvasStore } from '../canvas-store';
 function TextNode({ data, selected, id }: NodeProps) {
   const text = (data as any)?.text || '';
   const updateNodeData = useCanvasStore((s) => s.updateNodeData);
+  const [isHovered, setIsHovered] = useState(false);
+
+  const handleMouseEnter = useCallback(() => setIsHovered(true), []);
+  const handleMouseLeave = useCallback(() => setIsHovered(false), []);
 
   const editor = useEditor({
     extensions: [
@@ -56,14 +60,18 @@ function TextNode({ data, selected, id }: NodeProps) {
         background: backgroundColor,
         borderColor: borderColor,
       }}
+      onMouseEnter={handleMouseEnter}
+      onMouseLeave={handleMouseLeave}
     >
-      {/* Node Resizer - only shows when selected */}
+      {/* Node Resizer - shows on hover or select */}
       <NodeResizer
         color={color || 'var(--accent)'}
-        isVisible={selected}
+        isVisible={selected || isHovered}
         minWidth={100}
         minHeight={60}
         handleClassName="canvas-resize-handle"
+        lineClassName="canvas-resize-line"
+        autoScale={false}
       />
 
       <Handle type="target" position={Position.Top} id="top" className="canvas-handle" />

@@ -1,12 +1,20 @@
-import { useState, useEffect, memo } from 'react';
+import { useState, useEffect, useCallback, memo } from 'react';
 import { Handle, Position, NodeResizer, type NodeProps } from '@xyflow/react';
+import { useEditor, EditorContent } from '@tiptap/react';
+import StarterKit from '@tiptap/starter-kit';
+import { Markdown } from 'tiptap-markdown';
 import { readTextFile } from '@tauri-apps/plugin-fs';
 import { emit } from '@tauri-apps/api/event';
 import { getCanvasColor, resolveFilePath } from '../canvas-utils';
 
 function NoteNode({ data, selected }: NodeProps) {
-  const [content, setContent] = useState('');
   const [title, setTitle] = useState('');
+  const [isLoading, setIsLoading] = useState(true);
+  const [initialContent, setInitialContent] = useState('');
+  const [isHovered, setIsHovered] = useState(false);
+
+  const handleMouseEnter = useCallback(() => setIsHovered(true), []);
+  const handleMouseLeave = useCallback(() => setIsHovered(false), []);
 
   const filePath = (data as any)?.file || '';
 
@@ -23,6 +31,7 @@ function NoteNode({ data, selected }: NodeProps) {
     return '';
   };
 
+  // Load content first
   useEffect(() => {
     if (!filePath) return;
 
@@ -31,6 +40,7 @@ function NoteNode({ data, selected }: NodeProps) {
     setTitle(name.replace(/\.(md|markdown)$/i, ''));
 
     const loadContent = async () => {
+      setIsLoading(true);
       try {
         // Resolve the path
         let resolvedPath = filePath;
@@ -42,22 +52,56 @@ function NoteNode({ data, selected }: NodeProps) {
         }
 
         const text = await readTextFile(resolvedPath);
-        // Get first 300 chars as preview
-        setContent(text.slice(0, 300));
+        setInitialContent(text || '');
       } catch (err) {
         console.error('Failed to load note:', err);
-        setContent('无法加载笔记内容');
+        setInitialContent('<p>无法加载笔记内容</p>');
       }
+      setIsLoading(false);
     };
 
     loadContent();
   }, [filePath]);
+
+  // Create editor with initial content
+  const editor = useEditor({
+    extensions: [
+      StarterKit.configure({
+        heading: { levels: [1, 2, 3, 4, 5, 6] },
+      }),
+      Markdown.configure({
+        html: true,
+        breaks: true,
+        transformPastedText: true,
+        transformCopiedText: true,
+      }),
+    ],
+    content: initialContent,
+    editable: false,
+    editorProps: {
+      attributes: {
+        class: 'canvas-note-editor',
+      },
+    },
+  });
+
+  // Update editor when content changes
+  useEffect(() => {
+    if (editor && initialContent && !editor.isDestroyed) {
+      editor.commands.setContent(initialContent);
+    }
+  }, [initialContent, editor]);
 
   const handleClick = () => {
     if (filePath) {
       emit('open-file', { path: filePath });
     }
   };
+
+  // Handle scroll inside note content - prevent canvas zoom
+  const handleWheel = useCallback((e: React.WheelEvent) => {
+    e.stopPropagation();
+  }, []);
 
   const color = getCanvasColor((data as any)?.color);
 
@@ -75,15 +119,19 @@ function NoteNode({ data, selected }: NodeProps) {
         height: '100%',
         background: backgroundColor,
         borderColor: borderColor,
-        overflow: 'hidden',
+        overflow: 'visible',
       }}
+      onMouseEnter={handleMouseEnter}
+      onMouseLeave={handleMouseLeave}
     >
       <NodeResizer
         color={color || 'var(--accent)'}
-        isVisible={selected}
+        isVisible={selected || isHovered}
         minWidth={150}
         minHeight={150}
         handleClassName="canvas-resize-handle"
+        lineClassName="canvas-resize-line"
+        autoScale={false}
       />
 
       <Handle type="target" position={Position.Top} id="top" className="canvas-handle" />
@@ -101,9 +149,11 @@ function NoteNode({ data, selected }: NodeProps) {
         <span className="canvas-note-title">{title}</span>
       </div>
 
-      <div className="canvas-note-content">
-        {content ? (
-          <div className="canvas-note-preview">{content}</div>
+      <div className="canvas-note-content no-wheel" onWheel={handleWheel}>
+        {isLoading ? (
+          <span className="canvas-placeholder">加载中...</span>
+        ) : editor ? (
+          <EditorContent editor={editor} className="canvas-note-editor-wrapper" />
         ) : (
           <span className="canvas-placeholder">加载中...</span>
         )}

@@ -430,5 +430,70 @@ src/
 ├── CommandPalette.tsx         # 命令面板
 ├── QuickOpen.tsx              # 快速打开文件
 ├── Updater.ts                 # 自动更新（检查/下载/安装/重启）
-└── useVaultWatcher.ts         # 仓库文件监听 Hook
+├── useVaultWatcher.ts         # 仓库文件监听 Hook
+└── Canvas/                    # 白板功能
+    ├── CanvasView.tsx          # 主画布组件（React Flow）
+    ├── CanvasWindow.tsx        # 独立窗口容器
+    ├── CanvasToolbar.tsx       # 顶部工具栏
+    ├── canvas-store.ts         # Zustand 状态管理
+    ├── canvas-utils.ts         # JSON Canvas ↔ React Flow 转换
+    ├── canvas-settings.ts      # 白板设置
+    ├── CanvasSettings.tsx      # 设置界面
+    ├── NotePicker.tsx          # 笔记选择器
+    ├── MediaPicker.tsx         # 媒体文件选择器
+    ├── AlignmentGuides.tsx     # 对齐参考线
+    ├── canvas.css              # 白板样式
+    ├── nodes/                  # 节点组件
+    │   ├── TextNode.tsx        # 文本节点（TipTap IR 模式）
+    │   ├── FileNode.tsx        # 文件引用节点
+    │   ├── NoteNode.tsx        # 笔记卡片（渲染 Markdown）
+    │   ├── MediaNode.tsx       # 多媒体节点
+    │   ├── CanvasNode.tsx      # 白板嵌入节点
+    │   ├── UrlNode.tsx         # URL 链接节点
+    │   ├── ImageNode.tsx       # 图片节点
+    │   └── GroupNode.tsx       # 分组节点
+    └── edges/
+        └── CanvasEdge.tsx      # 自定义边（带箭头+标签）
 ```
+
+## 重要开发规则
+
+### 1. 文件路径必须使用相对路径
+
+**规则**：在白板（Canvas）功能中，所有文件路径必须使用相对路径（相对于 Vault 根目录），不能使用绝对路径。
+
+**原因**：
+- 绝对路径在不同机器上无法使用
+- 移动画布文件后路径会失效
+- 需要与 Obsidian 保持兼容
+
+**实现方式**：
+```typescript
+// 保存时：转换为相对路径
+function toRelativePath(absolutePath: string, vaultPath: string): string {
+  if (!vaultPath || !absolutePath) return absolutePath;
+  const normalizedAbsolute = absolutePath.replace(/\\/g, '/');
+  const normalizedVault = vaultPath.replace(/\\/g, '/');
+  if (normalizedAbsolute.startsWith(normalizedVault)) {
+    let relative = normalizedAbsolute.slice(normalizedVault.length);
+    if (relative.startsWith('/')) relative = relative.slice(1);
+    return relative;
+  }
+  return absolutePath;
+}
+
+// 加载时：转换为绝对路径
+function resolveFilePath(basePath: string, relativePath: string): string {
+  // 将相对路径解析为绝对路径
+}
+```
+
+**使用场景**：
+- 插入笔记卡片（.md 文件）
+- 插入媒体文件（图片、视频、音频、PDF）
+- 插入白板文件（.canvas）
+- 粘贴图片到白板
+
+### 2. 程序化修改编辑器内容后必须同步 React 状态
+
+（原有规则保持不变）

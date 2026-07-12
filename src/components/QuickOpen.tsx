@@ -1,16 +1,17 @@
 import { useState, useEffect, useRef, useCallback, useMemo } from "react";
 import { readDir } from "@tauri-apps/plugin-fs";
-import { VaultInfo } from "./Sidebar";
+import { VaultInfo } from "../Sidebar";
 
 interface QuickOpenProps {
   vault: VaultInfo | null;
   recentFiles: string[];
   currentFilePath: string | null;
+  files?: FileItem[];  // Optional: external file list
   onSelect: (path: string) => void;
   onClose: () => void;
 }
 
-interface FileItem {
+export interface FileItem {
   name: string;
   path: string;
   isDirectory: boolean;
@@ -85,7 +86,7 @@ function getFileName(path: string): string {
   return path.split(sep).pop() || path;
 }
 
-export default function QuickOpen({ vault, recentFiles, currentFilePath, onSelect, onClose }: QuickOpenProps) {
+export default function QuickOpen({ vault, recentFiles, currentFilePath, files: externalFiles, onSelect, onClose }: QuickOpenProps) {
   const [query, setQuery] = useState("");
   const [allFiles, setAllFiles] = useState<FileItem[] | null>(null);
   const [filteredFiles, setFilteredFiles] = useState<FileItem[]>([]);
@@ -104,17 +105,26 @@ export default function QuickOpen({ vault, recentFiles, currentFilePath, onSelec
       isDirectory: false,
     })), [recentFiles, currentFilePath]);
 
-  // 初始化：显示最近访问文件
+  // 如果提供了外部文件列表，直接使用
+  const useExternalFiles = externalFiles && externalFiles.length > 0;
+
+  // 初始化：显示最近访问文件或外部文件列表
   useEffect(() => {
-    if (!query.trim()) {
+    if (useExternalFiles && externalFiles) {
+      // 使用外部文件列表，直接进入搜索模式
+      setSearchMode(true);
+      setFilteredFiles(externalFiles.slice(0, 50));
+      setSelectedIndex(0);
+    } else if (!query.trim()) {
       setSearchMode(false);
       setFilteredFiles(recentFileItems);
       setSelectedIndex(0);
     }
-  }, [query, recentFileItems]);
+  }, [query, recentFileItems, externalFiles, useExternalFiles]);
 
   // 当用户输入搜索词时，加载所有文件并切换到搜索模式
   useEffect(() => {
+    if (useExternalFiles) return; // 使用外部文件时不需要加载
     if (!vault) return;
 
     // 没有输入搜索词时，不加载所有文件
@@ -132,20 +142,24 @@ export default function QuickOpen({ vault, recentFiles, currentFilePath, onSelec
         setLoading(false);
       });
     }
-  }, [query, vault, allFiles, loading]);
+  }, [query, vault, allFiles, loading, useExternalFiles]);
 
   // 搜索过滤
   useEffect(() => {
-    if (!searchMode || allFiles === null) return;
+    if (!searchMode) return;
 
     const q = query.trim();
+    const sourceFiles = useExternalFiles && externalFiles ? externalFiles : allFiles;
+
     if (!q) {
-      setFilteredFiles(recentFileItems);
+      setFilteredFiles(useExternalFiles && externalFiles ? externalFiles.slice(0, 50) : recentFileItems);
       setSelectedIndex(0);
       return;
     }
 
-    const matched = allFiles
+    if (!sourceFiles) return;
+
+    const matched = sourceFiles
       .map((f) => ({ file: f, score: matchScore(f, q) }))
       .filter(({ score }) => score > 0)
       .sort((a, b) => b.score - a.score || a.file.name.localeCompare(b.file.name))
@@ -154,7 +168,7 @@ export default function QuickOpen({ vault, recentFiles, currentFilePath, onSelec
 
     setFilteredFiles(matched);
     setSelectedIndex(0);
-  }, [searchMode, allFiles, query, recentFileItems]);
+  }, [searchMode, allFiles, query, recentFileItems, externalFiles, useExternalFiles]);
 
   // 滚动选中项到可见区域
   useEffect(() => {

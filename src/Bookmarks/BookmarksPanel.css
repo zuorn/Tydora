@@ -53,11 +53,11 @@
 .bookmark-group-chevron {
   flex-shrink: 0;
   transition: transform 0.15s ease;
-  transform: rotate(-90deg);
+  color: var(--text-secondary);
 }
 
 .bookmark-group-header.expanded .bookmark-group-chevron {
-  transform: rotate(0deg);
+  transform: rotate(90deg);
 }
 
 .bookmark-group-name {

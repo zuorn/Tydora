@@ -1,7 +1,7 @@
 import { useEffect, useRef } from 'react';
 import { invoke } from '@tauri-apps/api/core';
 import { listen } from '@tauri-apps/api/event';
-import { LinkIndexService } from './LinkIndexService';
+import { LinkIndexService } from '../wikilink';
 
 interface FsEvent {
   kind: string;

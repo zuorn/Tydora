@@ -1,4 +1,4 @@
-import { memo, useState, useCallback } from 'react';
+import { memo, useState, useCallback, useRef, useEffect } from 'react';
 import {
   BaseEdge,
   EdgeLabelRenderer,
@@ -6,6 +6,7 @@ import {
   type EdgeProps,
 } from '@xyflow/react';
 import { getCanvasColor } from '../canvas-utils';
+import { useCanvasStore } from '../canvas-store';
 
 function CanvasEdge({
   id,
@@ -20,6 +21,8 @@ function CanvasEdge({
 }: EdgeProps) {
   const [isEditingLabel, setIsEditingLabel] = useState(false);
   const [labelText, setLabelText] = useState((data as any)?.label || '');
+  const inputRef = useRef<HTMLInputElement>(null);
+  const updateEdgeData = useCanvasStore((s) => s.updateEdgeData);
 
   const color = getCanvasColor((data as any)?.color);
   const edgeColor = selected ? 'var(--accent)' : (color || 'var(--text-secondary)');
@@ -35,23 +38,33 @@ function CanvasEdge({
     targetPosition,
   });
 
-  const handleLabelDoubleClick = useCallback(() => {
+  // Focus input when editing starts
+  useEffect(() => {
+    if (isEditingLabel && inputRef.current) {
+      inputRef.current.focus();
+      inputRef.current.select();
+    }
+  }, [isEditingLabel]);
+
+  const startEditing = useCallback(() => {
     setIsEditingLabel(true);
   }, []);
 
   const handleLabelBlur = useCallback(() => {
     setIsEditingLabel(false);
-    if (data) {
-      (data as any).label = labelText;
-    }
-  }, [labelText, data]);
+    updateEdgeData(id, { label: labelText });
+  }, [id, labelText, updateEdgeData]);
 
   const handleLabelKeyDown = useCallback((e: React.KeyboardEvent) => {
     if (e.key === 'Escape') {
       setIsEditingLabel(false);
       setLabelText((data as any)?.label || '');
     }
-  }, [data]);
+    if (e.key === 'Enter') {
+      setIsEditingLabel(false);
+      updateEdgeData(id, { label: labelText });
+    }
+  }, [id, data, labelText, updateEdgeData]);
 
   return (
     <>
@@ -94,6 +107,23 @@ function CanvasEdge({
       />
 
       <EdgeLabelRenderer>
+        {/* Always render a clickable area at the midpoint */}
+        <div
+          style={{
+            position: 'absolute',
+            transform: `translate(-50%, -50%) translate(${labelX}px,${labelY}px)`,
+            pointerEvents: 'all',
+            width: '20px',
+            height: '20px',
+            cursor: 'pointer',
+          }}
+          onDoubleClick={(e) => {
+            e.stopPropagation();
+            startEditing();
+          }}
+        />
+
+        {/* Show label when there's text or editing */}
         {(labelText || isEditingLabel) && (
           <div
             style={{
@@ -102,16 +132,20 @@ function CanvasEdge({
               pointerEvents: 'all',
             }}
             className="canvas-edge-label"
-            onDoubleClick={handleLabelDoubleClick}
+            onDoubleClick={(e) => {
+              e.stopPropagation();
+              startEditing();
+            }}
           >
             {isEditingLabel ? (
               <input
+                ref={inputRef}
                 className="canvas-edge-label-input"
                 value={labelText}
                 onChange={(e) => setLabelText(e.target.value)}
                 onBlur={handleLabelBlur}
                 onKeyDown={handleLabelKeyDown}
-                autoFocus
+                placeholder="输入标签..."
               />
             ) : (
               <span className="canvas-edge-label-text">{labelText}</span>

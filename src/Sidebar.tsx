@@ -3,9 +3,9 @@ import { createPortal } from "react-dom";
 import { readDir, readTextFile, writeTextFile, mkdir, remove, rename } from "@tauri-apps/plugin-fs";
 import { open } from "@tauri-apps/plugin-dialog";
 import { invoke } from "@tauri-apps/api/core";
-import { ConfirmDialog } from "./ConfirmDialog";
-import { UpdateLinkDialog } from "./UpdateLinkDialog";
-import { LinkIndexService } from "./LinkIndexService";
+import { ConfirmDialog } from "./components";
+import { UpdateLinkDialog } from "./components";
+import { LinkIndexService } from "./wikilink";
 import { BookmarksPanel } from "./Bookmarks";
 import "./Sidebar.css";
 

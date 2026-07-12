@@ -32,7 +32,7 @@ export const DEFAULT_CANVAS_SETTINGS: CanvasSettings = {
   hideContentZoomThreshold: 0.3,
   minimapEnabled: true,
   minimapPosition: 'bottom-right',
-  defaultTextCardSize: { width: 400, height: 200 },
+  defaultTextCardSize: { width: 250, height: 60 },
   defaultNoteCardSize: { width: 400, height: 400 },
   defaultMediaCardSize: { width: 400, height: 300 },
 };

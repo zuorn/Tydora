@@ -12,7 +12,7 @@ import {
   type PublishConfig,
 } from "./PublishService";
 import PublishPanel from "./PublishPanel";
-import "./Settings.css";
+import "../Settings.css";
 
 interface VaultInfo {
   name: string;

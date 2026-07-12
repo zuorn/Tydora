@@ -94,7 +94,7 @@ function FileNode({ data, selected }: NodeProps) {
         height: '100%',
         background: backgroundColor,
         borderColor: borderColor,
-        overflow: 'hidden',
+        overflow: 'visible',
       }}
     >
       <Handle type="target" position={Position.Top} id="top" className="canvas-handle" />

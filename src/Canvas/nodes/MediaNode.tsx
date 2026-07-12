@@ -1,4 +1,4 @@
-import { useState, useEffect, memo } from 'react';
+import { useState, useEffect, useCallback, memo } from 'react';
 import { Handle, Position, NodeResizer, type NodeProps } from '@xyflow/react';
 import { convertFileSrc } from '@tauri-apps/api/core';
 import { getCanvasColor, resolveFilePath } from '../canvas-utils';
@@ -11,6 +11,10 @@ const PDF_EXTENSIONS = new Set(['pdf']);
 function MediaNode({ data, selected }: NodeProps) {
   const [mediaType, setMediaType] = useState<'image' | 'video' | 'audio' | 'pdf' | 'unknown'>('unknown');
   const [mediaSrc, setMediaSrc] = useState('');
+  const [isHovered, setIsHovered] = useState(false);
+
+  const handleMouseEnter = useCallback(() => setIsHovered(true), []);
+  const handleMouseLeave = useCallback(() => setIsHovered(false), []);
 
   const filePath = (data as any)?.file || '';
 
@@ -126,16 +130,20 @@ function MediaNode({ data, selected }: NodeProps) {
         height: '100%',
         background: backgroundColor,
         borderColor: borderColor,
-        overflow: 'hidden',
+        overflow: 'visible',
         padding: 0,
       }}
+      onMouseEnter={handleMouseEnter}
+      onMouseLeave={handleMouseLeave}
     >
       <NodeResizer
         color={color || 'var(--accent)'}
-        isVisible={selected}
+        isVisible={selected || isHovered}
         minWidth={100}
         minHeight={100}
         handleClassName="canvas-resize-handle"
+        lineClassName="canvas-resize-line"
+        autoScale={false}
       />
 
       <Handle type="target" position={Position.Top} id="top" className="canvas-handle" />

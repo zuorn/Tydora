@@ -15,6 +15,7 @@ import TextNode from './nodes/TextNode';
 import FileNode from './nodes/FileNode';
 import NoteNode from './nodes/NoteNode';
 import MediaNode from './nodes/MediaNode';
+import CanvasNode from './nodes/CanvasNode';
 import UrlNode from './nodes/UrlNode';
 import ImageNode from './nodes/ImageNode';
 import GroupNode from './nodes/GroupNode';
@@ -23,9 +24,10 @@ import CanvasToolbar from './CanvasToolbar';
 import CanvasContextMenu from './CanvasContextMenu';
 import NodeToolbar from './NodeToolbar';
 import AlignmentToolbar from './AlignmentToolbar';
+import AlignmentGuides from './AlignmentGuides';
 import UndoRedoPanel from './UndoRedoPanel';
 import { useCanvasStore, scheduleAutoSave } from './canvas-store';
-import { saveImageToLocal, loadImageSettings, type ImageSettings } from '../ImageManager';
+import { saveImageToLocal, loadImageSettings, type ImageSettings } from '../services';
 
 // Register custom node types
 const nodeTypes = {
@@ -33,6 +35,7 @@ const nodeTypes = {
   fileNode: FileNode,
   noteNode: NoteNode,
   mediaNode: MediaNode,
+  canvasNode: CanvasNode,
   urlNode: UrlNode,
   imageNode: ImageNode,
   groupNode: GroupNode,
@@ -74,6 +77,30 @@ export default function CanvasView({ onNodeClick }: CanvasViewProps) {
   const paste = useCanvasStore((s) => s.paste);
   const vaultPath = useCanvasStore((s) => s.vaultPath);
 
+  // Update node positions for alignment guides
+  useEffect(() => {
+    const positions = new Map<string, { x: number; y: number; width: number; height: number }>();
+    nodes.forEach(node => {
+      positions.set(node.id, {
+        x: node.position.x,
+        y: node.position.y,
+        width: node.measured?.width || (node.style?.width as number) || 400,
+        height: node.measured?.height || (node.style?.height as number) || 200,
+      });
+    });
+    setNodePositions(positions);
+  }, [nodes]);
+
+  // Handle node drag start
+  const onNodeDragStart = useCallback((_: any, node: Node) => {
+    setDraggedNodeId(node.id);
+  }, []);
+
+  // Handle node drag stop
+  const onNodeDragStop = useCallback(() => {
+    setDraggedNodeId(null);
+  }, []);
+
   // Context menu state
   const [contextMenu, setContextMenu] = useState<{ x: number; y: number } | null>(null);
 
@@ -84,6 +111,79 @@ export default function CanvasView({ onNodeClick }: CanvasViewProps) {
   // Alignment toolbar state
   const [showAlignmentToolbar, setShowAlignmentToolbar] = useState(false);
   const [selectedNodeIds, setSelectedNodeIds] = useState<string[]>([]);
+
+  // Alignment guides state
+  const [draggedNodeId, setDraggedNodeId] = useState<string | null>(null);
+  const [nodePositions, setNodePositions] = useState<Map<string, { x: number; y: number; width: number; height: number }>>(new Map());
+
+  // Connection drag state - for showing handles during drag
+  const [connecting, setConnecting] = useState(false);
+
+  // Handle connection start - track that user is dragging a connection
+  const onConnectStart = useCallback((_: any, __: any) => {
+    setConnecting(true);
+  }, []);
+
+  // Handle connection end - proximity connect to node edge
+  const onConnectEnd = useCallback(
+    (event: MouseEvent | React.MouseEvent | TouchEvent, connectionState: any) => {
+      setConnecting(false);
+
+      // If the connection was already made (snapped to a handle), do nothing
+      if (connectionState.isValid) return;
+
+      const { source, sourceHandle } = connectionState;
+      if (!source) return;
+
+      // Get client coordinates from either MouseEvent or TouchEvent
+      const clientX = 'clientX' in event ? event.clientX : 0;
+      const clientY = 'clientY' in event ? event.clientY : 0;
+
+      // Convert mouse position to flow coordinates
+      const position = screenToFlowPosition({
+        x: clientX,
+        y: clientY,
+      });
+
+      // Find the nearest node edge within snap distance
+      const allNodes = getNodes();
+      const SNAP_DISTANCE = 30; // pixels in flow space
+
+      let bestNode: Node | null = null;
+      let bestHandle = '';
+      let bestDistance = Infinity;
+
+      for (const node of allNodes) {
+        if (node.id === source) continue;
+
+        const width = node.measured?.width || (node.style?.width as number) || 400;
+        const height = node.measured?.height || (node.style?.height as number) || 200;
+        const x = node.position.x;
+        const y = node.position.y;
+
+        // Calculate distance to each edge and the corresponding handle
+        const edges = [
+          { handle: 'left', dist: Math.abs(position.x - x), point: { x: x, y: Math.min(Math.max(position.y, y), y + height) } },
+          { handle: 'right', dist: Math.abs(position.x - (x + width)), point: { x: x + width, y: Math.min(Math.max(position.y, y), y + height) } },
+          { handle: 'top', dist: Math.abs(position.y - y), point: { x: Math.min(Math.max(position.x, x), x + width), y: y } },
+          { handle: 'bottom', dist: Math.abs(position.y - (y + height)), point: { x: Math.min(Math.max(position.x, x), x + width), y: y + height } },
+        ];
+
+        for (const edge of edges) {
+          if (edge.dist < bestDistance && edge.dist < SNAP_DISTANCE) {
+            bestDistance = edge.dist;
+            bestNode = node;
+            bestHandle = edge.handle;
+          }
+        }
+      }
+
+      if (bestNode && bestHandle) {
+        addEdge(source, bestNode.id, sourceHandle || 'right', bestHandle);
+      }
+    },
+    [screenToFlowPosition, getNodes, addEdge]
+  );
 
   // Handle new edge connections
   const onConnect = useCallback(
@@ -103,9 +203,10 @@ export default function CanvasView({ onNodeClick }: CanvasViewProps) {
   // Handle double-click to create text node
   const onDoubleClick = useCallback(
     (event: React.MouseEvent) => {
-      // Don't create node if double-clicking on an existing node
+      // Don't create node if double-clicking on an existing node or edge
       const target = event.target as HTMLElement;
       if (target.closest('.react-flow__node')) return;
+      if (target.closest('.react-flow__edge')) return;
 
       const position = screenToFlowPosition({
         x: event.clientX,
@@ -215,8 +316,28 @@ export default function CanvasView({ onNodeClick }: CanvasViewProps) {
       }
       // Paste: Ctrl+V
       if ((e.ctrlKey || e.metaKey) && e.key === 'v' && !e.shiftKey) {
-        e.preventDefault();
-        paste();
+        // Check if there's an active text input - if so, let default paste work
+        const target = e.target as HTMLElement;
+        if (target.tagName === 'INPUT' || target.tagName === 'TEXTAREA' || target.isContentEditable) {
+          return;
+        }
+        
+        // For canvas paste, we need to check clipboard asynchronously
+        // Use navigator.clipboard.read() to check for images
+        navigator.clipboard.read().then(clipboardItems => {
+          const hasImage = clipboardItems.some(item => 
+            item.types.some(type => type.startsWith('image/'))
+          );
+          
+          if (!hasImage) {
+            // No image in clipboard, paste canvas nodes
+            paste();
+          }
+          // If there's an image, the paste event handler will process it
+        }).catch(() => {
+          // If clipboard read fails, just paste canvas nodes
+          paste();
+        });
       }
       // Select All: Ctrl+A
       if ((e.ctrlKey || e.metaKey) && e.key === 'a') {
@@ -274,15 +395,30 @@ export default function CanvasView({ onNodeClick }: CanvasViewProps) {
   const handleImagePaste = useCallback(async (file: File) => {
     try {
       const settings: ImageSettings = loadImageSettings();
-      const result = await saveImageToLocal(file, settings, null, vaultPath);
+      
+      // Get vault path from store or localStorage
+      let currentVaultPath = vaultPath;
+      if (!currentVaultPath) {
+        try {
+          const raw = localStorage.getItem('zmd-vaults');
+          const activeIndex = parseInt(localStorage.getItem('zmd-active-vault') || '-1');
+          if (raw && activeIndex >= 0) {
+            const vaults = JSON.parse(raw);
+            currentVaultPath = vaults[activeIndex]?.path || '';
+          }
+        } catch {}
+      }
+      
+      const result = await saveImageToLocal(file, settings, null, currentVaultPath || null);
 
       // Create image node at the center of the viewport
       const viewport = getViewport();
       const centerX = (window.innerWidth / 2 - viewport.x) / viewport.zoom;
       const centerY = (window.innerHeight / 2 - viewport.y) / viewport.zoom;
 
-      addNode('text', { x: centerX - 200, y: centerY - 100 }, {
-        text: `![${file.name}](${result.savedPath})`,
+      // Create a media node for the image
+      addNode('media', { x: centerX - 200, y: centerY - 150 }, {
+        file: result.savedPath,
       });
     } catch (err) {
       console.error('Failed to save pasted image:', err);
@@ -336,6 +472,7 @@ export default function CanvasView({ onNodeClick }: CanvasViewProps) {
       <div
         ref={reactFlowWrapper}
         style={{ flex: 1, overflow: 'hidden', position: 'relative' }}
+        className={connecting ? 'connecting' : ''}
       >
         <ReactFlow
           nodes={nodes}
@@ -343,13 +480,18 @@ export default function CanvasView({ onNodeClick }: CanvasViewProps) {
           onNodesChange={onNodesChange}
           onEdgesChange={onEdgesChange}
           onConnect={onConnect}
+          onConnectStart={onConnectStart}
+          onConnectEnd={onConnectEnd}
           onDoubleClick={onDoubleClick}
           onNodeClick={onNodeClickHandler}
           onPaneClick={onPaneClick}
           onPaneContextMenu={onPaneContextMenu}
+          onNodeDragStart={onNodeDragStart}
+          onNodeDragStop={onNodeDragStop}
           nodeTypes={nodeTypes}
           edgeTypes={edgeTypes}
           defaultEdgeOptions={defaultEdgeOptions}
+          connectionRadius={40}
           fitView
           snapToGrid
           snapGrid={[15, 15]}
@@ -401,6 +543,9 @@ export default function CanvasView({ onNodeClick }: CanvasViewProps) {
             }}
           />
         )}
+
+        {/* Alignment guides - shown when dragging a node */}
+        <AlignmentGuides draggedNodeId={draggedNodeId} nodePositions={nodePositions} viewport={getViewport()} />
 
         {/* Undo/Redo Panel - positioned above controls */}
         <UndoRedoPanel />

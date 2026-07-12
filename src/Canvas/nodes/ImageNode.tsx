@@ -46,7 +46,7 @@ function ImageNode({ data, selected }: NodeProps) {
         height: '100%',
         background: color || 'var(--bg-primary)',
         borderColor: selected ? 'var(--accent)' : 'var(--border)',
-        overflow: 'hidden',
+        overflow: 'visible',
         padding: 0,
       }}
     >

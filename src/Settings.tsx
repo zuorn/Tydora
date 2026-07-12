@@ -5,12 +5,12 @@ import { availableMonitors, type Monitor } from "@tauri-apps/api/window";
 import { invoke } from "@tauri-apps/api/core";
 import { open } from "@tauri-apps/plugin-dialog";
 import { useTheme, type ThemeName } from "./themes";
-import { loadImageSettings, saveImageSettings, type ImageSettings, type StorageMode, type FilenameFormat } from "./ImageManager";
-import { checkForUpdate, downloadAndInstall, relaunchApp, type UpdateInfo } from "./Updater";
-import PublishSettings from "./PublishSettings";
-import { parseCssVariables, extractPreviewColors, type ThemeVariable, type ThemeManifest } from "./CustomThemeManager";
-import { getCustomThemeCss } from "./CustomThemeManager";
-import { CODE_THEMES, type CustomCodeTheme } from "./codeThemes";
+import { loadImageSettings, saveImageSettings, type ImageSettings, type StorageMode, type FilenameFormat } from "./services";
+import { checkForUpdate, downloadAndInstall, relaunchApp, type UpdateInfo } from "./services";
+import { PublishSettings } from "./publish";
+import { parseCssVariables, extractPreviewColors, type ThemeVariable, type ThemeManifest } from "./themes/CustomThemeManager";
+import { getCustomThemeCss } from "./themes/CustomThemeManager";
+import { CODE_THEMES, type CustomCodeTheme } from "./themes";
 import hljs from "highlight.js";
 import "./Settings.css";
 

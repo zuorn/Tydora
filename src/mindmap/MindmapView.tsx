@@ -1,7 +1,7 @@
 import { useRef, useEffect, useState, useCallback } from "react";
 import { Transformer } from "markmap-lib";
 import { Markmap, loadCSS, loadJS } from "markmap-view";
-import { MINDMAP_SETTINGS_KEY, DEFAULT_MINDMAP, type MindmapSettings } from "./Settings";
+import { MINDMAP_SETTINGS_KEY, DEFAULT_MINDMAP, type MindmapSettings } from "../Settings";
 import "./MindmapView.css";
 
 declare global {

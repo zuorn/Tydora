@@ -6,24 +6,24 @@ import { save } from "@tauri-apps/plugin-dialog";
 import { invoke } from "@tauri-apps/api/core";
 import { TipTapEditor as Editor, CodeMirrorEditor, type EditorHandle, type CodeMirrorEditorHandle, type EditorMode, MODE_LABELS } from "./Editor";
 import Sidebar, { VaultInfo } from "./Sidebar";
-import FilePreview from "./FilePreview";
-import QuickOpen from "./QuickOpen";
-import CommandPalette from "./CommandPalette";
+import { FilePreview } from "./components";
+import { QuickOpen } from "./components";
+import { CommandPalette } from "./components";
 import { useTheme } from "./themes";
-import { ConfirmDialog } from "./ConfirmDialog";
+import { ConfirmDialog } from "./components";
 import { emit, listen } from "@tauri-apps/api/event";
-import { loadImageSettings, type ImageSettings } from "./ImageManager";
+import { loadImageSettings, type ImageSettings } from "./services";
 import { loadEditorSettings, type EditorSettings, EDITOR_SETTINGS_KEY, SHORTCUTS_KEY } from "./Settings";
-import { checkForUpdate, downloadAndInstall, relaunchApp, type UpdateInfo } from "./Updater";
-import { LinkIndexService } from "./LinkIndexService";
-import { WikiLinkAutocomplete } from "./WikiLinkAutocomplete";
-import { GraphView } from "./GraphView";
-import { useVaultWatcher } from "./useVaultWatcher";
-import PublishPanel from "./PublishPanel";
+import { checkForUpdate, downloadAndInstall, relaunchApp, type UpdateInfo } from "./services";
+import { LinkIndexService } from "./wikilink";
+import { WikiLinkAutocomplete } from "./wikilink";
+import { GraphView } from "./graph";
+import { useVaultWatcher } from "./services";
+import PublishPanel from "./publish/PublishPanel";
 import { BookmarkDialog, BookmarksService } from "./Bookmarks";
 import "./App.css";
-import "./FilePreview.css";
-import "./WikiLink.css";
+import "./components/FilePreview.css";
+import "./wikilink/WikiLink.css";
 
 // 错误边界：防止编辑器错误导致整个页面空白
 class EditorErrorBoundary extends Component<

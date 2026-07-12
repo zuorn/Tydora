@@ -197,10 +197,11 @@
   height: 100%;
   border: 2px solid var(--border);
   border-radius: 8px;
-  overflow: hidden;
+  overflow: visible;
   display: flex;
   flex-direction: column;
   transition: border-color 0.15s;
+  position: relative;
 }
 
 .canvas-node.selected {
@@ -212,43 +213,151 @@
   opacity: 1 !important;
 }
 
-/* Handle styles - matching Obsidian Canvas */
+/* Node content container - clips content within the node */
+.canvas-node-content {
+  flex: 1;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+}
+
+/* Handle styles - full circles, visible on hover only */
 .canvas-handle {
-  width: 10px;
-  height: 10px;
+  width: 12px;
+  height: 12px;
   background: var(--bg-primary);
   border: 2px solid var(--accent, #6366f1);
+  border-radius: 50%;
   opacity: 0;
   transition: all 0.15s ease;
+  z-index: 10;
 }
 
-/* Show handles on node hover or selection */
-.canvas-node:hover .canvas-handle,
-.canvas-node.selected .canvas-handle {
-  opacity: 0.6;
+/* Show handles on node hover only (not selection) */
+.canvas-node:hover .canvas-handle {
+  opacity: 0.7;
 }
 
-/* Enlarge and fill handle on hover */
+/* Enlarge and fill handle on handle hover */
 .canvas-handle:hover {
-  width: 14px;
-  height: 14px;
+  width: 16px;
+  height: 16px;
   background: var(--accent, #6366f1);
   border-color: var(--accent, #6366f1);
   opacity: 1;
 }
 
+/* During connection drag, show all handles on all nodes */
+.connecting .canvas-node .canvas-handle {
+  opacity: 0.8;
+}
+
+.connecting .canvas-handle:hover {
+  width: 16px;
+  height: 16px;
+  opacity: 1;
+}
+
 /* Resize Handle */
 .canvas-resize-handle {
-  width: 10px !important;
-  height: 10px !important;
+  width: 14px !important;
+  height: 14px !important;
   background: var(--accent, #6366f1) !important;
   border: 2px solid var(--bg-primary) !important;
   border-radius: 2px !important;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.2) !important;
 }
 
 .canvas-resize-handle:hover {
-  width: 12px !important;
-  height: 12px !important;
+  width: 18px !important;
+  height: 18px !important;
+}
+
+/* Resize Line (edge handles) - wider hit area with visible line */
+.canvas-resize-line {
+  border-color: transparent !important;
+  border-width: 0 !important;
+  border-style: solid !important;
+  transition: background 0.15s ease !important;
+}
+
+/* Left/Right lines: wider hit area */
+.canvas-resize-line.left,
+.canvas-resize-line.right {
+  width: 16px !important;
+  background: transparent !important;
+}
+
+/* Top/Bottom lines: taller hit area */
+.canvas-resize-line.top,
+.canvas-resize-line.bottom {
+  height: 16px !important;
+  background: transparent !important;
+}
+
+/* Visible accent line on hover */
+.canvas-resize-line.left::after {
+  content: '';
+  position: absolute;
+  left: 50%;
+  top: 0;
+  width: 2px;
+  height: 100%;
+  background: var(--accent, #6366f1);
+  transform: translateX(-50%);
+  opacity: 0;
+  transition: opacity 0.15s ease;
+}
+.canvas-resize-line.left:hover::after {
+  opacity: 1;
+}
+
+.canvas-resize-line.right::after {
+  content: '';
+  position: absolute;
+  left: 50%;
+  top: 0;
+  width: 2px;
+  height: 100%;
+  background: var(--accent, #6366f1);
+  transform: translateX(-50%);
+  opacity: 0;
+  transition: opacity 0.15s ease;
+}
+.canvas-resize-line.right:hover::after {
+  opacity: 1;
+}
+
+.canvas-resize-line.top::after {
+  content: '';
+  position: absolute;
+  top: 50%;
+  left: 0;
+  height: 2px;
+  width: 100%;
+  background: var(--accent, #6366f1);
+  transform: translateY(-50%);
+  opacity: 0;
+  transition: opacity 0.15s ease;
+}
+.canvas-resize-line.top:hover::after {
+  opacity: 1;
+}
+
+.canvas-resize-line.bottom::after {
+  content: '';
+  position: absolute;
+  top: 50%;
+  left: 0;
+  height: 2px;
+  width: 100%;
+  background: var(--accent, #6366f1);
+  transform: translateY(-50%);
+  opacity: 0;
+  transition: opacity 0.15s ease;
+}
+.canvas-resize-line.bottom:hover::after {
+  opacity: 1;
 }
 
 /* Text Node */
@@ -453,12 +562,149 @@
   padding: 10px 12px;
 }
 
-.canvas-note-preview {
+/* Prevent React Flow from capturing wheel events on note content */
+.canvas-note-content.no-wheel {
+  pointer-events: auto;
+}
+
+.canvas-note-editor-wrapper {
+  width: 100%;
+  height: 100%;
+  overflow: auto;
+}
+
+.canvas-note-editor {
+  width: 100%;
+  min-height: 100%;
   font-size: 12px;
   line-height: 1.6;
+  color: var(--text-primary);
+  outline: none;
+}
+
+/* TipTap content styles for notes */
+.canvas-note-editor h1 {
+  font-size: 1.4em;
+  font-weight: 700;
+  margin: 0.5em 0;
+}
+
+.canvas-note-editor h2 {
+  font-size: 1.2em;
+  font-weight: 600;
+  margin: 0.5em 0;
+}
+
+.canvas-note-editor h3 {
+  font-size: 1.1em;
+  font-weight: 600;
+  margin: 0.5em 0;
+}
+
+.canvas-note-editor p {
+  margin: 0.5em 0;
+}
+
+.canvas-note-editor ul,
+.canvas-note-editor ol {
+  padding-left: 1.5em;
+  margin: 0.5em 0;
+}
+
+.canvas-note-editor li {
+  margin: 0.25em 0;
+}
+
+.canvas-note-editor code {
+  background: var(--bg-tertiary);
+  padding: 1px 3px;
+  border-radius: 3px;
+  font-family: 'SF Mono', 'Consolas', monospace;
+  font-size: 0.9em;
+}
+
+.canvas-note-editor pre {
+  background: var(--bg-tertiary);
+  padding: 8px 10px;
+  border-radius: 4px;
+  overflow-x: auto;
+}
+
+.canvas-note-editor pre code {
+  background: transparent;
+  padding: 0;
+}
+
+.canvas-note-editor blockquote {
+  border-left: 3px solid var(--border);
+  padding-left: 10px;
+  margin: 0.5em 0;
   color: var(--text-secondary);
-  white-space: pre-wrap;
-  word-break: break-word;
+}
+
+.canvas-note-editor strong {
+  font-weight: 600;
+}
+
+.canvas-note-editor em {
+  font-style: italic;
+}
+
+.canvas-note-editor a {
+  color: var(--accent);
+  text-decoration: underline;
+}
+
+/* Embed Node (Canvas) */
+.canvas-embed-node {
+  background: var(--bg-primary);
+}
+
+.canvas-embed-header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 12px;
+  border-bottom: 1px solid var(--border);
+  background: var(--bg-secondary);
+  font-size: 13px;
+  color: var(--text-primary);
+  font-weight: 500;
+}
+
+.canvas-embed-title {
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.canvas-embed-content {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 8px;
+  overflow: hidden;
+}
+
+.canvas-embed-preview {
+  width: 100%;
+  height: 100%;
+  background: #fafafa;
+  border-radius: 4px;
+}
+
+.canvas-embed-placeholder {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  color: var(--text-tertiary);
+}
+
+.canvas-embed-placeholder span {
+  font-size: 12px;
 }
 
 /* URL Node */
@@ -572,6 +818,23 @@
   color: var(--text-tertiary);
 }
 
+/* Alignment Guides */
+.alignment-guides {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
+  z-index: 1000;
+}
+
+.alignment-guides line {
+  stroke: #6366f1;
+  stroke-width: 1;
+  stroke-dasharray: 4, 4;
+}
+
 /* Group Node */
 .canvas-group-node {
   background: rgba(128, 128, 128, 0.1);
@@ -632,6 +895,11 @@
   font-size: 11px;
 }
 
+.canvas-edge-label-placeholder {
+  color: var(--text-tertiary);
+  font-style: italic;
+}
+
 /* Node color presets */
 .canvas-color-red { background: #ef4444; }
 .canvas-color-orange { background: #f97316; }
@@ -672,10 +940,12 @@
   pointer-events: none;
   opacity: 0;
   transition: opacity 0.2s;
+  transition-delay: 0s;
 }
 
 .canvas-toolbar:hover .canvas-toolbar-tooltip {
   opacity: 1;
+  transition-delay: 1.5s;
 }
 
 .canvas-toolbar-tooltip::after {
@@ -686,6 +956,57 @@
   transform: translateX(-50%);
   border: 5px solid transparent;
   border-top-color: #1a1a1a;
+}
+
+/* Individual button tooltip */
+.canvas-toolbar-btn {
+  position: relative;
+}
+
+.canvas-toolbar-btn::after {
+  content: attr(data-tooltip);
+  position: absolute;
+  bottom: 100%;
+  left: 50%;
+  transform: translateX(-50%);
+  margin-bottom: 8px;
+  padding: 6px 12px;
+  background: #1a1a1a;
+  color: #fff;
+  font-size: 12px;
+  border-radius: 6px;
+  white-space: nowrap;
+  pointer-events: none;
+  opacity: 0;
+  transition: opacity 0.2s;
+  transition-delay: 0s;
+  z-index: 100;
+}
+
+.canvas-toolbar-btn:hover::after {
+  opacity: 1;
+  transition-delay: 1.5s;
+}
+
+.canvas-toolbar-btn::before {
+  content: '';
+  position: absolute;
+  bottom: 100%;
+  left: 50%;
+  transform: translateX(-50%);
+  margin-bottom: 3px;
+  border: 5px solid transparent;
+  border-top-color: #1a1a1a;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.2s;
+  transition-delay: 0s;
+  z-index: 100;
+}
+
+.canvas-toolbar-btn:hover::before {
+  opacity: 1;
+  transition-delay: 1.5s;
 }
 
 .canvas-toolbar-btn {
@@ -1016,5 +1337,92 @@
   border-radius: 4px;
   background: var(--bg-secondary);
   color: var(--text-primary);
+  font-size: 13px;
+}
+
+/* Note Picker */
+.note-picker-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.5);
+  display: flex;
+  align-items: flex-start;
+  justify-content: center;
+  padding-top: 15vh;
+  z-index: 1000;
+}
+
+.note-picker-modal {
+  background: var(--bg-primary);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  width: 90%;
+  max-width: 500px;
+  overflow: hidden;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
+}
+
+.note-picker-header {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 12px 16px;
+  border-bottom: 1px solid var(--border);
+}
+
+.note-picker-input {
+  flex: 1;
+  border: none;
+  background: transparent;
+  color: var(--text-primary);
+  font-size: 14px;
+  outline: none;
+}
+
+.note-picker-input::placeholder {
+  color: var(--text-tertiary);
+}
+
+.note-picker-hint {
+  font-size: 11px;
+  color: var(--text-tertiary);
+}
+
+.note-picker-list {
+  max-height: 400px;
+  overflow-y: auto;
+}
+
+.note-picker-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 16px;
+  cursor: pointer;
+  transition: background 0.1s;
+}
+
+.note-picker-item:hover,
+.note-picker-item.selected {
+  background: var(--bg-tertiary);
+}
+
+.note-picker-name {
+  font-size: 13px;
+  color: var(--text-primary);
+}
+
+.note-picker-highlight {
+  color: var(--accent);
+  font-weight: 500;
+}
+
+.note-picker-empty {
+  padding: 24px 16px;
+  text-align: center;
+  color: var(--text-tertiary);
   font-size: 13px;
 }

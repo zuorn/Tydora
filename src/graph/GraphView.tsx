@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState, useMemo } from "react";
 import * as d3 from "d3";
-import { LinkIndexService } from "./LinkIndexService";
-import { GRAPH_SETTINGS_KEY, DEFAULT_GRAPH, type GraphSettings } from "./Settings";
+import { LinkIndexService } from "../wikilink";
+import { GRAPH_SETTINGS_KEY, DEFAULT_GRAPH, type GraphSettings } from "../Settings";
 import "./GraphView.css";
 
 interface GraphNode extends d3.SimulationNodeDatum {

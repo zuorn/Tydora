@@ -1,5 +1,5 @@
 import type { ThemeName } from "../themes";
-import type { ImageSettings } from "../ImageManager";
+import type { ImageSettings } from "../services";
 import type { EditorSettings } from "../Settings";
 
 export interface EditorHandle {

@@ -108,11 +108,11 @@ export const useCanvasStore = create<CanvasState>((set, get) => ({
   },
 
   saveCanvas: async () => {
-    const { filePath, nodes, edges } = get();
+    const { filePath, nodes, edges, vaultPath } = get();
     if (!filePath) return;
 
     try {
-      const canvas = reactFlowToJsonCanvas(nodes, edges);
+      const canvas = reactFlowToJsonCanvas(nodes, edges, vaultPath || undefined);
       await writeTextFile(filePath, JSON.stringify(canvas, null, 2));
       set({ isModified: false });
     } catch (err) {
@@ -137,8 +137,8 @@ export const useCanvasStore = create<CanvasState>((set, get) => ({
       position,
       data: { ...defaultData[type], ...data },
       style: {
-        width: type === 'group' ? 400 : 400,
-        height: type === 'group' ? 300 : 200,
+        width: type === 'group' ? 400 : type === 'text' ? 250 : 400,
+        height: type === 'group' ? 300 : type === 'text' ? 60 : 200,
       },
     };
 

@@ -314,6 +314,7 @@ interface FileActions {
   onOpen: () => void;
   onNewFile: () => void;
   onNewFolder: () => void;
+  onNewWhiteboard: () => void;
   onSearch: () => void;
   onRename: () => void;
   onDuplicate: () => void;
@@ -330,6 +331,7 @@ function getFileMenuItems(actions: FileActions): ContextMenuItem[] {
     { label: "在新窗口中打开", onClick: actions.onNewWindow },
     { label: "收藏", onClick: actions.onBookmark },
     { label: "新建文件", onClick: actions.onNewFile, separator: true },
+    { label: "新建白板", onClick: actions.onNewWhiteboard },
     { label: "新建文件夹", onClick: actions.onNewFolder },
     { label: "搜索", onClick: actions.onSearch },
     { label: "重命名", onClick: actions.onRename, separator: true },
@@ -343,6 +345,7 @@ function getFileMenuItems(actions: FileActions): ContextMenuItem[] {
 function getFolderMenuItems(actions: FileActions): ContextMenuItem[] {
   return [
     { label: "新建文件", onClick: actions.onNewFile },
+    { label: "新建白板", onClick: actions.onNewWhiteboard },
     { label: "新建文件夹", onClick: actions.onNewFolder },
     { label: "收藏", onClick: actions.onBookmark },
     { label: "搜索", onClick: actions.onSearch },
@@ -356,6 +359,7 @@ function getFolderMenuItems(actions: FileActions): ContextMenuItem[] {
 function getBlankMenuItems(actions: FileActions): ContextMenuItem[] {
   return [
     { label: "新建文件", onClick: actions.onNewFile },
+    { label: "新建白板", onClick: actions.onNewWhiteboard },
     { label: "新建文件夹", onClick: actions.onNewFolder },
     { label: "搜索", onClick: actions.onSearch },
     { label: "复制文件路径", onClick: actions.onCopyPath },
@@ -616,6 +620,14 @@ function TreeNodeComp({
     } catch (err) { console.error("新建文件夹失败:", err); }
   }, [node, onReload, onStartEdit]);
 
+  const handleNewWhiteboard = useCallback(async () => {
+    const targetDir = node.isDirectory ? node.path : parentPath(node.path);
+    try {
+      const filePath = await uniqueFilePath(targetDir, "untitled", ".canvas");
+      await writeTextFile(filePath, '{"nodes":[],"edges":[]}'); await onReload(targetDir); onStartEdit(filePath);
+    } catch (err) { console.error("新建白板失败:", err); }
+  }, [node, onReload, onStartEdit]);
+
   const handleRename = useCallback(async () => {
     onStartEdit(node.path);
   }, [node, onStartEdit]);
@@ -657,6 +669,7 @@ function TreeNodeComp({
     onNewWindow: () => onNewWindow(node.path),
     onNewFile: handleNewFile,
     onNewFolder: handleNewFolder,
+    onNewWhiteboard: handleNewWhiteboard,
     onSearch: showDevAlert,
     onRename: handleRename,
     onDuplicate: showDevAlert,
@@ -1058,6 +1071,13 @@ function FileTree({
     } catch (err) { console.error("新建文件夹失败:", err); }
   }, [rootPath, handleReload, handleStartEdit]);
 
+  const handleNewRootWhiteboard = useCallback(async () => {
+    try {
+      const filePath = await uniqueFilePath(rootPath, "untitled", ".canvas");
+      await writeTextFile(filePath, '{"nodes":[],"edges":[]}'); await handleReload(); handleStartEdit(filePath);
+    } catch (err) { console.error("新建白板失败:", err); }
+  }, [rootPath, handleReload, handleStartEdit]);
+
   const handleCopyRootPath = useCallback(() => {
     navigator.clipboard.writeText(rootPath).then(() => {
       showToast("路径已复制到剪贴板");
@@ -1076,6 +1096,7 @@ function FileTree({
     onNewWindow: showDevAlert,
     onNewFile: handleNewRootFile,
     onNewFolder: handleNewRootFolder,
+    onNewWhiteboard: handleNewRootWhiteboard,
     onSearch: showDevAlert,
     onRename: () => {},
     onDuplicate: showDevAlert,

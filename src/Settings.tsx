@@ -1783,13 +1783,8 @@ export default function Settings() {
           </svg>
         ), searchTerms: ["编辑器", "editor", "编辑模式", "Markdown", "渲染", "代码高亮", "预览", "数学公式", "链接"] },
         { id: "mindmap", label: "思维导图", icon: (
-          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-            <circle cx="6" cy="6" r="3" />
-            <circle cx="18" cy="18" r="3" />
-            <circle cx="18" cy="6" r="3" />
-            <circle cx="6" cy="18" r="3" />
-            <line x1="8.5" y1="8.5" x2="15.5" y2="15.5" />
-            <line x1="15.5" y1="8.5" x2="8.5" y2="15.5" />
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
+            <path d="M20 4a1 1 0 0 1 0 2h-2.7a7.4 7.4 0 0 0-7.2 6H20a1 1 0 0 1 0 2h-9.9a7.4 7.4 0 0 0 7.2 6H20a1 1 0 0 1 0 2h-2.7a9.4 9.4 0 0 1-9.2-8H4a1 1 0 0 1 0-2h4.1a9.4 9.4 0 0 1 9.2-8H20z" />
           </svg>
         ), searchTerms: ["思维导图", "mindmap", "脑图", "布局", "节点"] },
         { id: "graph", label: "关系图谱", icon: (

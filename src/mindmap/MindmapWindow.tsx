@@ -149,14 +149,8 @@ export default function MindmapWindow() {
     <div className="mindmap-window">
       <div className="mindmap-window-titlebar" data-tauri-drag-region>
         <span className="mindmap-window-title">
-          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" style={{ marginRight: 5, verticalAlign: 'middle', marginTop: -1 }}>
-            <circle cx="6" cy="5" r="2.5" />
-            <circle cx="18" cy="4" r="2" />
-            <circle cx="15" cy="11" r="2" />
-            <circle cx="6" cy="18" r="3" />
-            <line x1="8.2" y1="6.5" x2="16" y2="4.8" />
-            <line x1="8.2" y1="7" x2="13.2" y2="10.2" />
-            <line x1="6" y1="10.5" x2="6" y2="15" />
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor" style={{ marginRight: 5, verticalAlign: 'middle', marginTop: -1 }}>
+            <path d="M20 4a1 1 0 0 1 0 2h-2.7a7.4 7.4 0 0 0-7.2 6H20a1 1 0 0 1 0 2h-9.9a7.4 7.4 0 0 0 7.2 6H20a1 1 0 0 1 0 2h-2.7a9.4 9.4 0 0 1-9.2-8H4a1 1 0 0 1 0-2h4.1a9.4 9.4 0 0 1 9.2-8H20z" />
           </svg>
           思维导图
         </span>

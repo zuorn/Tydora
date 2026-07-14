@@ -408,6 +408,77 @@
   opacity: 0.6;
 }
 
+/* 列表思维导图图标 — heading 绝对定位到右侧 */
+.tiptap-editor .bullet-list-mindmap-heading {
+  position: relative;
+  counter-increment: line;
+}
+
+.bullet-list-mindmap-icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 22px;
+  height: 22px;
+  border-radius: 4px;
+  cursor: pointer;
+  opacity: 0.4;
+  transition: opacity 0.15s ease;
+  color: var(--text-secondary, #888);
+  background: transparent;
+}
+
+.bullet-list-mindmap-icon:hover {
+  opacity: 1;
+  background: var(--bg-secondary, #f0f0f0);
+}
+
+.bullet-list-mindmap-icon svg {
+  width: 14px;
+  height: 14px;
+}
+
+/* 有 heading 时：绝对定位到 heading 行最右侧 */
+.bullet-list-mindmap-icon.heading-icon {
+  position: absolute;
+  right: 0;
+  top: 0;
+  z-index: 1;
+}
+
+/* 无 heading 时（bulletList widget）：绝对定位到第一个 listItem 右上侧 */
+.bullet-list-mindmap-icon.list-icon {
+  position: absolute;
+  right: 0;
+  top: 0;
+  z-index: 1;
+}
+
+/* 无 heading 时（taskList Decoration.node）：通过 ::before 在 <ul> 右上角显示图标 */
+.tiptap-editor ul.bullet-list-mindmap-tasklist::before {
+  content: '';
+  position: absolute;
+  right: 0;
+  top: 0;
+  width: 22px;
+  height: 22px;
+  border-radius: 4px;
+  cursor: pointer;
+  opacity: 0.4;
+  z-index: 1;
+  background-color: transparent;
+  background-image: url("data:image/svg+xml,%3Csvg width='14' height='14' viewBox='0 0 24 24' fill='none' stroke='%23888' stroke-width='1.8' stroke-linecap='round' stroke-linejoin='round'%3E%3Ccircle cx='6' cy='5' r='2.5'/%3E%3Ccircle cx='18' cy='4' r='2'/%3E%3Ccircle cx='15' cy='11' r='2'/%3E%3Ccircle cx='6' cy='18' r='3'/%3E%3Cline x1='8.2' y1='6.5' x2='16' y2='4.8'/%3E%3Cline x1='8.2' y1='7' x2='13.2' y2='10.2'/%3E%3Cline x1='6' y1='10.5' x2='6' y2='15'/%3E%3C/svg%3E");
+  background-size: 14px;
+  background-position: center;
+  background-repeat: no-repeat;
+  transition: opacity 0.15s ease;
+}
+
+.tiptap-editor ul.bullet-list-mindmap-tasklist:hover::before {
+  opacity: 1;
+  background-color: var(--bg-secondary, #f0f0f0);
+}
+
 /* 表格 */
 .tiptap-editor table {
   border-collapse: collapse;
@@ -534,6 +605,7 @@
 .tiptap-editor ul[data-type="taskList"] {
   list-style: none;
   padding-left: 0;
+  position: relative;
 }
 
 .tiptap-editor ul[data-type="taskList"] li {

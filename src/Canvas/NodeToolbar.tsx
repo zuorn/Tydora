@@ -1,5 +1,6 @@
 import { useCallback, useState, useRef, useEffect } from 'react';
 import { useReactFlow } from '@xyflow/react';
+import { emit } from '@tauri-apps/api/event';
 import { useCanvasStore } from './canvas-store';
 import ColorPicker from './ColorPicker';
 
@@ -60,15 +61,53 @@ export default function NodeToolbar({ nodeId, position, onClose }: NodeToolbarPr
   }, [nodeId, updateNodeColor]);
 
   const handleEdit = useCallback(() => {
-    // Trigger edit mode on the node
-    const nodeElement = document.querySelector(`[data-id="${nodeId}"]`);
-    if (nodeElement) {
-      // Dispatch double-click event to enter edit mode
-      const doubleClickEvent = new MouseEvent('dblclick', { bubbles: true });
-      nodeElement.dispatchEvent(doubleClickEvent);
+    // Get the node to determine its type
+    const nodes = getNodes();
+    const node = nodes.find(n => n.id === nodeId);
+    if (!node) {
+      onClose();
+      return;
+    }
+
+    // Handle different node types
+    const nodeType = node.type;
+    const nodeData = node.data as any;
+
+    if (nodeType === 'noteNode' || nodeType === 'fileNode') {
+      // Open the file in editor
+      if (nodeData?.file) {
+        emit('open-file', { path: nodeData.file });
+      }
+    } else if (nodeType === 'canvasNode') {
+      // Open the embedded canvas
+      if (nodeData?.file) {
+        emit('open-file', { path: nodeData.file });
+      }
+    } else if (nodeType === 'textNode') {
+      // For text nodes, find the TipTap editor and focus it
+      // Use setTimeout to ensure the toolbar is closed first
+      setTimeout(() => {
+        const nodeElement = document.querySelector(`[data-id="${nodeId}"]`);
+        if (nodeElement) {
+          // Find the ProseMirror editor element
+          const editorElement = nodeElement.querySelector('.ProseMirror');
+          if (editorElement) {
+            (editorElement as HTMLElement).focus();
+          }
+        }
+      }, 50);
+    } else if (nodeType === 'mediaNode') {
+      // Open media file in system default app
+      if (nodeData?.file) {
+        const nodeElement = document.querySelector(`[data-id="${nodeId}"]`);
+        if (nodeElement) {
+          const clickEvent = new MouseEvent('click', { bubbles: true });
+          nodeElement.dispatchEvent(clickEvent);
+        }
+      }
     }
     onClose();
-  }, [nodeId, onClose]);
+  }, [nodeId, getNodes, onClose]);
 
   return (
     <div

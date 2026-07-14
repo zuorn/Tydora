@@ -1,7 +1,8 @@
 import { useState, useCallback, useEffect, useRef } from "react";
 import { getCurrentWebviewWindow } from "@tauri-apps/api/webviewWindow";
 import { LogicalSize, LogicalPosition } from "@tauri-apps/api/dpi";
-import { availableMonitors, type Monitor } from "@tauri-apps/api/window";
+import { availableMonitors } from "@tauri-apps/api/window";
+import { clampWindowToMonitor } from "./services/windowState";
 import { invoke } from "@tauri-apps/api/core";
 import { open } from "@tauri-apps/plugin-dialog";
 import { useTheme, type ThemeName } from "./themes";
@@ -1613,25 +1614,13 @@ export default function Settings() {
         };
 
         const monitors = await availableMonitors();
-        if (monitors && monitors.length > 0) {
-          const posValid = monitors.some((m: Monitor) => {
-            const { x: mx, y: my } = m.position;
-            const { width: mw, height: mh } = m.size;
-            return (
-              state.x + state.width > mx + 80 &&
-              state.x < mx + mw - 80 &&
-              state.y + 40 > my &&
-              state.y < my + mh
-            );
-          });
-          if (!posValid) return;
-        }
-
-        if (state.width && state.height) {
-          await win.setSize(new LogicalSize(state.width, state.height));
-        }
-        if (state.x !== undefined && state.y !== undefined) {
-          await win.setPosition(new LogicalPosition(state.x, state.y));
+        if (monitors && monitors.length > 0 && state.width && state.height) {
+          const clamped = clampWindowToMonitor(
+            { x: state.x ?? 0, y: state.y ?? 0, width: state.width, height: state.height },
+            monitors
+          );
+          await win.setSize(new LogicalSize(clamped.width, clamped.height));
+          await win.setPosition(new LogicalPosition(clamped.x, clamped.y));
         }
         if (state.maximized) {
           await win.maximize();

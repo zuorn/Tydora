@@ -1,6 +1,7 @@
 import { useState, useCallback, useRef, useEffect, useMemo, Component } from "react";
-import { getCurrentWindow, availableMonitors, type Monitor } from "@tauri-apps/api/window";
+import { getCurrentWindow, availableMonitors } from "@tauri-apps/api/window";
 import { LogicalSize, LogicalPosition } from "@tauri-apps/api/dpi";
+import { clampWindowToMonitor } from "./services/windowState";
 import { readTextFile, writeTextFile } from "@tauri-apps/plugin-fs";
 import { save } from "@tauri-apps/plugin-dialog";
 import { invoke } from "@tauri-apps/api/core";
@@ -409,29 +410,15 @@ function App({ initialFilePath }: { initialFilePath?: string | null }) {
           x: number; y: number; width: number; height: number; maximized: boolean;
         };
 
-        // 验证保存的位置是否仍在可见显示器上
+        // 钳制窗口尺寸和位置到显示器边界
         const monitors = await availableMonitors();
-        if (monitors && monitors.length > 0) {
-          const posValid = monitors.some((m: Monitor) => {
-            const { x: mx, y: my } = m.position;
-            const { width: mw, height: mh } = m.size;
-            // 至少窗口标题栏在显示器范围内（x 允许部分超出）
-            return (
-              state.x + state.width > mx + 80 &&
-              state.x < mx + mw - 80 &&
-              state.y + 40 > my &&
-              state.y < my + mh
-            );
-          });
-          if (!posValid) return; // 位置不在任何显示器上，使用默认
-        }
-
-        // 先设置尺寸再设置位置
-        if (state.width && state.height) {
-          await win.setSize(new LogicalSize(state.width, state.height));
-        }
-        if (state.x !== undefined && state.y !== undefined) {
-          await win.setPosition(new LogicalPosition(state.x, state.y));
+        if (monitors && monitors.length > 0 && state.width && state.height) {
+          const clamped = clampWindowToMonitor(
+            { x: state.x ?? 0, y: state.y ?? 0, width: state.width, height: state.height },
+            monitors
+          );
+          await win.setSize(new LogicalSize(clamped.width, clamped.height));
+          await win.setPosition(new LogicalPosition(clamped.x, clamped.y));
         }
         if (state.maximized) {
           await win.maximize();
@@ -483,6 +470,9 @@ function App({ initialFilePath }: { initialFilePath?: string | null }) {
   const syncMindmapContent = useCallback((value: string) => {
     if (mindmapSyncTimerRef.current) clearTimeout(mindmapSyncTimerRef.current);
     mindmapSyncTimerRef.current = setTimeout(() => {
+      // 列表模式下不覆盖内容
+      const mode = localStorage.getItem("zmd-mindmap-mode");
+      if (mode === "list") return;
       localStorage.setItem("zmd-mindmap-content", value);
       emit("mindmap-content-update", { content: value }).catch(() => {});
     }, 500);
@@ -916,6 +906,7 @@ function App({ initialFilePath }: { initialFilePath?: string | null }) {
     const handler = (e: KeyboardEvent) => {
       if ((e.ctrlKey || e.metaKey) && e.key === "m") {
         e.preventDefault();
+        localStorage.setItem("zmd-mindmap-mode", "document");
         localStorage.setItem("zmd-mindmap-content", contentRef.current);
         invoke("open_mindmap_window");
       }
@@ -1052,6 +1043,7 @@ function App({ initialFilePath }: { initialFilePath?: string | null }) {
     { id: "toggle-mode", label: "切换编辑模式", category: "视图", shortcut: "Ctrl+/", action: cycleMode },
     { id: "toggle-typewriter", label: "切换打字机模式", category: "视图", shortcut: "Ctrl+Alt+T", action: toggleTypewriterMode },
     { id: "open-mindmap", label: "打开思维导图", category: "视图", shortcut: "Ctrl+M", action: () => {
+      localStorage.setItem("zmd-mindmap-mode", "document");
       localStorage.setItem("zmd-mindmap-content", content);
       invoke("open_mindmap_window");
     }},
@@ -1185,6 +1177,7 @@ function App({ initialFilePath }: { initialFilePath?: string | null }) {
             )}
             <div className="window-controls">
               <button className="window-control-btn" title="打开思维导图" onClick={() => {
+                localStorage.setItem("zmd-mindmap-mode", "document");
                 localStorage.setItem("zmd-mindmap-content", content);
                 invoke("open_mindmap_window");
               }}>

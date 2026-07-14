@@ -1,7 +1,8 @@
 import { useState, useCallback, useEffect, useRef } from "react";
 import { getCurrentWebviewWindow } from "@tauri-apps/api/webviewWindow";
 import { LogicalSize, LogicalPosition } from "@tauri-apps/api/dpi";
-import { availableMonitors, type Monitor } from "@tauri-apps/api/window";
+import { availableMonitors } from "@tauri-apps/api/window";
+import { clampWindowToMonitor } from "../services/windowState";
 import { listen } from "@tauri-apps/api/event";
 import MindmapView from "./MindmapView";
 import "./MindmapWindow.css";
@@ -32,6 +33,9 @@ export default function MindmapWindow() {
   useEffect(() => {
     const interval = setInterval(() => {
       try {
+        // 列表模式下不轮询，避免覆盖列表内容
+        const mode = localStorage.getItem("zmd-mindmap-mode");
+        if (mode === "list") return;
         const stored = localStorage.getItem(MINDMAP_CONTENT_KEY);
         if (stored && stored !== content) {
           setContent(stored);
@@ -72,27 +76,15 @@ export default function MindmapWindow() {
           };
 
           const monitors = await availableMonitors();
-          if (monitors && monitors.length > 0) {
-            const posValid = monitors.some((m: Monitor) => {
-              const { x: mx, y: my } = m.position;
-              const { width: mw, height: mh } = m.size;
-              return (
-                state.x + state.width > mx + 80 &&
-                state.x < mx + mw - 80 &&
-                state.y + 40 > my &&
-                state.y < my + mh
-              );
-            });
-            if (posValid) {
-              if (state.width && state.height) {
-                await win.setSize(new LogicalSize(state.width, state.height));
-              }
-              if (state.x !== undefined && state.y !== undefined) {
-                await win.setPosition(new LogicalPosition(state.x, state.y));
-              }
-              if (state.maximized) {
-                await win.maximize();
-              }
+          if (monitors && monitors.length > 0 && state.width && state.height) {
+            const clamped = clampWindowToMonitor(
+              { x: state.x ?? 0, y: state.y ?? 0, width: state.width, height: state.height },
+              monitors
+            );
+            await win.setSize(new LogicalSize(clamped.width, clamped.height));
+            await win.setPosition(new LogicalPosition(clamped.x, clamped.y));
+            if (state.maximized) {
+              await win.maximize();
             }
           }
         }

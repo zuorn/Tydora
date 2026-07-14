@@ -46,6 +46,7 @@ import { WikiLink } from "./extensions/wiki-link";
 import { SearchHighlight } from "./extensions/search-highlight";
 import { CodeBlockToolbar } from "./extensions/code-block-toolbar";
 import { TableFloatingToolbar } from "./extensions/table-floating-toolbar";
+import { BulletListMindmap } from "./extensions/bullet-list-mindmap";
 import { TableFloatingToolbar as TableFloatingToolbarComponent } from "./TableFloatingToolbar";
 import { executeCommand } from "./extensions/custom-commands";
 import { saveImageToLocal, loadImageSettings, resolveRelativePath, dirName } from "../services";
@@ -322,6 +323,7 @@ const TipTapEditor = forwardRef<EditorHandle, TipTapEditorProps>(
         SearchHighlight,
         CodeBlockToolbar,
         ...(editorSettings?.tableToolbar !== false ? [TableFloatingToolbar] : []),
+        BulletListMindmap,
       ],
       content: value || "",
       onUpdate: ({ editor: ed }) => {

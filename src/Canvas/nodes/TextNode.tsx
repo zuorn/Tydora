@@ -3,6 +3,7 @@ import { Handle, Position, NodeResizer, type NodeProps } from '@xyflow/react';
 import { useEditor, EditorContent } from '@tiptap/react';
 import StarterKit from '@tiptap/starter-kit';
 import Placeholder from '@tiptap/extension-placeholder';
+import { Markdown } from 'tiptap-markdown';
 import { getCanvasColor } from '../canvas-utils';
 import { useCanvasStore } from '../canvas-store';
 
@@ -10,9 +11,6 @@ function TextNode({ data, selected, id }: NodeProps) {
   const text = (data as any)?.text || '';
   const updateNodeData = useCanvasStore((s) => s.updateNodeData);
   const [isHovered, setIsHovered] = useState(false);
-
-  const handleMouseEnter = useCallback(() => setIsHovered(true), []);
-  const handleMouseLeave = useCallback(() => setIsHovered(false), []);
 
   const editor = useEditor({
     extensions: [
@@ -22,6 +20,12 @@ function TextNode({ data, selected, id }: NodeProps) {
       Placeholder.configure({
         placeholder: '输入内容...',
       }),
+      Markdown.configure({
+        html: true,
+        breaks: true,
+        transformPastedText: true,
+        transformCopiedText: true,
+      }),
     ],
     content: text || '',
     editorProps: {
@@ -30,16 +34,38 @@ function TextNode({ data, selected, id }: NodeProps) {
       },
     },
     onUpdate: ({ editor: ed }) => {
-      updateNodeData(id as string, { text: ed.getText() });
+      // Get markdown content using the Markdown extension
+      const md = (ed.storage as any).markdown?.getMarkdown?.() || ed.getText();
+      updateNodeData(id as string, { text: md });
     },
   });
 
   // Sync external changes
   useEffect(() => {
-    if (editor && editor.getText() !== text) {
-      editor.commands.setContent(text || '');
+    if (editor && text) {
+      const currentContent = (editor.storage as any).markdown?.getMarkdown?.() || editor.getText();
+      if (currentContent !== text) {
+        editor.commands.setContent(text);
+      }
     }
   }, [text, editor]);
+
+  const handleMouseEnter = useCallback(() => setIsHovered(true), []);
+  const handleMouseLeave = useCallback(() => setIsHovered(false), []);
+
+  // Focus editor on double-click
+  const handleDoubleClick = useCallback(() => {
+    if (editor) {
+      editor.commands.focus();
+    }
+  }, [editor]);
+
+  // Focus editor on click (for IR mode)
+  const handleClick = useCallback(() => {
+    if (editor) {
+      editor.commands.focus();
+    }
+  }, [editor]);
 
   const color = getCanvasColor((data as any)?.color);
 
@@ -60,6 +86,8 @@ function TextNode({ data, selected, id }: NodeProps) {
         background: backgroundColor,
         borderColor: borderColor,
       }}
+      onClick={handleClick}
+      onDoubleClick={handleDoubleClick}
       onMouseEnter={handleMouseEnter}
       onMouseLeave={handleMouseLeave}
     >

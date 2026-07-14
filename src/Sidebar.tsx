@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback, useRef, useLayoutEffect } from "react";
 import { createPortal } from "react-dom";
-import { readDir, readTextFile, writeTextFile, mkdir, remove, rename } from "@tauri-apps/plugin-fs";
+import { readDir, readTextFile, writeTextFile, mkdir, remove, rename, exists } from "@tauri-apps/plugin-fs";
 import { open } from "@tauri-apps/plugin-dialog";
 import { invoke } from "@tauri-apps/api/core";
 import { ConfirmDialog } from "./components";
@@ -97,6 +97,24 @@ function parentPath(path: string): string {
   const sep = pathSep();
   const idx = path.lastIndexOf(sep);
   return idx > 0 ? path.substring(0, idx) : path;
+}
+
+async function uniqueFilePath(dirPath: string, baseName: string, ext: string): Promise<string> {
+  const first = joinPath(dirPath, `${baseName}${ext}`);
+  if (!(await exists(first))) return first;
+  for (let i = 1; ; i++) {
+    const candidate = joinPath(dirPath, `${baseName} ${i}${ext}`);
+    if (!(await exists(candidate))) return candidate;
+  }
+}
+
+async function uniqueDirPath(dirPath: string, dirName: string): Promise<string> {
+  const first = joinPath(dirPath, dirName);
+  if (!(await exists(first))) return first;
+  for (let i = 1; ; i++) {
+    const candidate = joinPath(dirPath, `${dirName} ${i}`);
+    if (!(await exists(candidate))) return candidate;
+  }
 }
 
 // ── Search ──────────────────────────────────────────────────────────
@@ -494,6 +512,9 @@ function TreeNodeComp({
   onFinishEdit,
   onNewWindow,
   onBookmark,
+  selectedPaths,
+  onMultiSelect,
+  lastClickedPathRef,
 }: {
   node: TreeNode;
   depth: number;
@@ -509,6 +530,9 @@ function TreeNodeComp({
   onFinishEdit: (path: string, newName: string) => void;
   onNewWindow: (filePath: string) => void;
   onBookmark: (filePath: string, isDirectory: boolean) => void;
+  selectedPaths: Set<string>;
+  onMultiSelect: (paths: string[], mode: 'toggle' | 'range' | 'replace') => void;
+  lastClickedPathRef: React.MutableRefObject<string | null>;
 }) {
   const [ctxMenu, setCtxMenu] = useState<{ x: number; y: number } | null>(null);
   const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false);
@@ -531,32 +555,65 @@ function TreeNodeComp({
     }
   }, [isEditing]);
 
-  const handleToggle = useCallback(async () => {
+  const handleToggle = useCallback(async (e: React.MouseEvent) => {
     if (!node.isDirectory) {
+      // Shift+click: range select
+      if (e.shiftKey) {
+        e.preventDefault();
+        const allNodes = Array.from(document.querySelectorAll('.tree-node[data-path]'));
+        const paths = allNodes.map(n => (n as HTMLElement).dataset.path!);
+        const anchor = lastClickedPathRef.current;
+        if (anchor) {
+          const start = paths.indexOf(anchor);
+          const end = paths.indexOf(node.path);
+          if (start !== -1 && end !== -1) {
+            const [lo, hi] = start < end ? [start, end] : [end, start];
+            const range = paths.slice(lo, hi + 1);
+            onMultiSelect(range, 'range');
+          }
+        }
+        lastClickedPathRef.current = node.path;
+        onSelect(node.path);
+        return;
+      }
+      // Ctrl+click: toggle selection
+      if (e.ctrlKey || e.metaKey) {
+        e.preventDefault();
+        onMultiSelect([node.path], 'toggle');
+        lastClickedPathRef.current = node.path;
+        onSelect(node.path);
+        return;
+      }
+      // Normal click: clear selection
+      onMultiSelect([], 'replace');
+      lastClickedPathRef.current = node.path;
       onSelect(node.path);
       return;
     }
+    // Directory toggle
     if (node.children === null) {
       node.children = await loadDirectory(node.path);
     }
     node.expanded = !node.expanded;
     onRefresh();
-  }, [node, onSelect, onRefresh]);
+  }, [node, onSelect, onRefresh, onMultiSelect, lastClickedPathRef]);
 
   // ── Actions ──
 
   const handleNewFile = useCallback(async () => {
     const targetDir = node.isDirectory ? node.path : parentPath(node.path);
-    const filePath = joinPath(targetDir, "untitled.md");
-    try { await writeTextFile(filePath, ""); await onReload(targetDir); onStartEdit(filePath); }
-    catch (err) { console.error("新建文件失败:", err); }
+    try {
+      const filePath = await uniqueFilePath(targetDir, "untitled", ".md");
+      await writeTextFile(filePath, ""); await onReload(targetDir); onStartEdit(filePath);
+    } catch (err) { console.error("新建文件失败:", err); }
   }, [node, onReload, onStartEdit]);
 
   const handleNewFolder = useCallback(async () => {
     const targetDir = node.isDirectory ? node.path : parentPath(node.path);
-    const dirPath = joinPath(targetDir, "新建文件夹");
-    try { await mkdir(dirPath); await onReload(targetDir); onStartEdit(dirPath); }
-    catch (err) { console.error("新建文件夹失败:", err); }
+    try {
+      const dirPath = await uniqueDirPath(targetDir, "新建文件夹");
+      await mkdir(dirPath); await onReload(targetDir); onStartEdit(dirPath);
+    } catch (err) { console.error("新建文件夹失败:", err); }
   }, [node, onReload, onStartEdit]);
 
   const handleRename = useCallback(async () => {
@@ -569,9 +626,17 @@ function TreeNodeComp({
 
   const handleDeleteConfirm = useCallback(async () => {
     setDeleteConfirmOpen(false);
-    try { await remove(node.path, { recursive: true }); onReload(); }
-    catch (err) { console.error("删除失败:", err); }
-  }, [node, onReload]);
+    try {
+      const pathsToDelete = selectedPaths.size > 0 && selectedPaths.has(node.path)
+        ? Array.from(selectedPaths)
+        : [node.path];
+      for (const p of pathsToDelete) {
+        await remove(p, { recursive: true });
+      }
+      onMultiSelect([], 'replace');
+      onReload();
+    } catch (err) { console.error("删除失败:", err); }
+  }, [node, onReload, selectedPaths, onMultiSelect]);
 
   const handleCopyPath = useCallback(() => {
     navigator.clipboard.writeText(node.path).then(() => {
@@ -588,7 +653,7 @@ function TreeNodeComp({
   }, [node]);
 
   const actions: FileActions = {
-    onOpen: handleToggle,
+    onOpen: () => handleToggle({} as React.MouseEvent),
     onNewWindow: () => onNewWindow(node.path),
     onNewFile: handleNewFile,
     onNewFolder: handleNewFolder,
@@ -612,6 +677,7 @@ function TreeNodeComp({
   }, []);
 
   const isActive = activePath === node.path;
+  const isSelected = selectedPaths.has(node.path);
   const indent = depth * 22;
   const isDragOver = node.isDirectory && dragOverPath === node.path;
 
@@ -619,7 +685,7 @@ function TreeNodeComp({
     <div className="tree-branch">
       <div
         ref={nodeRef}
-        className={`tree-node${isActive ? " active" : ""}${isDragOver ? " drag-over" : ""}`}
+        className={`tree-node${isActive ? " active" : ""}${isSelected ? " selected" : ""}${isDragOver ? " drag-over" : ""}`}
         style={{ paddingLeft: `${8 + indent}px` }}
         onClick={handleToggle}
         onContextMenu={handleContextMenu}
@@ -680,6 +746,9 @@ function TreeNodeComp({
               onFinishEdit={onFinishEdit}
               onNewWindow={onNewWindow}
               onBookmark={onBookmark}
+              selectedPaths={selectedPaths}
+              onMultiSelect={onMultiSelect}
+              lastClickedPathRef={lastClickedPathRef}
             />
           ))}
         </div>
@@ -697,9 +766,11 @@ function TreeNodeComp({
       <ConfirmDialog
         isOpen={deleteConfirmOpen}
         title="删除确认"
-        message={node.isDirectory
-          ? `确定要删除文件夹 "${node.name}" 及其所有内容吗？`
-          : `确定要删除文件 "${node.name}" 吗？`}
+        message={selectedPaths.size > 1 && selectedPaths.has(node.path)
+          ? `确定要删除选中的 ${selectedPaths.size} 个项目吗？`
+          : node.isDirectory
+            ? `确定要删除文件夹 "${node.name}" 及其所有内容吗？`
+            : `确定要删除文件 "${node.name}" 吗？`}
         type="danger"
         onConfirm={handleDeleteConfirm}
         onCancel={() => setDeleteConfirmOpen(false)}
@@ -733,6 +804,8 @@ function FileTree({
   const [, forceUpdate] = useState(0);
   const [ctxMenu, setCtxMenu] = useState<{ x: number; y: number } | null>(null);
   const [editingPath, setEditingPath] = useState<string | null>(null);
+  const [selectedPaths, setSelectedPaths] = useState<Set<string>>(new Set());
+  const lastClickedPathRef = useRef<string | null>(null);
   const treeRef = useRef<HTMLDivElement>(null);
   const lastScrollTopRef = useRef(0);
 
@@ -823,6 +896,25 @@ function FileTree({
     try { await rename(path, newPath); await handleReload(); }
     catch (err) { console.error("重命名失败:", err); }
   }, [handleReload, rootPath]);
+
+  // ── Multi-select ──
+  const handleMultiSelect = useCallback((paths: string[], mode: 'toggle' | 'range' | 'replace') => {
+    setSelectedPaths(prev => {
+      const next = new Set(mode === 'replace' ? [] : prev);
+      if (mode === 'toggle') {
+        for (const p of paths) {
+          if (next.has(p)) next.delete(p); else next.add(p);
+        }
+      } else {
+        for (const p of paths) next.add(p);
+      }
+      return next;
+    });
+  }, []);
+
+  const handleClearSelection = useCallback(() => {
+    setSelectedPaths(new Set());
+  }, []);
 
   // ── Mouse-based Drag & Drop ──
   const handleMouseDown = useCallback((e: React.MouseEvent, nodePath: string) => {
@@ -953,15 +1045,17 @@ function FileTree({
 
   // ── Blank area actions ──
   const handleNewRootFile = useCallback(async () => {
-    const filePath = joinPath(rootPath, "untitled.md");
-    try { await writeTextFile(filePath, ""); await handleReload(); handleStartEdit(filePath); }
-    catch (err) { console.error("新建文件失败:", err); }
+    try {
+      const filePath = await uniqueFilePath(rootPath, "untitled", ".md");
+      await writeTextFile(filePath, ""); await handleReload(); handleStartEdit(filePath);
+    } catch (err) { console.error("新建文件失败:", err); }
   }, [rootPath, handleReload, handleStartEdit]);
 
   const handleNewRootFolder = useCallback(async () => {
-    const dirPath = joinPath(rootPath, "新建文件夹");
-    try { await mkdir(dirPath); await handleReload(); handleStartEdit(dirPath); }
-    catch (err) { console.error("新建文件夹失败:", err); }
+    try {
+      const dirPath = await uniqueDirPath(rootPath, "新建文件夹");
+      await mkdir(dirPath); await handleReload(); handleStartEdit(dirPath);
+    } catch (err) { console.error("新建文件夹失败:", err); }
   }, [rootPath, handleReload, handleStartEdit]);
 
   const handleCopyRootPath = useCallback(() => {
@@ -1054,7 +1148,7 @@ function FileTree({
   }, [linkUpdateDialog, handleReload]);
 
   return (
-    <div ref={treeRef} className={`sidebar-tree${hidden ? " hidden" : ""}${isDragging ? " dragging" : ""}${dragOverPath === rootPath ? " drag-over" : ""}`} onContextMenu={handleBlankContextMenu} onScroll={handleScroll} data-path={rootPath} data-is-dir="1">
+    <div ref={treeRef} className={`sidebar-tree${hidden ? " hidden" : ""}${isDragging ? " dragging" : ""}${dragOverPath === rootPath ? " drag-over" : ""}`} onContextMenu={handleBlankContextMenu} onScroll={handleScroll} onClick={(e) => { if (e.target === e.currentTarget) handleClearSelection(); }} data-path={rootPath} data-is-dir="1">
       {rootNodes.length > 0 &&
         rootNodes.map((node) => (
           <TreeNodeComp
@@ -1073,6 +1167,9 @@ function FileTree({
             onFinishEdit={handleFinishEdit}
             onNewWindow={onNewWindow}
             onBookmark={onBookmark}
+            selectedPaths={selectedPaths}
+            onMultiSelect={handleMultiSelect}
+            lastClickedPathRef={lastClickedPathRef}
           />
         ))}
 

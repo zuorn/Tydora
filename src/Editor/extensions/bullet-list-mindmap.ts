@@ -111,16 +111,12 @@ function installGlobalHandler() {
     (e: MouseEvent) => {
       const target = e.target as HTMLElement;
       const icon = target.closest(".bullet-list-mindmap-icon") as HTMLElement | null;
-      // taskList 无 heading 时用 Decoration.node + CSS ::before，检测 <ul> 上的点击
-      const tasklist = !icon
-        ? (target.closest("ul.bullet-list-mindmap-tasklist") as HTMLElement | null)
-        : null;
-      if (!icon && !tasklist) return;
+      if (!icon) return;
 
       e.preventDefault();
       e.stopPropagation();
 
-      const el = icon || tasklist!;
+      const el = icon;
       const listPos = Number(el.dataset.listPos);
       if (!pmView || isNaN(listPos)) return;
 
@@ -147,8 +143,7 @@ function installGlobalHandler() {
     "click",
     (e) => {
       if (
-        (e.target as HTMLElement).closest(".bullet-list-mindmap-icon") ||
-        (e.target as HTMLElement).closest("ul.bullet-list-mindmap-tasklist")
+        (e.target as HTMLElement).closest(".bullet-list-mindmap-icon")
       ) {
         e.stopPropagation();
       }
@@ -161,8 +156,11 @@ function installGlobalHandler() {
 function createBulletListDecorations(doc: ProsemirrorNode): DecorationSet {
   const decorations: Decoration[] = [];
 
-  doc.descendants((node, pos) => {
+  doc.descendants((node, pos, parent) => {
     if (node.type.name !== "bulletList" && node.type.name !== "taskList") return;
+
+    // 跳过嵌套列表 — 只在最外层列表上显示图标
+    if (parent && (parent.type.name === "listItem" || parent.type.name === "taskItem")) return;
 
     const itemCount = countListItems(node);
     if (itemCount <= 2) return;
@@ -183,17 +181,22 @@ function createBulletListDecorations(doc: ProsemirrorNode): DecorationSet {
         { side: 1 }),
       );
     } else {
-      // 无 heading：图标放在第一个列表项右侧
+      // 无 heading：给列表容器添加 position:relative，让绝对定位的图标正确定位
+      decorations.push(
+        Decoration.node(pos, pos + node.nodeSize, {
+          class: "bullet-list-mindmap-list-container",
+        }),
+      );
+
       const isTaskList = node.type.name === "taskList";
 
       if (isTaskList) {
-        // taskList 的 taskItem 有 NodeView，其 update 会清除非扩展属性
-        // 改用 Decoration.node 作用在 taskList 的 <ul> 上（无 NodeView），CSS ::before 显示图标
+        // widget 放在 <ul> 内容开头（第一个 <li> 之前）
+        // 避免放入 taskItem 的 contentDOM 导致定位异常
         decorations.push(
-          Decoration.node(pos, pos + node.nodeSize, {
-            class: "bullet-list-mindmap-tasklist",
-            "data-list-pos": String(pos),
-          }),
+          Decoration.widget(pos + 1, () =>
+            createMindmapIcon(pos, ""),
+          { side: 1 }),
         );
       } else {
         // bulletList 无 NodeView，widget 方式正常工作

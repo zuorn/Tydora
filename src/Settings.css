@@ -1674,3 +1674,300 @@
 [data-theme="liquid-glass"] .settings-actions {
   border-top-color: rgba(0, 0, 0, 0.06);
 }
+
+/* ── Canvas Settings Page (Obsidian-style) ────────────────────────── */
+
+.canvas-settings-page {
+  max-width: 600px;
+  margin: 0 auto;
+}
+
+.canvas-settings-card {
+  background: var(--bg-secondary);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  margin-bottom: 16px;
+  overflow: hidden;
+}
+
+.canvas-settings-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 14px 18px;
+  min-height: 48px;
+}
+
+.canvas-settings-row + .canvas-settings-row {
+  border-top: 1px solid var(--border);
+}
+
+.canvas-settings-row-nested {
+  padding-left: 36px;
+  background: color-mix(in srgb, var(--bg-secondary) 60%, var(--bg-primary));
+}
+
+.canvas-settings-row-label {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  flex: 1;
+  min-width: 0;
+  margin-right: 16px;
+}
+
+.canvas-settings-row-title {
+  font-size: 14px;
+  color: var(--text-primary);
+  font-weight: 500;
+}
+
+.canvas-settings-row-desc {
+  font-size: 12px;
+  color: var(--text-secondary);
+  line-height: 1.4;
+}
+
+.canvas-settings-row-control {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-shrink: 0;
+}
+
+.canvas-settings-x {
+  color: var(--text-secondary);
+  font-size: 13px;
+}
+
+.canvas-settings-unit {
+  color: var(--text-secondary);
+  font-size: 13px;
+  min-width: 20px;
+}
+
+/* ── Slider ── */
+.canvas-settings-slider {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 140px;
+  height: 4px;
+  background: var(--border);
+  border-radius: 2px;
+  outline: none;
+  cursor: pointer;
+}
+
+.canvas-settings-slider::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  background: var(--accent);
+  cursor: pointer;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.2);
+  transition: transform 0.15s ease;
+}
+
+.canvas-settings-slider::-webkit-slider-thumb:hover {
+  transform: scale(1.15);
+}
+
+.canvas-settings-slider::-moz-range-thumb {
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  background: var(--accent);
+  cursor: pointer;
+  border: none;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.2);
+}
+
+/* ── Switch (Obsidian-style) ── */
+.settings-switch {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  cursor: pointer;
+  flex-shrink: 0;
+}
+
+.settings-switch input {
+  position: absolute;
+  opacity: 0;
+  width: 0;
+  height: 0;
+}
+
+.settings-switch-slider {
+  position: relative;
+  width: 40px;
+  height: 22px;
+  background: var(--border);
+  border-radius: 11px;
+  transition: background 0.2s ease;
+}
+
+.settings-switch-slider::after {
+  content: '';
+  position: absolute;
+  top: 3px;
+  left: 3px;
+  width: 16px;
+  height: 16px;
+  background: white;
+  border-radius: 50%;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.2);
+  transition: transform 0.2s ease;
+}
+
+.settings-switch input:checked + .settings-switch-slider {
+  background: var(--accent);
+}
+
+.settings-switch input:checked + .settings-switch-slider::after {
+  transform: translateX(18px);
+}
+
+/* ── Input Small ── */
+.settings-input-small {
+  width: 60px;
+  padding: 6px 8px;
+  background: var(--bg-surface);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  color: var(--text-primary);
+  font-size: 13px;
+  text-align: center;
+  outline: none;
+  transition: border-color 0.15s ease, box-shadow 0.15s ease;
+}
+
+.settings-input-small:hover {
+  border-color: color-mix(in srgb, var(--text-secondary) 30%, var(--border));
+}
+
+.settings-input-small:focus {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 2px color-mix(in srgb, var(--accent) 20%, transparent);
+}
+
+/* ── Radio Card (Obsidian-style) ── */
+.settings-radio-card {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 14px;
+  background: var(--bg-surface);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  cursor: pointer;
+  font-size: 13px;
+  color: var(--text-primary);
+  transition: border-color 0.15s ease, background 0.15s ease;
+}
+
+.settings-radio-card:hover {
+  border-color: color-mix(in srgb, var(--text-secondary) 30%, var(--border));
+}
+
+.settings-radio-card input {
+  margin: 0;
+  accent-color: var(--accent);
+}
+
+.settings-radio-card:has(input:checked) {
+  border-color: var(--accent);
+  background: color-mix(in srgb, var(--accent) 8%, var(--bg-surface));
+}
+
+/* ── Actions Row ── */
+.canvas-settings-row-actions {
+  justify-content: flex-end;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+/* ── Settings Input (full width in card) ── */
+.canvas-settings-card .settings-input {
+  width: 100%;
+  max-width: 280px;
+  padding: 8px 12px;
+  background: var(--bg-surface);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  color: var(--text-primary);
+  font-size: 13px;
+  outline: none;
+  transition: border-color 0.15s ease, box-shadow 0.15s ease;
+}
+
+.canvas-settings-card .settings-input:hover {
+  border-color: color-mix(in srgb, var(--text-secondary) 30%, var(--border));
+}
+
+.canvas-settings-card .settings-input:focus {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 2px color-mix(in srgb, var(--accent) 20%, transparent);
+}
+
+.canvas-settings-card .settings-input::placeholder {
+  color: var(--text-tertiary);
+}
+
+/* ── Settings Select (in card) ── */
+.canvas-settings-card .settings-select {
+  padding: 8px 12px;
+  background: var(--bg-surface);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  color: var(--text-primary);
+  font-size: 13px;
+  cursor: pointer;
+  min-width: 120px;
+  outline: none;
+  transition: border-color 0.15s ease, box-shadow 0.15s ease;
+}
+
+.canvas-settings-card .settings-select:hover {
+  border-color: color-mix(in srgb, var(--text-secondary) 30%, var(--border));
+}
+
+.canvas-settings-card .settings-select:focus {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 2px color-mix(in srgb, var(--accent) 20%, transparent);
+}
+
+/* ── Settings Button (in card) ── */
+.canvas-settings-card .settings-button {
+  padding: 8px 16px;
+  background: var(--bg-surface);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  color: var(--text-primary);
+  font-size: 13px;
+  cursor: pointer;
+  transition: border-color 0.15s ease, background 0.15s ease;
+  white-space: nowrap;
+}
+
+.canvas-settings-card .settings-button:hover {
+  background: color-mix(in srgb, var(--bg-surface) 80%, var(--bg-primary));
+  border-color: color-mix(in srgb, var(--text-secondary) 30%, var(--border));
+}
+
+.canvas-settings-card .settings-button.primary {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: white;
+}
+
+.canvas-settings-card .settings-button.primary:hover {
+  background: color-mix(in srgb, var(--accent) 90%, black);
+}
+
+.canvas-settings-card .settings-button:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}

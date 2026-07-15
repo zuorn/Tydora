@@ -5,6 +5,7 @@ import { open } from "@tauri-apps/plugin-dialog";
 import { invoke } from "@tauri-apps/api/core";
 import { ConfirmDialog } from "./components";
 import { UpdateLinkDialog } from "./components";
+import { FolderPicker } from "./components";
 import { LinkIndexService } from "./wikilink";
 import { BookmarksPanel } from "./Bookmarks";
 import "./Sidebar.css";
@@ -146,6 +147,28 @@ const CONCURRENCY = 12;
 // ── File list cache ──
 interface FileEntry { path: string; name: string; }
 const fileCache = new Map<string, FileEntry[]>();
+
+// ── Expanded state persistence ──
+function getExpandedStorageKey(vaultPath: string): string {
+  return `zmd-expanded-dirs-${vaultPath}`;
+}
+
+function loadExpandedPaths(vaultPath: string): Set<string> {
+  try {
+    const raw = localStorage.getItem(getExpandedStorageKey(vaultPath));
+    if (raw) {
+      const arr = JSON.parse(raw) as string[];
+      return new Set(arr);
+    }
+  } catch {}
+  return new Set();
+}
+
+function saveExpandedPaths(vaultPath: string, paths: Set<string>): void {
+  try {
+    localStorage.setItem(getExpandedStorageKey(vaultPath), JSON.stringify(Array.from(paths)));
+  } catch {}
+}
 
 async function getFileList(dirPath: string): Promise<FileEntry[]> {
   const cached = fileCache.get(dirPath);
@@ -323,6 +346,7 @@ interface FileActions {
   onOpenLocation: () => void;
   onNewWindow: () => void;
   onBookmark: () => void;
+  onMoveTo: () => void;
 }
 
 function getFileMenuItems(actions: FileActions): ContextMenuItem[] {
@@ -336,6 +360,7 @@ function getFileMenuItems(actions: FileActions): ContextMenuItem[] {
     { label: "搜索", onClick: actions.onSearch },
     { label: "重命名", onClick: actions.onRename, separator: true },
     { label: "创建副本", onClick: actions.onDuplicate },
+    { label: "移动到...", onClick: actions.onMoveTo },
     { label: "删除", onClick: actions.onDelete, danger: true, separator: true },
     { label: "复制文件路径", onClick: actions.onCopyPath, separator: true },
     { label: "打开文件位置", onClick: actions.onOpenLocation },
@@ -350,6 +375,7 @@ function getFolderMenuItems(actions: FileActions): ContextMenuItem[] {
     { label: "收藏", onClick: actions.onBookmark },
     { label: "搜索", onClick: actions.onSearch },
     { label: "重命名", onClick: actions.onRename, separator: true },
+    { label: "移动到...", onClick: actions.onMoveTo },
     { label: "删除", onClick: actions.onDelete, danger: true, separator: true },
     { label: "复制文件路径", onClick: actions.onCopyPath },
     { label: "打开文件位置", onClick: actions.onOpenLocation },
@@ -519,6 +545,8 @@ function TreeNodeComp({
   selectedPaths,
   onMultiSelect,
   lastClickedPathRef,
+  onToggleExpand,
+  onMoveTo,
 }: {
   node: TreeNode;
   depth: number;
@@ -537,6 +565,8 @@ function TreeNodeComp({
   selectedPaths: Set<string>;
   onMultiSelect: (paths: string[], mode: 'toggle' | 'range' | 'replace') => void;
   lastClickedPathRef: React.MutableRefObject<string | null>;
+  onToggleExpand: (path: string, expanded: boolean) => void;
+  onMoveTo: (path: string) => void;
 }) {
   const [ctxMenu, setCtxMenu] = useState<{ x: number; y: number } | null>(null);
   const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false);
@@ -599,8 +629,9 @@ function TreeNodeComp({
       node.children = await loadDirectory(node.path);
     }
     node.expanded = !node.expanded;
+    onToggleExpand(node.path, node.expanded);
     onRefresh();
-  }, [node, onSelect, onRefresh, onMultiSelect, lastClickedPathRef]);
+  }, [node, onSelect, onRefresh, onMultiSelect, lastClickedPathRef, onToggleExpand]);
 
   // ── Actions ──
 
@@ -677,6 +708,7 @@ function TreeNodeComp({
     onCopyPath: handleCopyPath,
     onOpenLocation: handleOpenLocation,
     onBookmark: () => onBookmark(node.path, node.isDirectory),
+    onMoveTo: () => onMoveTo(node.path),
   };
 
   const menuItems = node.isDirectory
@@ -762,6 +794,8 @@ function TreeNodeComp({
               selectedPaths={selectedPaths}
               onMultiSelect={onMultiSelect}
               lastClickedPathRef={lastClickedPathRef}
+              onToggleExpand={onToggleExpand}
+              onMoveTo={onMoveTo}
             />
           ))}
         </div>
@@ -813,6 +847,7 @@ function FileTree({
   hidden?: boolean;
   onBookmark: (filePath: string, isDirectory: boolean) => void;
 }) {
+  const vaultPath = rootPath;
   const [rootNodes, setRootNodes] = useState<TreeNode[]>([]);
   const [, forceUpdate] = useState(0);
   const [ctxMenu, setCtxMenu] = useState<{ x: number; y: number } | null>(null);
@@ -842,6 +877,10 @@ function FileTree({
   const alwaysUpdateLinksRef = useRef(false);
   const pendingRenameRef = useRef<{ path: string; newName: string } | null>(null);
 
+  // ── Move to folder state ──
+  const [folderPickerOpen, setFolderPickerOpen] = useState(false);
+  const [moveSourcePath, setMoveSourcePath] = useState<string | null>(null);
+
   // 记录展开的目录，reload 后恢复
   const rootNodesRef = useRef<TreeNode[]>([]);
   rootNodesRef.current = rootNodes;
@@ -870,8 +909,13 @@ function FileTree({
 
   const loadRoot = useCallback(async () => {
     const nodes = await loadDirectory(rootPath);
+    // Restore expanded state from localStorage
+    const savedExpanded = loadExpandedPaths(vaultPath);
+    if (savedExpanded.size > 0) {
+      await restoreExpanded(nodes, savedExpanded);
+    }
     setRootNodes(nodes);
-  }, [rootPath]);
+  }, [rootPath, vaultPath]);
 
   const handleRefresh = useCallback(() => {
     forceUpdate((n) => n + 1);
@@ -909,6 +953,71 @@ function FileTree({
     try { await rename(path, newPath); await handleReload(); }
     catch (err) { console.error("重命名失败:", err); }
   }, [handleReload, rootPath]);
+
+  // ── Move to folder ──
+  const handleMoveTo = useCallback((path: string) => {
+    setMoveSourcePath(path);
+    setFolderPickerOpen(true);
+  }, []);
+
+  const handleFolderSelect = useCallback(async (targetFolder: string) => {
+    if (!moveSourcePath) return;
+    
+    const fileName = moveSourcePath.split(pathSep()).pop() || "";
+    const targetPath = joinPath(targetFolder, fileName);
+    
+    // 不能移动到自身所在目录
+    if (targetFolder === parentPath(moveSourcePath)) {
+      setFolderPickerOpen(false);
+      setMoveSourcePath(null);
+      return;
+    }
+    
+    // 检查是否有受影响的 wiki links（仅 .md 文件）
+    if (moveSourcePath.endsWith(".md") && !LinkIndexService.isEmpty()) {
+      const { filesCount, linksCount } = LinkIndexService.getAffectedLinkCount(moveSourcePath, targetPath, rootPath);
+      if (filesCount > 0) {
+        // 如果已选择"总是更新"，直接重写链接
+        if (alwaysUpdateLinksRef.current) {
+          try {
+            await LinkIndexService.rewriteWikiLinks(moveSourcePath, targetPath, rootPath);
+            await rename(moveSourcePath, targetPath);
+            await handleReload();
+          } catch (err) {
+            console.error("移动失败:", err);
+          }
+        } else {
+          // 弹出对话框
+          pendingRenameRef.current = { path: moveSourcePath, newName: fileName };
+          setLinkUpdateDialog({ srcPath: moveSourcePath, targetPath, filesCount, linksCount });
+        }
+      } else {
+        // 无受影响链接，直接移动
+        try {
+          await rename(moveSourcePath, targetPath);
+          await handleReload();
+        } catch (err) {
+          console.error("移动失败:", err);
+        }
+      }
+    } else {
+      // 非 .md 文件或索引为空，直接移动
+      try {
+        await rename(moveSourcePath, targetPath);
+        await handleReload();
+      } catch (err) {
+        console.error("移动失败:", err);
+      }
+    }
+    
+    setFolderPickerOpen(false);
+    setMoveSourcePath(null);
+  }, [moveSourcePath, rootPath, handleReload]);
+
+  const handleFolderPickerCancel = useCallback(() => {
+    setFolderPickerOpen(false);
+    setMoveSourcePath(null);
+  }, []);
 
   // ── Multi-select ──
   const handleMultiSelect = useCallback((paths: string[], mode: 'toggle' | 'range' | 'replace') => {
@@ -1104,6 +1213,7 @@ function FileTree({
     onCopyPath: handleCopyRootPath,
     onOpenLocation: handleOpenRootLocation,
     onBookmark: () => {},
+    onMoveTo: () => {},
   };
 
   const handleBlankContextMenu = useCallback((e: React.MouseEvent) => {
@@ -1114,6 +1224,17 @@ function FileTree({
   }, []);
 
   useEffect(() => { loadRoot(); }, [loadRoot, refreshKey]);
+
+  // Handle expand/collapse and persist to localStorage
+  const handleToggleExpand = useCallback((path: string, expanded: boolean) => {
+    const current = loadExpandedPaths(vaultPath);
+    if (expanded) {
+      current.add(path);
+    } else {
+      current.delete(path);
+    }
+    saveExpandedPaths(vaultPath, current);
+  }, [vaultPath]);
 
   const handleScroll = useCallback(() => {
     const el = treeRef.current;
@@ -1191,6 +1312,8 @@ function FileTree({
             selectedPaths={selectedPaths}
             onMultiSelect={handleMultiSelect}
             lastClickedPathRef={lastClickedPathRef}
+            onToggleExpand={handleToggleExpand}
+            onMoveTo={handleMoveTo}
           />
         ))}
 
@@ -1210,6 +1333,13 @@ function FileTree({
         onAlwaysUpdate={handleLinkUpdateAlways}
         onUpdateOnce={handleLinkUpdateOnce}
         onSkip={handleLinkUpdateSkip}
+      />
+
+      <FolderPicker
+        isOpen={folderPickerOpen}
+        vaultPath={rootPath}
+        onSelect={handleFolderSelect}
+        onCancel={handleFolderPickerCancel}
       />
     </div>
   );

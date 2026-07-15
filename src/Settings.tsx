@@ -9,6 +9,7 @@ import { useTheme, type ThemeName } from "./themes";
 import { loadImageSettings, saveImageSettings, type ImageSettings, type StorageMode, type FilenameFormat } from "./services";
 import { checkForUpdate, downloadAndInstall, relaunchApp, type UpdateInfo } from "./services";
 import { PublishSettings } from "./publish";
+import { loadCanvasSettings, saveCanvasSettings, type CanvasSettings } from "./Canvas/canvas-settings";
 import { parseCssVariables, extractPreviewColors, type ThemeVariable, type ThemeManifest } from "./themes/CustomThemeManager";
 import { getCustomThemeCss } from "./themes/CustomThemeManager";
 import { CODE_THEMES, type CustomCodeTheme } from "./themes";
@@ -17,7 +18,7 @@ import "./Settings.css";
 
 // ── Types ────────────────────────────────────────────────────────────
 
-type SettingsTab = "general" | "theme" | "shortcuts" | "editor" | "mindmap" | "graph" | "image" | "publish" | "about";
+type SettingsTab = "general" | "theme" | "shortcuts" | "editor" | "mindmap" | "graph" | "image" | "canvas" | "publish" | "about";
 
 interface NavItem {
   id: SettingsTab;
@@ -227,66 +228,78 @@ function GeneralSettingsContent({
   onChange: (s: GeneralSettings) => void;
 }) {
   return (
-    <div className="settings-section">
-      <h3 className="settings-section-title">外观</h3>
-      <div className="settings-item">
-        <label className="settings-item-label">主题模式</label>
-        <select
-          className="settings-select"
-          value={settings.appearance}
-          onChange={(e) =>
-            onChange({ ...settings, appearance: e.target.value as GeneralSettings["appearance"] })
-          }
-        >
-          <option value="system">跟随系统</option>
-          <option value="light">浅色模式</option>
-          <option value="dark">深色模式</option>
-        </select>
-      </div>
-
-      <h3 className="settings-section-title">字体</h3>
-      <div className="settings-item">
-        <label className="settings-item-label">编辑器字体</label>
-        <select
-          className="settings-select"
-          value={settings.editorFont}
-          onChange={(e) => onChange({ ...settings, editorFont: e.target.value })}
-        >
-          <option value="system-ui, -apple-system, sans-serif">系统默认</option>
-          <option value="'LXGW WenKai', system-ui, sans-serif">霞鹜文楷</option>
-          <option value="'Inter', system-ui, sans-serif">Inter</option>
-          <option value="'Noto Sans SC', system-ui, sans-serif">Noto Sans SC</option>
-          <option value="ui-sans-serif, 'Segoe UI', system-ui, sans-serif">Segoe UI</option>
-          <option value="'Roboto', system-ui, sans-serif">Roboto</option>
-          <option value="'Source Sans 3', system-ui, sans-serif">Source Sans</option>
-        </select>
-      </div>
-      <div className="settings-item">
-        <label className="settings-item-label">字体大小</label>
-        <div className="settings-range-wrapper">
-          <input
-            type="range"
-            className="settings-range"
-            min="10"
-            max="24"
-            value={settings.fontSize}
-            onChange={(e) => onChange({ ...settings, fontSize: Number(e.target.value) })}
-          />
-          <span className="settings-range-value">{settings.fontSize}px</span>
+    <div className="canvas-settings-page">
+      <div className="canvas-settings-card">
+        <div className="canvas-settings-row">
+          <div className="canvas-settings-row-label">
+            <span className="canvas-settings-row-title">主题模式</span>
+          </div>
+          <select
+            className="settings-select"
+            value={settings.appearance}
+            onChange={(e) =>
+              onChange({ ...settings, appearance: e.target.value as GeneralSettings["appearance"] })
+            }
+          >
+            <option value="system">跟随系统</option>
+            <option value="light">浅色模式</option>
+            <option value="dark">深色模式</option>
+          </select>
         </div>
       </div>
 
-      <h3 className="settings-section-title">编辑设置</h3>
-      <div className="settings-item">
-        <label className="settings-item-label">自动保存</label>
-        <label className="settings-toggle">
-          <input
-            type="checkbox"
-            checked={settings.autoSave}
-            onChange={(e) => onChange({ ...settings, autoSave: e.target.checked })}
-          />
-          <span className="settings-toggle-slider" />
-        </label>
+      <div className="canvas-settings-card">
+        <div className="canvas-settings-row">
+          <div className="canvas-settings-row-label">
+            <span className="canvas-settings-row-title">编辑器字体</span>
+          </div>
+          <select
+            className="settings-select"
+            value={settings.editorFont}
+            onChange={(e) => onChange({ ...settings, editorFont: e.target.value })}
+          >
+            <option value="system-ui, -apple-system, sans-serif">系统默认</option>
+            <option value="'LXGW WenKai', system-ui, sans-serif">霞鹜文楷</option>
+            <option value="'Inter', system-ui, sans-serif">Inter</option>
+            <option value="'Noto Sans SC', system-ui, sans-serif">Noto Sans SC</option>
+            <option value="ui-sans-serif, 'Segoe UI', system-ui, sans-serif">Segoe UI</option>
+            <option value="'Roboto', system-ui, sans-serif">Roboto</option>
+            <option value="'Source Sans 3', system-ui, sans-serif">Source Sans</option>
+          </select>
+        </div>
+        <div className="canvas-settings-row">
+          <div className="canvas-settings-row-label">
+            <span className="canvas-settings-row-title">字体大小</span>
+          </div>
+          <div className="canvas-settings-row-control">
+            <input
+              type="range"
+              className="canvas-settings-slider"
+              min="10"
+              max="24"
+              value={settings.fontSize}
+              onChange={(e) => onChange({ ...settings, fontSize: Number(e.target.value) })}
+            />
+            <span className="canvas-settings-unit">{settings.fontSize}px</span>
+          </div>
+        </div>
+      </div>
+
+      <div className="canvas-settings-card">
+        <div className="canvas-settings-row">
+          <div className="canvas-settings-row-label">
+            <span className="canvas-settings-row-title">自动保存</span>
+            <span className="canvas-settings-row-desc">编辑时自动保存文件。</span>
+          </div>
+          <label className="settings-switch">
+            <input
+              type="checkbox"
+              checked={settings.autoSave}
+              onChange={(e) => onChange({ ...settings, autoSave: e.target.checked })}
+            />
+            <span className="settings-switch-slider" />
+          </label>
+        </div>
       </div>
     </div>
   );
@@ -300,114 +313,133 @@ function MindmapSettingsContent({
   onChange: (s: MindmapSettings) => void;
 }) {
   return (
-    <div className="settings-section">
-      <h3 className="settings-section-title">布局</h3>
-      <div className="settings-item">
-        <label className="settings-item-label">最大节点宽度</label>
-        <div className="settings-range-wrapper">
-          <input
-            type="range"
-            className="settings-range"
-            min="0"
-            max="500"
-            step="10"
-            value={settings.maxWidth}
-            onChange={(e) => onChange({ ...settings, maxWidth: Number(e.target.value) })}
-          />
-          <span className="settings-range-value">{settings.maxWidth}px</span>
+    <div className="canvas-settings-page">
+      <div className="canvas-settings-card">
+        <div className="canvas-settings-row">
+          <div className="canvas-settings-row-label">
+            <span className="canvas-settings-row-title">最大节点宽度</span>
+            <span className="canvas-settings-row-desc">节点文字超过此宽度时自动换行。</span>
+          </div>
+          <div className="canvas-settings-row-control">
+            <input
+              type="range"
+              className="canvas-settings-slider"
+              min="0"
+              max="500"
+              step="10"
+              value={settings.maxWidth}
+              onChange={(e) => onChange({ ...settings, maxWidth: Number(e.target.value) })}
+            />
+            <span className="canvas-settings-unit">{settings.maxWidth}px</span>
+          </div>
         </div>
-      </div>
-      <div className="settings-item">
-        <label className="settings-item-label">水平间距</label>
-        <div className="settings-range-wrapper">
-          <input
-            type="range"
-            className="settings-range"
-            min="20"
-            max="200"
-            step="5"
-            value={settings.spacingHorizontal}
-            onChange={(e) => onChange({ ...settings, spacingHorizontal: Number(e.target.value) })}
-          />
-          <span className="settings-range-value">{settings.spacingHorizontal}px</span>
+        <div className="canvas-settings-row">
+          <div className="canvas-settings-row-label">
+            <span className="canvas-settings-row-title">水平间距</span>
+            <span className="canvas-settings-row-desc">同级节点之间的水平距离。</span>
+          </div>
+          <div className="canvas-settings-row-control">
+            <input
+              type="range"
+              className="canvas-settings-slider"
+              min="20"
+              max="200"
+              step="5"
+              value={settings.spacingHorizontal}
+              onChange={(e) => onChange({ ...settings, spacingHorizontal: Number(e.target.value) })}
+            />
+            <span className="canvas-settings-unit">{settings.spacingHorizontal}px</span>
+          </div>
         </div>
-      </div>
-      <div className="settings-item">
-        <label className="settings-item-label">垂直间距</label>
-        <div className="settings-range-wrapper">
-          <input
-            type="range"
-            className="settings-range"
-            min="1"
-            max="30"
-            value={settings.spacingVertical}
-            onChange={(e) => onChange({ ...settings, spacingVertical: Number(e.target.value) })}
-          />
-          <span className="settings-range-value">{settings.spacingVertical}px</span>
+        <div className="canvas-settings-row">
+          <div className="canvas-settings-row-label">
+            <span className="canvas-settings-row-title">垂直间距</span>
+            <span className="canvas-settings-row-desc">父子节点之间的垂直距离。</span>
+          </div>
+          <div className="canvas-settings-row-control">
+            <input
+              type="range"
+              className="canvas-settings-slider"
+              min="1"
+              max="30"
+              value={settings.spacingVertical}
+              onChange={(e) => onChange({ ...settings, spacingVertical: Number(e.target.value) })}
+            />
+            <span className="canvas-settings-unit">{settings.spacingVertical}px</span>
+          </div>
         </div>
-      </div>
-      <div className="settings-item">
-        <label className="settings-item-label">连线宽度</label>
-        <div className="settings-range-wrapper">
-          <input
-            type="range"
-            className="settings-range"
-            min="0.5"
-            max="4"
-            step="0.5"
-            value={settings.lineWidth}
-            onChange={(e) => onChange({ ...settings, lineWidth: Number(e.target.value) })}
-          />
-          <span className="settings-range-value">{settings.lineWidth}px</span>
-        </div>
-      </div>
-
-      <h3 className="settings-section-title">展开</h3>
-      <div className="settings-item">
-        <label className="settings-item-label">初始展开层级</label>
-        <div className="settings-range-wrapper">
-          <input
-            type="range"
-            className="settings-range"
-            min="-1"
-            max="10"
-            value={settings.initialExpandLevel}
-            onChange={(e) => onChange({ ...settings, initialExpandLevel: Number(e.target.value) })}
-          />
-          <span className="settings-range-value">{settings.initialExpandLevel === -1 ? "全部" : `第${settings.initialExpandLevel}级`}</span>
+        <div className="canvas-settings-row">
+          <div className="canvas-settings-row-label">
+            <span className="canvas-settings-row-title">连线宽度</span>
+            <span className="canvas-settings-row-desc">节点之间连线的粗细。</span>
+          </div>
+          <div className="canvas-settings-row-control">
+            <input
+              type="range"
+              className="canvas-settings-slider"
+              min="0.5"
+              max="4"
+              step="0.5"
+              value={settings.lineWidth}
+              onChange={(e) => onChange({ ...settings, lineWidth: Number(e.target.value) })}
+            />
+            <span className="canvas-settings-unit">{settings.lineWidth}px</span>
+          </div>
         </div>
       </div>
 
-      <h3 className="settings-section-title">动画</h3>
-      <div className="settings-item">
-        <label className="settings-item-label">动画时长</label>
-        <div className="settings-range-wrapper">
-          <input
-            type="range"
-            className="settings-range"
-            min="0"
-            max="1000"
-            step="50"
-            value={settings.duration}
-            onChange={(e) => onChange({ ...settings, duration: Number(e.target.value) })}
-          />
-          <span className="settings-range-value">{settings.duration}ms</span>
+      <div className="canvas-settings-card">
+        <div className="canvas-settings-row">
+          <div className="canvas-settings-row-label">
+            <span className="canvas-settings-row-title">初始展开层级</span>
+            <span className="canvas-settings-row-desc">打开思维导图时默认展开到第几级。</span>
+          </div>
+          <div className="canvas-settings-row-control">
+            <input
+              type="range"
+              className="canvas-settings-slider"
+              min="-1"
+              max="10"
+              value={settings.initialExpandLevel}
+              onChange={(e) => onChange({ ...settings, initialExpandLevel: Number(e.target.value) })}
+            />
+            <span className="canvas-settings-unit">{settings.initialExpandLevel === -1 ? "全部" : `第${settings.initialExpandLevel}级`}</span>
+          </div>
         </div>
-      </div>
-
-      <h3 className="settings-section-title">颜色</h3>
-      <div className="settings-item">
-        <label className="settings-item-label">颜色冻结层级</label>
-        <div className="settings-range-wrapper">
-          <input
-            type="range"
-            className="settings-range"
-            min="0"
-            max="10"
-            value={settings.colorFreezeLevel}
-            onChange={(e) => onChange({ ...settings, colorFreezeLevel: Number(e.target.value) })}
-          />
-          <span className="settings-range-value">{settings.colorFreezeLevel === 0 ? "不冻结" : settings.colorFreezeLevel}</span>
+        <div className="canvas-settings-row">
+          <div className="canvas-settings-row-label">
+            <span className="canvas-settings-row-title">动画时长</span>
+            <span className="canvas-settings-row-desc">展开/折叠节点的动画时间。</span>
+          </div>
+          <div className="canvas-settings-row-control">
+            <input
+              type="range"
+              className="canvas-settings-slider"
+              min="0"
+              max="1000"
+              step="50"
+              value={settings.duration}
+              onChange={(e) => onChange({ ...settings, duration: Number(e.target.value) })}
+            />
+            <span className="canvas-settings-unit">{settings.duration}ms</span>
+          </div>
+        </div>
+        <div className="canvas-settings-row">
+          <div className="canvas-settings-row-label">
+            <span className="canvas-settings-row-title">颜色冻结层级</span>
+            <span className="canvas-settings-row-desc">从第几级开始使用固定颜色。</span>
+          </div>
+          <div className="canvas-settings-row-control">
+            <input
+              type="range"
+              className="canvas-settings-slider"
+              min="0"
+              max="10"
+              value={settings.colorFreezeLevel}
+              onChange={(e) => onChange({ ...settings, colorFreezeLevel: Number(e.target.value) })}
+            />
+            <span className="canvas-settings-unit">{settings.colorFreezeLevel === 0 ? "不冻结" : settings.colorFreezeLevel}</span>
+          </div>
         </div>
       </div>
     </div>
@@ -422,83 +454,95 @@ function GraphSettingsContent({
   onChange: (s: GraphSettings) => void;
 }) {
   return (
-    <div className="settings-section">
-      <h3 className="settings-section-title">节点</h3>
-      <div className="settings-item">
-        <label className="settings-item-label">最大节点大小</label>
-        <div className="settings-range-wrapper">
-          <input
-            type="range"
-            className="settings-range"
-            min="5"
-            max="30"
-            value={settings.nodeSize}
-            onChange={(e) => onChange({ ...settings, nodeSize: Number(e.target.value) })}
-          />
-          <span className="settings-range-value">{settings.nodeSize}px</span>
+    <div className="canvas-settings-page">
+      <div className="canvas-settings-card">
+        <div className="canvas-settings-row">
+          <div className="canvas-settings-row-label">
+            <span className="canvas-settings-row-title">最大节点大小</span>
+            <span className="canvas-settings-row-desc">图谱中节点的最大尺寸。</span>
+          </div>
+          <div className="canvas-settings-row-control">
+            <input
+              type="range"
+              className="canvas-settings-slider"
+              min="5"
+              max="30"
+              value={settings.nodeSize}
+              onChange={(e) => onChange({ ...settings, nodeSize: Number(e.target.value) })}
+            />
+            <span className="canvas-settings-unit">{settings.nodeSize}px</span>
+          </div>
         </div>
-      </div>
-      <div className="settings-item">
-        <label className="settings-item-label">标签字号</label>
-        <div className="settings-range-wrapper">
-          <input
-            type="range"
-            className="settings-range"
-            min="8"
-            max="18"
-            value={settings.labelFontSize}
-            onChange={(e) => onChange({ ...settings, labelFontSize: Number(e.target.value) })}
-          />
-          <span className="settings-range-value">{settings.labelFontSize}px</span>
+        <div className="canvas-settings-row">
+          <div className="canvas-settings-row-label">
+            <span className="canvas-settings-row-title">标签字号</span>
+            <span className="canvas-settings-row-desc">节点标签的文字大小。</span>
+          </div>
+          <div className="canvas-settings-row-control">
+            <input
+              type="range"
+              className="canvas-settings-slider"
+              min="8"
+              max="18"
+              value={settings.labelFontSize}
+              onChange={(e) => onChange({ ...settings, labelFontSize: Number(e.target.value) })}
+            />
+            <span className="canvas-settings-unit">{settings.labelFontSize}px</span>
+          </div>
         </div>
-      </div>
-
-      <h3 className="settings-section-title">布局</h3>
-      <div className="settings-item">
-        <label className="settings-item-label">连线距离</label>
-        <div className="settings-range-wrapper">
-          <input
-            type="range"
-            className="settings-range"
-            min="60"
-            max="300"
-            step="10"
-            value={settings.linkDistance}
-            onChange={(e) => onChange({ ...settings, linkDistance: Number(e.target.value) })}
-          />
-          <span className="settings-range-value">{settings.linkDistance}px</span>
+        <div className="canvas-settings-row">
+          <div className="canvas-settings-row-label">
+            <span className="canvas-settings-row-title">连线距离</span>
+            <span className="canvas-settings-row-desc">节点之间的理想距离。</span>
+          </div>
+          <div className="canvas-settings-row-control">
+            <input
+              type="range"
+              className="canvas-settings-slider"
+              min="60"
+              max="300"
+              step="10"
+              value={settings.linkDistance}
+              onChange={(e) => onChange({ ...settings, linkDistance: Number(e.target.value) })}
+            />
+            <span className="canvas-settings-unit">{settings.linkDistance}px</span>
+          </div>
         </div>
-      </div>
-      <div className="settings-item">
-        <label className="settings-item-label">斥力强度</label>
-        <div className="settings-range-wrapper">
-          <input
-            type="range"
-            className="settings-range"
-            min="-500"
-            max="-50"
-            step="10"
-            value={settings.chargeStrength}
-            onChange={(e) => onChange({ ...settings, chargeStrength: Number(e.target.value) })}
-          />
-          <span className="settings-range-value">{settings.chargeStrength}</span>
+        <div className="canvas-settings-row">
+          <div className="canvas-settings-row-label">
+            <span className="canvas-settings-row-title">斥力强度</span>
+            <span className="canvas-settings-row-desc">节点之间的排斥力，负值越大间距越大。</span>
+          </div>
+          <div className="canvas-settings-row-control">
+            <input
+              type="range"
+              className="canvas-settings-slider"
+              min="-500"
+              max="-50"
+              step="10"
+              value={settings.chargeStrength}
+              onChange={(e) => onChange({ ...settings, chargeStrength: Number(e.target.value) })}
+            />
+            <span className="canvas-settings-unit">{settings.chargeStrength}</span>
+          </div>
         </div>
-      </div>
-
-      <h3 className="settings-section-title">外观</h3>
-      <div className="settings-item">
-        <label className="settings-item-label">边线透明度</label>
-        <div className="settings-range-wrapper">
-          <input
-            type="range"
-            className="settings-range"
-            min="0.1"
-            max="1"
-            step="0.05"
-            value={settings.edgeOpacity}
-            onChange={(e) => onChange({ ...settings, edgeOpacity: Number(e.target.value) })}
-          />
-          <span className="settings-range-value">{Math.round(settings.edgeOpacity * 100)}%</span>
+        <div className="canvas-settings-row">
+          <div className="canvas-settings-row-label">
+            <span className="canvas-settings-row-title">边线透明度</span>
+            <span className="canvas-settings-row-desc">连线的可见程度。</span>
+          </div>
+          <div className="canvas-settings-row-control">
+            <input
+              type="range"
+              className="canvas-settings-slider"
+              min="0.1"
+              max="1"
+              step="0.05"
+              value={settings.edgeOpacity}
+              onChange={(e) => onChange({ ...settings, edgeOpacity: Number(e.target.value) })}
+            />
+            <span className="canvas-settings-unit">{Math.round(settings.edgeOpacity * 100)}%</span>
+          </div>
         </div>
       </div>
     </div>
@@ -1198,26 +1242,32 @@ function ImageSettingsContent({
   };
 
   return (
-    <div className="settings-section">
-      <h3 className="settings-section-title">存储模式</h3>
-      <div className="settings-item">
-        <label className="settings-item-label">图片存储位置</label>
-        <select
-          className="settings-select"
-          value={settings.storageMode}
-          onChange={(e) => onChange({ ...settings, storageMode: e.target.value as StorageMode })}
-        >
-          <option value="vault-assets">仓库 assets 目录</option>
-          <option value="fixed-directory">固定本地目录</option>
-          <option value="image-bed">图床上传（后续支持）</option>
-        </select>
+    <div className="canvas-settings-page">
+      <div className="canvas-settings-card">
+        <div className="canvas-settings-row">
+          <div className="canvas-settings-row-label">
+            <span className="canvas-settings-row-title">图片存储位置</span>
+            <span className="canvas-settings-row-desc">选择图片的存储方式。</span>
+          </div>
+          <select
+            className="settings-select"
+            value={settings.storageMode}
+            onChange={(e) => onChange({ ...settings, storageMode: e.target.value as StorageMode })}
+          >
+            <option value="vault-assets">仓库 assets 目录</option>
+            <option value="fixed-directory">固定本地目录</option>
+            <option value="image-bed">图床上传（后续支持）</option>
+          </select>
+        </div>
       </div>
 
       {settings.storageMode === "vault-assets" && (
-        <>
-          <h3 className="settings-section-title">本地存储设置</h3>
-          <div className="settings-item">
-            <label className="settings-item-label">文件命名格式</label>
+        <div className="canvas-settings-card">
+          <div className="canvas-settings-row">
+            <div className="canvas-settings-row-label">
+              <span className="canvas-settings-row-title">文件命名格式</span>
+              <span className="canvas-settings-row-desc">粘贴图片时的文件命名方式。</span>
+            </div>
             <select
               className="settings-select"
               value={settings.local.filenameFormat}
@@ -1231,9 +1281,12 @@ function ImageSettingsContent({
               <option value="both">原始名称 + 时间戳</option>
             </select>
           </div>
-          <div className="settings-item">
-            <label className="settings-item-label">自动创建 assets 目录</label>
-            <label className="settings-toggle">
+          <div className="canvas-settings-row">
+            <div className="canvas-settings-row-label">
+              <span className="canvas-settings-row-title">自动创建 assets 目录</span>
+              <span className="canvas-settings-row-desc">如果 assets 目录不存在则自动创建。</span>
+            </div>
+            <label className="settings-switch">
               <input
                 type="checkbox"
                 checked={settings.local.autoCreateAssetsDir}
@@ -1242,32 +1295,37 @@ function ImageSettingsContent({
                   local: { ...settings.local, autoCreateAssetsDir: e.target.checked },
                 })}
               />
-              <span className="settings-toggle-slider" />
+              <span className="settings-switch-slider" />
             </label>
           </div>
-        </>
+        </div>
       )}
 
       {settings.storageMode === "fixed-directory" && (
-        <>
-          <h3 className="settings-section-title">固定目录设置</h3>
-          <div className="settings-item">
-            <label className="settings-item-label">存储路径</label>
-            <div className="settings-path-wrapper">
+        <div className="canvas-settings-card">
+          <div className="canvas-settings-row">
+            <div className="canvas-settings-row-label">
+              <span className="canvas-settings-row-title">存储路径</span>
+              <span className="canvas-settings-row-desc">选择本地目录存储图片。</span>
+            </div>
+            <div className="canvas-settings-row-control">
               <input
                 type="text"
                 className="settings-input"
                 value={settings.fixedDirectory.path}
-                placeholder="选择图片存储目录..."
+                placeholder="选择目录..."
                 readOnly
+                style={{ maxWidth: 200 }}
               />
               <button className="settings-button" onClick={handleSelectDirectory}>
-                选择目录
+                选择
               </button>
             </div>
           </div>
-          <div className="settings-item">
-            <label className="settings-item-label">文件命名格式</label>
+          <div className="canvas-settings-row">
+            <div className="canvas-settings-row-label">
+              <span className="canvas-settings-row-title">文件命名格式</span>
+            </div>
             <select
               className="settings-select"
               value={settings.local.filenameFormat}
@@ -1281,15 +1339,17 @@ function ImageSettingsContent({
               <option value="both">原始名称 + 时间戳</option>
             </select>
           </div>
-        </>
+        </div>
       )}
 
       {settings.storageMode === "image-bed" && (
-        <div className="settings-item">
-          <label className="settings-item-label">图床功能</label>
-          <span className="settings-about-value" style={{ fontSize: 13, color: "var(--text-secondary)" }}>
-            图床上传功能将在后续版本中支持，敬请期待。
-          </span>
+        <div className="canvas-settings-card">
+          <div className="canvas-settings-row">
+            <div className="canvas-settings-row-label">
+              <span className="canvas-settings-row-title">图床功能</span>
+              <span className="canvas-settings-row-desc">图床上传功能将在后续版本中支持，敬请期待。</span>
+            </div>
+          </div>
         </div>
       )}
     </div>
@@ -1307,161 +1367,408 @@ function EditorSettingsContent({
     onChange({ ...settings, [key]: value });
 
   return (
-    <div className="settings-section">
-      {/* 编辑模式 */}
-      <h3 className="settings-section-title">编辑模式</h3>
-      <div className="settings-item">
-        <label className="settings-item-label">默认编辑模式</label>
-        <select
-          className="settings-select"
-          value={settings.defaultMode}
-          onChange={(e) => update("defaultMode", e.target.value as EditorSettings["defaultMode"])}
-        >
-          <option value="ir">即时渲染</option>
-          <option value="sv">源码</option>
-        </select>
-      </div>
-      <div className="settings-item">
-        <label className="settings-item-label">打字机模式</label>
-        <label className="settings-toggle">
-          <input
-            type="checkbox"
-            checked={settings.typewriterMode}
-            onChange={(e) => update("typewriterMode", e.target.checked)}
-          />
-          <span className="settings-toggle-slider" />
-        </label>
-      </div>
-
-      {/* 编辑行为 */}
-      <h3 className="settings-section-title">编辑行为</h3>
-      <div className="settings-item">
-        <label className="settings-item-label">字数统计类型</label>
-        <select
-          className="settings-select"
-          value={settings.counterType}
-          onChange={(e) => update("counterType", e.target.value as EditorSettings["counterType"])}
-        >
-          <option value="markdown">Markdown（含语法符号）</option>
-          <option value="text">纯文本（仅文字）</option>
-        </select>
-      </div>
-
-      {/* 代码高亮 */}
-      <h3 className="settings-section-title">代码高亮</h3>
-      <div className="settings-item">
-        <label className="settings-item-label">代码行号</label>
-        <label className="settings-toggle">
-          <input type="checkbox" checked={settings.codeLineNumber} onChange={(e) => update("codeLineNumber", e.target.checked)} />
-          <span className="settings-toggle-slider" />
-        </label>
-      </div>
-
-      {/* 预览 */}
-      <h3 className="settings-section-title">预览</h3>
-      <div className="settings-item">
-        <label className="settings-item-label">预览区域最大宽度</label>
-        <div className="settings-range-wrapper">
-          <input
-            type="range"
-            className="settings-range"
-            min={600}
-            max={1200}
-            step={20}
-            value={settings.previewMaxWidth}
-            onChange={(e) => update("previewMaxWidth", Number(e.target.value))}
-          />
-          <span className="settings-range-value">{settings.previewMaxWidth}px</span>
+    <div className="canvas-settings-page">
+      <div className="canvas-settings-card">
+        <div className="canvas-settings-row">
+          <div className="canvas-settings-row-label">
+            <span className="canvas-settings-row-title">默认编辑模式</span>
+            <span className="canvas-settings-row-desc">新建文件时使用的编辑模式。</span>
+          </div>
+          <select
+            className="settings-select"
+            value={settings.defaultMode}
+            onChange={(e) => update("defaultMode", e.target.value as EditorSettings["defaultMode"])}
+          >
+            <option value="ir">即时渲染</option>
+            <option value="sv">源码</option>
+          </select>
+        </div>
+        <div className="canvas-settings-row">
+          <div className="canvas-settings-row-label">
+            <span className="canvas-settings-row-title">打字机模式</span>
+            <span className="canvas-settings-row-desc">始终将光标所在行保持在视口中央。</span>
+          </div>
+          <label className="settings-switch">
+            <input
+              type="checkbox"
+              checked={settings.typewriterMode}
+              onChange={(e) => update("typewriterMode", e.target.checked)}
+            />
+            <span className="settings-switch-slider" />
+          </label>
+        </div>
+        <div className="canvas-settings-row">
+          <div className="canvas-settings-row-label">
+            <span className="canvas-settings-row-title">字数统计类型</span>
+          </div>
+          <select
+            className="settings-select"
+            value={settings.counterType}
+            onChange={(e) => update("counterType", e.target.value as EditorSettings["counterType"])}
+          >
+            <option value="markdown">Markdown（含语法符号）</option>
+            <option value="text">纯文本（仅文字）</option>
+          </select>
         </div>
       </div>
 
-      {/* 数学公式 */}
-      <h3 className="settings-section-title">数学公式</h3>
-      <div className="settings-item">
-        <label className="settings-item-label">渲染引擎</label>
-        <select
-          className="settings-select"
-          value={settings.mathEngine}
-          onChange={(e) => update("mathEngine", e.target.value as EditorSettings["mathEngine"])}
-        >
-          <option value="KaTeX">KaTeX（更快）</option>
-          <option value="MathJax">MathJax（更全）</option>
-        </select>
+      <div className="canvas-settings-card">
+        <div className="canvas-settings-row">
+          <div className="canvas-settings-row-label">
+            <span className="canvas-settings-row-title">代码行号</span>
+            <span className="canvas-settings-row-desc">在代码块左侧显示行号。</span>
+          </div>
+          <label className="settings-switch">
+            <input type="checkbox" checked={settings.codeLineNumber} onChange={(e) => update("codeLineNumber", e.target.checked)} />
+            <span className="settings-switch-slider" />
+          </label>
+        </div>
       </div>
 
-      {/* 链接行为 */}
-      <h3 className="settings-section-title">链接行为</h3>
-      <div className="settings-item">
-        <label className="settings-item-label">新窗口打开链接</label>
-        <label className="settings-toggle">
-          <input type="checkbox" checked={settings.linkOpenNewTab} onChange={(e) => update("linkOpenNewTab", e.target.checked)} />
-          <span className="settings-toggle-slider" />
-        </label>
+      <div className="canvas-settings-card">
+        <div className="canvas-settings-row">
+          <div className="canvas-settings-row-label">
+            <span className="canvas-settings-row-title">预览区域最大宽度</span>
+            <span className="canvas-settings-row-desc">编辑器内容区域的最大宽度。</span>
+          </div>
+          <div className="canvas-settings-row-control">
+            <input
+              type="range"
+              className="canvas-settings-slider"
+              min={600}
+              max={1200}
+              step={20}
+              value={settings.previewMaxWidth}
+              onChange={(e) => update("previewMaxWidth", Number(e.target.value))}
+            />
+            <span className="canvas-settings-unit">{settings.previewMaxWidth}px</span>
+          </div>
+        </div>
       </div>
 
-      {/* 扩展功能 */}
-      <h3 className="settings-section-title">扩展功能</h3>
-      <div className="settings-item">
-        <label className="settings-item-label">
-          Callout 提示块
-          <span style={{ fontSize: 11, color: "var(--text-secondary)", marginLeft: 6 }}>
-            {'> [!NOTE]'}
-          </span>
-        </label>
-        <label className="settings-toggle">
-          <input type="checkbox" checked={settings.callout} onChange={(e) => update("callout", e.target.checked)} />
-          <span className="settings-toggle-slider" />
-        </label>
-      </div>
-      <div className="settings-item">
-        <label className="settings-item-label">
-          Mermaid 图表
-          <span style={{ fontSize: 11, color: "var(--text-secondary)", marginLeft: 6 }}>
-            flowchart / sequence / ...
-          </span>
-        </label>
-        <label className="settings-toggle">
-          <input type="checkbox" checked={settings.mermaid} onChange={(e) => update("mermaid", e.target.checked)} />
-          <span className="settings-toggle-slider" />
-        </label>
-      </div>
-      <div className="settings-item">
-        <label className="settings-item-label">
-          WikiLink 双向链接
-          <span style={{ fontSize: 11, color: "var(--text-secondary)", marginLeft: 6 }}>
-            [[note]]
-          </span>
-        </label>
-        <label className="settings-toggle">
-          <input type="checkbox" checked={settings.wikiLink} onChange={(e) => update("wikiLink", e.target.checked)} />
-          <span className="settings-toggle-slider" />
-        </label>
-      </div>
-      <div className="settings-item">
-        <label className="settings-item-label">
-          YAML Frontmatter
-          <span style={{ fontSize: 11, color: "var(--text-secondary)", marginLeft: 6 }}>
-            --- 元数据 ---
-          </span>
-        </label>
-        <label className="settings-toggle">
-          <input type="checkbox" checked={settings.frontmatter} onChange={(e) => update("frontmatter", e.target.checked)} />
-          <span className="settings-toggle-slider" />
-        </label>
-      </div>
-      <div className="settings-item">
-        <label className="settings-item-label">表格浮动工具栏</label>
-        <label className="settings-toggle">
-          <input type="checkbox" checked={settings.tableToolbar} onChange={(e) => update("tableToolbar", e.target.checked)} />
-          <span className="settings-toggle-slider" />
-        </label>
+      <div className="canvas-settings-card">
+        <div className="canvas-settings-row">
+          <div className="canvas-settings-row-label">
+            <span className="canvas-settings-row-title">渲染引擎</span>
+            <span className="canvas-settings-row-desc">数学公式的渲染引擎选择。</span>
+          </div>
+          <select
+            className="settings-select"
+            value={settings.mathEngine}
+            onChange={(e) => update("mathEngine", e.target.value as EditorSettings["mathEngine"])}
+          >
+            <option value="KaTeX">KaTeX（更快）</option>
+            <option value="MathJax">MathJax（更全）</option>
+          </select>
+        </div>
       </div>
 
-      {/* 提示 */}
-      <div className="settings-item" style={{ flexDirection: "column", alignItems: "flex-start", gap: 4 }}>
-        <p style={{ fontSize: 12, color: "var(--text-secondary)", margin: 0, lineHeight: 1.6 }}>
-          💡 扩展功能设置修改后需重新打开文件才会完全生效。
-        </p>
+      <div className="canvas-settings-card">
+        <div className="canvas-settings-row">
+          <div className="canvas-settings-row-label">
+            <span className="canvas-settings-row-title">新窗口打开链接</span>
+            <span className="canvas-settings-row-desc">点击链接时在新窗口中打开。</span>
+          </div>
+          <label className="settings-switch">
+            <input type="checkbox" checked={settings.linkOpenNewTab} onChange={(e) => update("linkOpenNewTab", e.target.checked)} />
+            <span className="settings-switch-slider" />
+          </label>
+        </div>
+      </div>
+
+      <div className="canvas-settings-card">
+        <div className="canvas-settings-row">
+          <div className="canvas-settings-row-label">
+            <span className="canvas-settings-row-title">Callout 提示块</span>
+            <span className="canvas-settings-row-desc">{'> [!NOTE]'}</span>
+          </div>
+          <label className="settings-switch">
+            <input type="checkbox" checked={settings.callout} onChange={(e) => update("callout", e.target.checked)} />
+            <span className="settings-switch-slider" />
+          </label>
+        </div>
+        <div className="canvas-settings-row">
+          <div className="canvas-settings-row-label">
+            <span className="canvas-settings-row-title">Mermaid 图表</span>
+            <span className="canvas-settings-row-desc">flowchart / sequence / ...</span>
+          </div>
+          <label className="settings-switch">
+            <input type="checkbox" checked={settings.mermaid} onChange={(e) => update("mermaid", e.target.checked)} />
+            <span className="settings-switch-slider" />
+          </label>
+        </div>
+        <div className="canvas-settings-row">
+          <div className="canvas-settings-row-label">
+            <span className="canvas-settings-row-title">WikiLink 双向链接</span>
+            <span className="canvas-settings-row-desc">[[note]]</span>
+          </div>
+          <label className="settings-switch">
+            <input type="checkbox" checked={settings.wikiLink} onChange={(e) => update("wikiLink", e.target.checked)} />
+            <span className="settings-switch-slider" />
+          </label>
+        </div>
+        <div className="canvas-settings-row">
+          <div className="canvas-settings-row-label">
+            <span className="canvas-settings-row-title">YAML Frontmatter</span>
+            <span className="canvas-settings-row-desc">--- 元数据 ---</span>
+          </div>
+          <label className="settings-switch">
+            <input type="checkbox" checked={settings.frontmatter} onChange={(e) => update("frontmatter", e.target.checked)} />
+            <span className="settings-switch-slider" />
+          </label>
+        </div>
+        <div className="canvas-settings-row">
+          <div className="canvas-settings-row-label">
+            <span className="canvas-settings-row-title">表格浮动工具栏</span>
+          </div>
+          <label className="settings-switch">
+            <input type="checkbox" checked={settings.tableToolbar} onChange={(e) => update("tableToolbar", e.target.checked)} />
+            <span className="settings-switch-slider" />
+          </label>
+        </div>
+      </div>
+
+      <div className="canvas-settings-card">
+        <div className="canvas-settings-row">
+          <div className="canvas-settings-row-label">
+            <span className="canvas-settings-row-desc">扩展功能设置修改后需重新打开文件才会完全生效。</span>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function CanvasSettingsContent({
+  settings,
+  onChange,
+}: {
+  settings: CanvasSettings;
+  onChange: (s: CanvasSettings) => void;
+}) {
+  const handleChange = (key: keyof CanvasSettings, value: any) => {
+    onChange({ ...settings, [key]: value });
+  };
+
+  return (
+    <div className="canvas-settings-page">
+      {/* Storage Location */}
+      <div className="canvas-settings-card">
+        <div className="canvas-settings-row">
+          <div className="canvas-settings-row-label">
+            <span className="canvas-settings-row-title">新建白板文件的默认位置</span>
+          </div>
+          <select
+            className="settings-select"
+            value={settings.storageLocation}
+            onChange={(e) => handleChange('storageLocation', e.target.value)}
+          >
+            <option value="vault-root">仓库的根目录</option>
+            <option value="current-folder">当前文件所在的文件夹</option>
+            <option value="custom-folder">指定附件文件夹</option>
+          </select>
+        </div>
+        {settings.storageLocation === 'custom-folder' && (
+          <div className="canvas-settings-row canvas-settings-row-nested">
+            <div className="canvas-settings-row-label">
+              <span className="canvas-settings-row-title">附件文件夹路径</span>
+              <span className="canvas-settings-row-desc">相对于仓库根目录</span>
+            </div>
+            <input
+              type="text"
+              className="settings-input"
+              value={settings.customFolder}
+              onChange={(e) => handleChange('customFolder', e.target.value)}
+              placeholder="assets"
+            />
+          </div>
+        )}
+      </div>
+
+      {/* Alignment Options */}
+      <div className="canvas-settings-card">
+        <div className="canvas-settings-row">
+          <div className="canvas-settings-row-label">
+            <span className="canvas-settings-row-title">对齐网格</span>
+            <span className="canvas-settings-row-desc">移动和缩放卡片时对齐背景网格。</span>
+          </div>
+          <label className="settings-switch">
+            <input
+              type="checkbox"
+              checked={settings.snapToGrid}
+              onChange={(e) => handleChange('snapToGrid', e.target.checked)}
+            />
+            <span className="settings-switch-slider" />
+          </label>
+        </div>
+        {settings.snapToGrid && (
+          <div className="canvas-settings-row canvas-settings-row-nested">
+            <div className="canvas-settings-row-label">
+              <span className="canvas-settings-row-title">网格大小</span>
+            </div>
+            <div className="canvas-settings-row-control">
+              <input
+                type="number"
+                className="settings-input-small"
+                value={settings.gridSize}
+                onChange={(e) => handleChange('gridSize', parseInt(e.target.value) || 15)}
+                min="5"
+                max="50"
+              />
+              <span className="canvas-settings-unit">px</span>
+            </div>
+          </div>
+        )}
+        <div className="canvas-settings-row">
+          <div className="canvas-settings-row-label">
+            <span className="canvas-settings-row-title">对齐物体</span>
+            <span className="canvas-settings-row-desc">移动和缩放卡片时对齐邻近物体。</span>
+          </div>
+          <label className="settings-switch">
+            <input
+              type="checkbox"
+              checked={settings.snapToObjects}
+              onChange={(e) => handleChange('snapToObjects', e.target.checked)}
+            />
+            <span className="settings-switch-slider" />
+          </label>
+        </div>
+      </div>
+
+      {/* Display Options */}
+      <div className="canvas-settings-card">
+        <div className="canvas-settings-row">
+          <div className="canvas-settings-row-label">
+            <span className="canvas-settings-row-title">隐藏卡片内容的缩放阈值</span>
+            <span className="canvas-settings-row-desc">较小的数值会提升性能但在缩放时会更快隐藏卡片内容。</span>
+          </div>
+          <div className="canvas-settings-row-control">
+            <input
+              type="range"
+              className="canvas-settings-slider"
+              value={settings.hideContentZoomThreshold}
+              onChange={(e) => handleChange('hideContentZoomThreshold', parseFloat(e.target.value))}
+              min="0.1"
+              max="1"
+              step="0.1"
+            />
+          </div>
+        </div>
+        <div className="canvas-settings-row">
+          <div className="canvas-settings-row-label">
+            <span className="canvas-settings-row-title">启用小地图</span>
+            <span className="canvas-settings-row-desc">在白板角落显示小地图导航。</span>
+          </div>
+          <label className="settings-switch">
+            <input
+              type="checkbox"
+              checked={settings.minimapEnabled}
+              onChange={(e) => handleChange('minimapEnabled', e.target.checked)}
+            />
+            <span className="settings-switch-slider" />
+          </label>
+        </div>
+        {settings.minimapEnabled && (
+          <div className="canvas-settings-row canvas-settings-row-nested">
+            <div className="canvas-settings-row-label">
+              <span className="canvas-settings-row-title">小地图位置</span>
+            </div>
+            <select
+              className="settings-select"
+              value={settings.minimapPosition}
+              onChange={(e) => handleChange('minimapPosition', e.target.value)}
+            >
+              <option value="top-left">左上角</option>
+              <option value="bottom-left">左下角</option>
+              <option value="bottom-right">右下角</option>
+            </select>
+          </div>
+        )}
+      </div>
+
+      {/* Default Card Sizes */}
+      <div className="canvas-settings-card">
+        <div className="canvas-settings-row">
+          <div className="canvas-settings-row-label">
+            <span className="canvas-settings-row-title">文本卡片</span>
+          </div>
+          <div className="canvas-settings-row-control">
+            <input
+              type="number"
+              className="settings-input-small"
+              value={settings.defaultTextCardSize.width}
+              onChange={(e) => handleChange('defaultTextCardSize', {
+                ...settings.defaultTextCardSize,
+                width: parseInt(e.target.value) || 400
+              })}
+            />
+            <span className="canvas-settings-x">x</span>
+            <input
+              type="number"
+              className="settings-input-small"
+              value={settings.defaultTextCardSize.height}
+              onChange={(e) => handleChange('defaultTextCardSize', {
+                ...settings.defaultTextCardSize,
+                height: parseInt(e.target.value) || 200
+              })}
+            />
+            <span className="canvas-settings-unit">px</span>
+          </div>
+        </div>
+        <div className="canvas-settings-row">
+          <div className="canvas-settings-row-label">
+            <span className="canvas-settings-row-title">笔记卡片</span>
+          </div>
+          <div className="canvas-settings-row-control">
+            <input
+              type="number"
+              className="settings-input-small"
+              value={settings.defaultNoteCardSize.width}
+              onChange={(e) => handleChange('defaultNoteCardSize', {
+                ...settings.defaultNoteCardSize,
+                width: parseInt(e.target.value) || 400
+              })}
+            />
+            <span className="canvas-settings-x">x</span>
+            <input
+              type="number"
+              className="settings-input-small"
+              value={settings.defaultNoteCardSize.height}
+              onChange={(e) => handleChange('defaultNoteCardSize', {
+                ...settings.defaultNoteCardSize,
+                height: parseInt(e.target.value) || 400
+              })}
+            />
+            <span className="canvas-settings-unit">px</span>
+          </div>
+        </div>
+        <div className="canvas-settings-row">
+          <div className="canvas-settings-row-label">
+            <span className="canvas-settings-row-title">多媒体卡片</span>
+          </div>
+          <div className="canvas-settings-row-control">
+            <input
+              type="number"
+              className="settings-input-small"
+              value={settings.defaultMediaCardSize.width}
+              onChange={(e) => handleChange('defaultMediaCardSize', {
+                ...settings.defaultMediaCardSize,
+                width: parseInt(e.target.value) || 400
+              })}
+            />
+            <span className="canvas-settings-x">x</span>
+            <input
+              type="number"
+              className="settings-input-small"
+              value={settings.defaultMediaCardSize.height}
+              onChange={(e) => handleChange('defaultMediaCardSize', {
+                ...settings.defaultMediaCardSize,
+                height: parseInt(e.target.value) || 300
+              })}
+            />
+            <span className="canvas-settings-unit">px</span>
+          </div>
+        </div>
       </div>
     </div>
   );
@@ -1574,7 +1881,7 @@ export default function Settings() {
   const [activeTab, setActiveTab] = useState<SettingsTab>(() => {
     try {
       const saved = localStorage.getItem("zmd-settings-initial-tab") as SettingsTab | null;
-      if (saved && ["general", "theme", "shortcuts", "editor", "mindmap", "graph", "image", "about"].includes(saved)) {
+      if (saved && ["general", "theme", "shortcuts", "editor", "mindmap", "graph", "image", "canvas", "publish", "about"].includes(saved)) {
         localStorage.removeItem("zmd-settings-initial-tab");
         return saved;
       }
@@ -1710,6 +2017,14 @@ export default function Settings() {
     localStorage.setItem(EDITOR_SETTINGS_KEY, JSON.stringify(editorSettings));
   }, [editorSettings]);
 
+  // 白板设置状态
+  const [canvasSettings, setCanvasSettings] = useState<CanvasSettings>(() => loadCanvasSettings());
+
+  // 保存白板设置到 localStorage
+  useEffect(() => {
+    saveCanvasSettings(canvasSettings);
+  }, [canvasSettings]);
+
   const handleClose = useCallback(async () => {
     const win = getCurrentWebviewWindow();
     await win.close();
@@ -1771,10 +2086,17 @@ export default function Settings() {
             <path d="M6 8h.01M10 8h.01M14 8h.01M18 8h.01M8 12h.01M12 12h.01M16 12h.01M7 16h10" />
           </svg>
         ), searchTerms: ["快捷键", "shortcuts", "键盘", "热键"] },
+        { id: "image", label: "图像", icon: (
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+            <rect x="3" y="3" width="18" height="18" rx="2" ry="2" />
+            <circle cx="8.5" cy="8.5" r="1.5" />
+            <polyline points="21 15 16 10 5 21" />
+          </svg>
+        ), searchTerms: ["图像", "image", "图片", "上传", "存储"] },
       ]
     },
     {
-      title: "编辑器",
+      title: "功能",
       items: [
         { id: "editor", label: "编辑器", icon: (
           <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
@@ -1797,18 +2119,13 @@ export default function Settings() {
             <line x1="7.5" y1="19" x2="16.5" y2="19" />
           </svg>
         ), searchTerms: ["关系图谱", "graph", "知识图谱", "链接图"] },
-      ]
-    },
-    {
-      title: "媒体",
-      items: [
-        { id: "image", label: "图像", icon: (
+        { id: "canvas", label: "白板", icon: (
           <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-            <rect x="3" y="3" width="18" height="18" rx="2" ry="2" />
-            <circle cx="8.5" cy="8.5" r="1.5" />
-            <polyline points="21 15 16 10 5 21" />
+            <rect x="3" y="3" width="18" height="18" rx="2" />
+            <path d="M3 9h18" />
+            <path d="M9 21V9" />
           </svg>
-        ), searchTerms: ["图像", "image", "图片", "上传", "存储"] },
+        ), searchTerms: ["白板", "canvas", "画布", "卡片"] },
         { id: "publish", label: "发布", icon: (
           <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
             <path d="M22 2L11 13" />
@@ -1965,6 +2282,9 @@ export default function Settings() {
           )}
           {activeTab === "image" && (
             <ImageSettingsContent settings={imageSettings} onChange={setImageSettings} />
+          )}
+          {activeTab === "canvas" && (
+            <CanvasSettingsContent settings={canvasSettings} onChange={setCanvasSettings} />
           )}
           {activeTab === "publish" && (
             <PublishSettings />

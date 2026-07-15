@@ -1,7 +1,8 @@
-import { useState, useEffect, useCallback, memo } from 'react';
+import { useState, useEffect, memo } from 'react';
 import { Handle, Position, NodeResizer, type NodeProps } from '@xyflow/react';
 import { convertFileSrc } from '@tauri-apps/api/core';
 import { getCanvasColor, resolveFilePath } from '../canvas-utils';
+import { useNearestEdge } from '../useNearestEdge';
 
 const IMAGE_EXTENSIONS = new Set(['png', 'jpg', 'jpeg', 'gif', 'webp', 'bmp', 'svg', 'avif', 'ico']);
 const VIDEO_EXTENSIONS = new Set(['mp4', 'webm', 'ogg', 'mov', 'avi']);
@@ -11,10 +12,7 @@ const PDF_EXTENSIONS = new Set(['pdf']);
 function MediaNode({ data, selected }: NodeProps) {
   const [mediaType, setMediaType] = useState<'image' | 'video' | 'audio' | 'pdf' | 'unknown'>('unknown');
   const [mediaSrc, setMediaSrc] = useState('');
-  const [isHovered, setIsHovered] = useState(false);
-
-  const handleMouseEnter = useCallback(() => setIsHovered(true), []);
-  const handleMouseLeave = useCallback(() => setIsHovered(false), []);
+  const { nodeRef, activeEdge, handleMouseMove, handleMouseLeave } = useNearestEdge();
 
   const filePath = (data as any)?.file || '';
 
@@ -124,6 +122,7 @@ function MediaNode({ data, selected }: NodeProps) {
 
   return (
     <div
+      ref={nodeRef}
       className={`canvas-node canvas-media-node ${selected ? 'selected' : ''}`}
       style={{
         width: '100%',
@@ -133,12 +132,12 @@ function MediaNode({ data, selected }: NodeProps) {
         overflow: 'visible',
         padding: 0,
       }}
-      onMouseEnter={handleMouseEnter}
+      onMouseMove={handleMouseMove}
       onMouseLeave={handleMouseLeave}
     >
       <NodeResizer
         color={color || 'var(--accent)'}
-        isVisible={selected || isHovered}
+        isVisible={false}
         minWidth={100}
         minHeight={100}
         handleClassName="canvas-resize-handle"
@@ -146,10 +145,10 @@ function MediaNode({ data, selected }: NodeProps) {
         autoScale={false}
       />
 
-      <Handle type="target" position={Position.Top} id="top" className="canvas-handle" />
-      <Handle type="target" position={Position.Left} id="left" className="canvas-handle" />
-      <Handle type="source" position={Position.Right} id="right" className="canvas-handle" />
-      <Handle type="source" position={Position.Bottom} id="bottom" className="canvas-handle" />
+      <Handle type="target" position={Position.Top} id="top" className={`canvas-handle ${activeEdge === 'top' ? 'visible' : ''}`} />
+      <Handle type="target" position={Position.Left} id="left" className={`canvas-handle ${activeEdge === 'left' ? 'visible' : ''}`} />
+      <Handle type="source" position={Position.Right} id="right" className={`canvas-handle ${activeEdge === 'right' ? 'visible' : ''}`} />
+      <Handle type="source" position={Position.Bottom} id="bottom" className={`canvas-handle ${activeEdge === 'bottom' ? 'visible' : ''}`} />
 
       {mediaSrc ? renderMedia() : (
         <div className="canvas-media-placeholder">

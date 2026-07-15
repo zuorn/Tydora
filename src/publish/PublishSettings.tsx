@@ -133,183 +133,210 @@ export default function PublishSettings() {
 
   if (!vaultPath) {
     return (
-      <div className="settings-section">
-        <p className="settings-hint">请先打开一个仓库</p>
+      <div className="canvas-settings-page">
+        <div className="canvas-settings-card">
+          <div className="canvas-settings-row">
+            <div className="canvas-settings-row-label">
+              <span className="canvas-settings-row-desc">请先打开一个仓库</span>
+            </div>
+          </div>
+        </div>
       </div>
     );
   }
 
   if (!config) {
     return (
-      <div className="settings-section">
-        <p className="settings-hint">加载配置中...</p>
+      <div className="canvas-settings-page">
+        <div className="canvas-settings-card">
+          <div className="canvas-settings-row">
+            <div className="canvas-settings-row-label">
+              <span className="canvas-settings-row-desc">加载配置中...</span>
+            </div>
+          </div>
+        </div>
       </div>
     );
   }
 
   return (
-    <div className="settings-section">
-      <h3 className="settings-section-title">站点信息</h3>
-
-      <div className="settings-item">
-        <label className="settings-item-label">站点名称</label>
-        <input
-          className="settings-input"
-          type="text"
-          value={config.siteName}
-          onChange={(e) => handleChange("siteName", e.target.value)}
-          placeholder="我的笔记"
-        />
-      </div>
-
-      <div className="settings-item">
-        <label className="settings-item-label">站点描述</label>
-        <input
-          className="settings-input"
-          type="text"
-          value={config.siteDescription || ""}
-          onChange={(e) => handleChange("siteDescription", e.target.value)}
-          placeholder="笔记与想法"
-        />
-      </div>
-
-      <div className="settings-item">
-        <label className="settings-item-label">站点语言</label>
-        <select
-          className="settings-select"
-          value={config.siteLang}
-          onChange={(e) => handleChange("siteLang", e.target.value)}
-        >
-          <option value="zh">中文</option>
-          <option value="en">English</option>
-          <option value="ja">日本語</option>
-          <option value="ko">한국어</option>
-        </select>
-      </div>
-
-      <div className="settings-item">
-        <label className="settings-item-label">站点 URL</label>
-        <input
-          className="settings-input"
-          type="url"
-          value={config.siteUrl || ""}
-          onChange={(e) => handleChange("siteUrl", e.target.value)}
-          placeholder="https://yourusername.github.io/yourrepo"
-        />
-      </div>
-
-      <div className="settings-item">
-        <label className="settings-item-label">页脚署名</label>
-        <input
-          className="settings-input"
-          type="text"
-          value={config.siteFooter || ""}
-          onChange={(e) => handleChange("siteFooter", e.target.value)}
-          placeholder="留空则不显示"
-        />
-      </div>
-
-      <h3 className="settings-section-title">构建选项</h3>
-
-      <div className="settings-item-vertical">
-        <label className="settings-label">笔记目录</label>
-        <input
-          className="settings-input"
-          type="text"
-          value={config.vaultDir}
-          onChange={(e) => handleChange("vaultDir", e.target.value)}
-          placeholder="."
-        />
-        <span className="settings-hint">相对于仓库根目录，默认为根目录 (.)</span>
-      </div>
-
-      <div className="settings-item-vertical">
-        <label className="settings-label">构建模式</label>
-        <div className="settings-radio-group">
-          <label className="settings-radio">
-            <input
-              type="radio"
-              name="buildMode"
-              value="full"
-              checked={config.buildMode === "full"}
-              onChange={() => handleChange("buildMode", "full")}
-            />
-            <span>全部发布</span>
-          </label>
-          <label className="settings-radio">
-            <input
-              type="radio"
-              name="buildMode"
-              value="public"
-              checked={config.buildMode === "public"}
-              onChange={() => handleChange("buildMode", "public")}
-            />
-            <span>仅公开笔记</span>
-          </label>
-        </div>
-        <span className="settings-hint">
-          {config.buildMode === "public"
-            ? '仅发布 frontmatter 中带 "publish: public" 的笔记'
-            : "发布所有笔记"}
-        </span>
-      </div>
-
-      <div className="settings-item-vertical">
-        <label className="settings-label">基础路径</label>
-        <input
-          className="settings-input"
-          type="text"
-          value={config.baseHref}
-          onChange={(e) => handleChange("baseHref", e.target.value)}
-          placeholder="/"
-        />
-        <span className="settings-hint">
-          GitHub Pages 用 /仓库名/，其他平台通常用 /
-        </span>
-      </div>
-
-      <div className="settings-item-vertical">
-        <label className="settings-label">输出目录</label>
-        <div className="settings-input-row">
+    <div className="canvas-settings-page">
+      {/* 站点信息 */}
+      <div className="canvas-settings-card">
+        <div className="canvas-settings-row">
+          <div className="canvas-settings-row-label">
+            <span className="canvas-settings-row-title">站点名称</span>
+            <span className="canvas-settings-row-desc">你的笔记站点名称。</span>
+          </div>
           <input
             className="settings-input"
             type="text"
-            value={config.out}
-            onChange={(e) => handleChange("out", e.target.value)}
-            placeholder="dist"
+            value={config.siteName}
+            onChange={(e) => handleChange("siteName", e.target.value)}
+            placeholder="我的笔记"
           />
-          <button className="settings-button" onClick={handleBrowseOutput}>
-            浏览
-          </button>
         </div>
-        <span className="settings-hint">相对于仓库根目录</span>
+        <div className="canvas-settings-row">
+          <div className="canvas-settings-row-label">
+            <span className="canvas-settings-row-title">站点描述</span>
+            <span className="canvas-settings-row-desc">简短描述你的站点内容。</span>
+          </div>
+          <input
+            className="settings-input"
+            type="text"
+            value={config.siteDescription || ""}
+            onChange={(e) => handleChange("siteDescription", e.target.value)}
+            placeholder="笔记与想法"
+          />
+        </div>
+        <div className="canvas-settings-row">
+          <div className="canvas-settings-row-label">
+            <span className="canvas-settings-row-title">站点语言</span>
+            <span className="canvas-settings-row-desc">站点的默认语言。</span>
+          </div>
+          <select
+            className="settings-select"
+            value={config.siteLang}
+            onChange={(e) => handleChange("siteLang", e.target.value)}
+          >
+            <option value="zh">中文</option>
+            <option value="en">English</option>
+            <option value="ja">日本語</option>
+            <option value="ko">한국어</option>
+          </select>
+        </div>
+        <div className="canvas-settings-row">
+          <div className="canvas-settings-row-label">
+            <span className="canvas-settings-row-title">站点 URL</span>
+            <span className="canvas-settings-row-desc">部署后的站点访问地址。</span>
+          </div>
+          <input
+            className="settings-input"
+            type="url"
+            value={config.siteUrl || ""}
+            onChange={(e) => handleChange("siteUrl", e.target.value)}
+            placeholder="https://yourusername.github.io/yourrepo"
+          />
+        </div>
+        <div className="canvas-settings-row">
+          <div className="canvas-settings-row-label">
+            <span className="canvas-settings-row-title">页脚署名</span>
+            <span className="canvas-settings-row-desc">显示在页面底部的文字。</span>
+          </div>
+          <input
+            className="settings-input"
+            type="text"
+            value={config.siteFooter || ""}
+            onChange={(e) => handleChange("siteFooter", e.target.value)}
+            placeholder="留空则不显示"
+          />
+        </div>
       </div>
 
-      <div className="settings-actions">
-        <button className="settings-button" onClick={handleSave} disabled={saving}>
-          {saving ? "保存中..." : saved ? "已保存 ✓" : "保存配置"}
-        </button>
-        <button className="settings-button" onClick={handleReset}>
-          重置为默认
-        </button>
-        <div style={{ flex: 1 }} />
-        <button
-          className={`settings-button${previewRunning ? ' warning' : ''}`}
-          onClick={handlePreview}
-          disabled={!siteGenerated}
-        >
-          {previewRunning ? "停止预览" : "预览网站"}
-        </button>
-        <button
-          className="settings-button primary"
-          onClick={() => setPublishOpen(true)}
-          disabled={!configExists}
-        >
-          生成
-        </button>
-        {!configExists && (
-          <span className="settings-hint">请先保存配置后再生成</span>
-        )}
+      {/* 构建选项 */}
+      <div className="canvas-settings-card">
+        <div className="canvas-settings-row">
+          <div className="canvas-settings-row-label">
+            <span className="canvas-settings-row-title">笔记目录</span>
+            <span className="canvas-settings-row-desc">相对于仓库根目录，默认为根目录 (.)</span>
+          </div>
+          <input
+            className="settings-input"
+            type="text"
+            value={config.vaultDir}
+            onChange={(e) => handleChange("vaultDir", e.target.value)}
+            placeholder="."
+          />
+        </div>
+        <div className="canvas-settings-row">
+          <div className="canvas-settings-row-label">
+            <span className="canvas-settings-row-title">构建模式</span>
+            <span className="canvas-settings-row-desc">
+              {config.buildMode === "public"
+                ? '仅发布 frontmatter 中带 "publish: public" 的笔记'
+                : "发布所有笔记"}
+            </span>
+          </div>
+          <div className="canvas-settings-row-control">
+            <label className="settings-radio-card">
+              <input
+                type="radio"
+                name="buildMode"
+                value="full"
+                checked={config.buildMode === "full"}
+                onChange={() => handleChange("buildMode", "full")}
+              />
+              <span>全部发布</span>
+            </label>
+            <label className="settings-radio-card">
+              <input
+                type="radio"
+                name="buildMode"
+                value="public"
+                checked={config.buildMode === "public"}
+                onChange={() => handleChange("buildMode", "public")}
+              />
+              <span>仅公开笔记</span>
+            </label>
+          </div>
+        </div>
+        <div className="canvas-settings-row">
+          <div className="canvas-settings-row-label">
+            <span className="canvas-settings-row-title">基础路径</span>
+            <span className="canvas-settings-row-desc">GitHub Pages 用 /仓库名/，其他平台通常用 /</span>
+          </div>
+          <input
+            className="settings-input"
+            type="text"
+            value={config.baseHref}
+            onChange={(e) => handleChange("baseHref", e.target.value)}
+            placeholder="/"
+          />
+        </div>
+        <div className="canvas-settings-row">
+          <div className="canvas-settings-row-label">
+            <span className="canvas-settings-row-title">输出目录</span>
+            <span className="canvas-settings-row-desc">相对于仓库根目录</span>
+          </div>
+          <div className="canvas-settings-row-control">
+            <input
+              className="settings-input"
+              type="text"
+              value={config.out}
+              onChange={(e) => handleChange("out", e.target.value)}
+              placeholder="dist"
+            />
+            <button className="settings-button" onClick={handleBrowseOutput}>
+              浏览
+            </button>
+          </div>
+        </div>
+      </div>
+
+      {/* 操作按钮 */}
+      <div className="canvas-settings-card">
+        <div className="canvas-settings-row canvas-settings-row-actions">
+          <button className="settings-button" onClick={handleReset}>
+            重置为默认
+          </button>
+          <button className="settings-button" onClick={handlePreview} disabled={!siteGenerated}>
+            {previewRunning ? "停止预览" : "预览网站"}
+          </button>
+          <div style={{ flex: 1 }} />
+          <button className="settings-button" onClick={handleSave} disabled={saving}>
+            {saving ? "保存中..." : saved ? "已保存 ✓" : "保存配置"}
+          </button>
+          <button
+            className="settings-button primary"
+            onClick={() => setPublishOpen(true)}
+            disabled={!configExists}
+          >
+            生成站点
+          </button>
+          {!configExists && (
+            <span className="settings-hint" style={{ marginLeft: 8 }}>请先保存配置</span>
+          )}
+        </div>
       </div>
 
       {publishOpen && vaultPath && (

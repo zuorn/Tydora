@@ -4,6 +4,7 @@ import { emit } from '@tauri-apps/api/event';
 import { readTextFile } from '@tauri-apps/plugin-fs';
 import { convertFileSrc } from '@tauri-apps/api/core';
 import { getCanvasColor, resolveFilePath } from '../canvas-utils';
+import { useNearestEdge } from '../useNearestEdge';
 
 const IMAGE_EXTENSIONS = new Set(['png', 'jpg', 'jpeg', 'gif', 'webp', 'bmp', 'svg', 'avif', 'ico']);
 
@@ -12,6 +13,7 @@ function FileNode({ data, selected }: NodeProps) {
   const [fileName, setFileName] = useState('');
   const [isImage, setIsImage] = useState(false);
   const [imageSrc, setImageSrc] = useState('');
+  const { nodeRef, activeEdge, handleMouseMove, handleMouseLeave } = useNearestEdge();
 
   const filePath = (data as any)?.file || '';
   const subpath = (data as any)?.subpath || '';
@@ -88,6 +90,7 @@ function FileNode({ data, selected }: NodeProps) {
 
   return (
     <div
+      ref={nodeRef}
       className={`canvas-node canvas-file-node ${selected ? 'selected' : ''}`}
       style={{
         width: '100%',
@@ -96,11 +99,13 @@ function FileNode({ data, selected }: NodeProps) {
         borderColor: borderColor,
         overflow: 'visible',
       }}
+      onMouseMove={handleMouseMove}
+      onMouseLeave={handleMouseLeave}
     >
-      <Handle type="target" position={Position.Top} id="top" className="canvas-handle" />
-      <Handle type="target" position={Position.Left} id="left" className="canvas-handle" />
-      <Handle type="source" position={Position.Right} id="right" className="canvas-handle" />
-      <Handle type="source" position={Position.Bottom} id="bottom" className="canvas-handle" />
+      <Handle type="target" position={Position.Top} id="top" className={`canvas-handle ${activeEdge === 'top' ? 'visible' : ''}`} />
+      <Handle type="target" position={Position.Left} id="left" className={`canvas-handle ${activeEdge === 'left' ? 'visible' : ''}`} />
+      <Handle type="source" position={Position.Right} id="right" className={`canvas-handle ${activeEdge === 'right' ? 'visible' : ''}`} />
+      <Handle type="source" position={Position.Bottom} id="bottom" className={`canvas-handle ${activeEdge === 'bottom' ? 'visible' : ''}`} />
 
       {/* Only show header for non-image files */}
       {!isImage && (

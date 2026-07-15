@@ -1,13 +1,16 @@
 import { memo } from 'react';
 import { Handle, Position, type NodeProps } from '@xyflow/react';
 import { getCanvasColor } from '../canvas-utils';
+import { useNearestEdge } from '../useNearestEdge';
 
 function GroupNode({ data, selected }: NodeProps) {
   const label = (data as any)?.label || '';
   const color = getCanvasColor((data as any)?.color);
+  const { nodeRef, activeEdge, handleMouseMove, handleMouseLeave } = useNearestEdge();
 
   return (
     <div
+      ref={nodeRef}
       className={`canvas-node canvas-group-node ${selected ? 'selected' : ''}`}
       style={{
         width: '100%',
@@ -16,11 +19,13 @@ function GroupNode({ data, selected }: NodeProps) {
         borderColor: selected ? 'var(--accent)' : (color || 'var(--border)'),
         borderStyle: 'dashed',
       }}
+      onMouseMove={handleMouseMove}
+      onMouseLeave={handleMouseLeave}
     >
-      <Handle type="target" position={Position.Top} id="top" className="canvas-handle" />
-      <Handle type="target" position={Position.Left} id="left" className="canvas-handle" />
-      <Handle type="source" position={Position.Right} id="right" className="canvas-handle" />
-      <Handle type="source" position={Position.Bottom} id="bottom" className="canvas-handle" />
+      <Handle type="target" position={Position.Top} id="top" className={`canvas-handle ${activeEdge === 'top' ? 'visible' : ''}`} />
+      <Handle type="target" position={Position.Left} id="left" className={`canvas-handle ${activeEdge === 'left' ? 'visible' : ''}`} />
+      <Handle type="source" position={Position.Right} id="right" className={`canvas-handle ${activeEdge === 'right' ? 'visible' : ''}`} />
+      <Handle type="source" position={Position.Bottom} id="bottom" className={`canvas-handle ${activeEdge === 'bottom' ? 'visible' : ''}`} />
 
       {label && (
         <div className="canvas-group-label">

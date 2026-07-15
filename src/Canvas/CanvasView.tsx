@@ -63,7 +63,7 @@ interface CanvasViewProps {
 
 export default function CanvasView({ onNodeClick }: CanvasViewProps) {
   const reactFlowWrapper = useRef<HTMLDivElement>(null);
-  const { screenToFlowPosition, getNodes, getViewport } = useReactFlow();
+  const { screenToFlowPosition, getNodes, getViewport, fitView } = useReactFlow();
 
   const nodes = useCanvasStore((s) => s.nodes);
   const edges = useCanvasStore((s) => s.edges);
@@ -76,6 +76,17 @@ export default function CanvasView({ onNodeClick }: CanvasViewProps) {
   const copySelected = useCanvasStore((s) => s.copySelected);
   const paste = useCanvasStore((s) => s.paste);
   const vaultPath = useCanvasStore((s) => s.vaultPath);
+  const filePath = useCanvasStore((s) => s.filePath);
+
+  // Fit view when canvas file changes
+  useEffect(() => {
+    if (!filePath) return;
+    // Wait for nodes to render, then fit view
+    const timer = setTimeout(() => {
+      fitView({ padding: 0.1, duration: 0 });
+    }, 50);
+    return () => clearTimeout(timer);
+  }, [filePath, fitView]);
 
   // Update node positions for alignment guides
   useEffect(() => {
@@ -488,6 +499,11 @@ export default function CanvasView({ onNodeClick }: CanvasViewProps) {
           onPaneContextMenu={onPaneContextMenu}
           onNodeDragStart={onNodeDragStart}
           onNodeDragStop={onNodeDragStop}
+          nodeDraggable={(_: Node, event: React.MouseEvent) => {
+            // Prevent drag when clicking on resize handles
+            const target = event.target as HTMLElement;
+            return !target.closest('.canvas-resize-handle') && !target.closest('.canvas-resize-line');
+          }}
           nodeTypes={nodeTypes}
           edgeTypes={edgeTypes}
           defaultEdgeOptions={defaultEdgeOptions}

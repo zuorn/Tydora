@@ -16,6 +16,7 @@ interface CanvasState {
   vaultPath: string | null;
   isModified: boolean;
   isLoaded: boolean;
+  loadGeneration: number;
 
   // History for undo/redo
   history: HistoryEntry[];
@@ -61,6 +62,7 @@ export const useCanvasStore = create<CanvasState>((set, get) => ({
   vaultPath: null,
   isModified: false,
   isLoaded: false,
+  loadGeneration: 0,
   history: [],
   historyIndex: -1,
   clipboard: { nodes: [], edges: [] },
@@ -90,8 +92,12 @@ export const useCanvasStore = create<CanvasState>((set, get) => ({
   },
 
   loadCanvas: async (filePath, vaultPath) => {
+    const gen = get().loadGeneration + 1;
+    set({ loadGeneration: gen });
     try {
       const content = await readTextFile(filePath);
+      // Check if a newer load was started
+      if (get().loadGeneration !== gen) return;
       const canvas: JsonCanvasFile = JSON.parse(content);
       const { nodes, edges } = jsonCanvasToReactFlow(canvas);
       set({
@@ -99,6 +105,7 @@ export const useCanvasStore = create<CanvasState>((set, get) => ({
         history: [{ nodes, edges }], historyIndex: 0
       });
     } catch (err) {
+      if (get().loadGeneration !== gen) return;
       console.error('Failed to load canvas:', err);
       set({
         nodes: [], edges: [], filePath, vaultPath, isLoaded: true, isModified: false,

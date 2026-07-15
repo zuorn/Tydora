@@ -6,11 +6,15 @@ import Placeholder from '@tiptap/extension-placeholder';
 import { Markdown } from 'tiptap-markdown';
 import { getCanvasColor } from '../canvas-utils';
 import { useCanvasStore } from '../canvas-store';
+import { useNearestEdge } from '../useNearestEdge';
 
 function TextNode({ data, selected, id }: NodeProps) {
   const text = (data as any)?.text || '';
   const updateNodeData = useCanvasStore((s) => s.updateNodeData);
+  const { nodeRef, activeEdge, handleMouseMove, handleMouseLeave } = useNearestEdge();
   const [isHovered, setIsHovered] = useState(false);
+  const handleNodeMouseEnter = useCallback(() => setIsHovered(true), []);
+  const handleNodeMouseLeave = useCallback(() => { setIsHovered(false); handleMouseLeave(); }, [handleMouseLeave]);
 
   const editor = useEditor({
     extensions: [
@@ -50,9 +54,6 @@ function TextNode({ data, selected, id }: NodeProps) {
     }
   }, [text, editor]);
 
-  const handleMouseEnter = useCallback(() => setIsHovered(true), []);
-  const handleMouseLeave = useCallback(() => setIsHovered(false), []);
-
   // Focus editor on double-click
   const handleDoubleClick = useCallback(() => {
     if (editor) {
@@ -79,6 +80,7 @@ function TextNode({ data, selected, id }: NodeProps) {
 
   return (
     <div
+      ref={nodeRef}
       className={`canvas-node canvas-text-node ${selected ? 'selected' : ''}`}
       style={{
         width: '100%',
@@ -88,10 +90,11 @@ function TextNode({ data, selected, id }: NodeProps) {
       }}
       onClick={handleClick}
       onDoubleClick={handleDoubleClick}
-      onMouseEnter={handleMouseEnter}
-      onMouseLeave={handleMouseLeave}
+      onMouseEnter={handleNodeMouseEnter}
+      onMouseMove={handleMouseMove}
+      onMouseLeave={handleNodeMouseLeave}
     >
-      {/* Node Resizer - shows on hover or select */}
+      {/* Node Resizer - small subtle handles */}
       <NodeResizer
         color={color || 'var(--accent)'}
         isVisible={selected || isHovered}
@@ -102,10 +105,10 @@ function TextNode({ data, selected, id }: NodeProps) {
         autoScale={false}
       />
 
-      <Handle type="target" position={Position.Top} id="top" className="canvas-handle" />
-      <Handle type="target" position={Position.Left} id="left" className="canvas-handle" />
-      <Handle type="source" position={Position.Right} id="right" className="canvas-handle" />
-      <Handle type="source" position={Position.Bottom} id="bottom" className="canvas-handle" />
+      <Handle type="target" position={Position.Top} id="top" className={`canvas-handle ${activeEdge === 'top' ? 'visible' : ''}`} />
+      <Handle type="target" position={Position.Left} id="left" className={`canvas-handle ${activeEdge === 'left' ? 'visible' : ''}`} />
+      <Handle type="source" position={Position.Right} id="right" className={`canvas-handle ${activeEdge === 'right' ? 'visible' : ''}`} />
+      <Handle type="source" position={Position.Bottom} id="bottom" className={`canvas-handle ${activeEdge === 'bottom' ? 'visible' : ''}`} />
 
       <div className="canvas-node-content">
         {editor ? (

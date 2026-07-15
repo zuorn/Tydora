@@ -341,7 +341,7 @@ body {
   transition: background-color 0.15s ease;
 }
 
-html[data-scrolling] ::-webkit-scrollbar-thumb {
+[data-scrolling]::-webkit-scrollbar-thumb {
   background: var(--border);
   transition: background-color 0s;
 }
@@ -356,7 +356,7 @@ html[data-scrolling] ::-webkit-scrollbar-thumb {
   scrollbar-color: transparent transparent;
 }
 
-html[data-scrolling] * {
+[data-scrolling] {
   scrollbar-color: var(--border) transparent;
 }
 
@@ -1449,11 +1449,40 @@ html[data-scrolling] * {
   cursor: pointer;
   gap: 12px;
   transition: background 0.1s ease;
+  position: relative;
 }
 
-.command-palette-item:hover,
-.command-palette-item.selected {
+.command-palette-item:hover {
   background: var(--bg-surface);
+}
+
+.command-palette-item.selected {
+  background: linear-gradient(
+    135deg,
+    rgba(var(--accent-rgb, 137, 180, 250), 0.12) 0%,
+    rgba(255, 255, 255, 0.1) 100%
+  );
+  color: var(--text-primary);
+  font-weight: 500;
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.2),
+    inset 0 -1px 0 rgba(0, 0, 0, 0.05),
+    0 1px 4px rgba(0, 0, 0, 0.06);
+  border: 0.5px solid rgba(var(--accent-rgb, 137, 180, 250), 0.2);
+}
+
+.command-palette-item.selected::before {
+  content: "";
+  position: absolute;
+  left: 0;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 3px;
+  height: 20px;
+  border-radius: 0 3px 3px 0;
+  background: var(--accent);
+  box-shadow: 0 0 8px rgba(var(--accent-rgb, 137, 180, 250), 0.5);
+  animation: tree-active-bar 0.3s cubic-bezier(0.34, 1.56, 0.64, 1) forwards;
 }
 
 .command-palette-item-label {
@@ -1569,7 +1598,7 @@ html[data-scrolling] * {
   transition: background-color 0.15s ease;
 }
 
-[data-theme="liquid-glass"] html[data-scrolling] ::-webkit-scrollbar-thumb {
+[data-theme="liquid-glass"] [data-scrolling]::-webkit-scrollbar-thumb {
   background: rgba(0, 0, 0, 0.12);
   transition: background-color 0s;
 }
@@ -1583,7 +1612,7 @@ html[data-scrolling] * {
   scrollbar-color: transparent transparent;
 }
 
-[data-theme="liquid-glass"] html[data-scrolling] * {
+[data-theme="liquid-glass"] [data-scrolling] {
   scrollbar-color: rgba(0, 0, 0, 0.12) transparent;
 }
 
@@ -1761,9 +1790,37 @@ html[data-scrolling] * {
   border-bottom: 1px solid rgba(0, 0, 0, 0.06);
 }
 
-[data-theme="liquid-glass"] .command-palette-item:hover,
-[data-theme="liquid-glass"] .command-palette-item.selected {
+[data-theme="liquid-glass"] .command-palette-item:hover {
   background: rgba(var(--accent-rgb, 0, 122, 255), 0.08);
+}
+
+[data-theme="liquid-glass"] .command-palette-item.selected {
+  background: linear-gradient(
+    135deg,
+    rgba(var(--accent-rgb, 0, 122, 255), 0.15) 0%,
+    rgba(255, 255, 255, 0.12) 100%
+  );
+  color: var(--text-primary);
+  font-weight: 500;
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.3),
+    inset 0 -1px 0 rgba(0, 0, 0, 0.05),
+    0 1px 4px rgba(0, 0, 0, 0.08);
+  border: 0.5px solid rgba(var(--accent-rgb, 0, 122, 255), 0.25);
+}
+
+[data-theme="liquid-glass"] .command-palette-item.selected::before {
+  content: "";
+  position: absolute;
+  left: 0;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 3px;
+  height: 20px;
+  border-radius: 0 3px 3px 0;
+  background: var(--accent);
+  box-shadow: 0 0 8px rgba(var(--accent-rgb, 0, 122, 255), 0.6);
+  animation: tree-active-bar 0.3s cubic-bezier(0.34, 1.56, 0.64, 1) forwards;
 }
 
 [data-theme="liquid-glass"] .command-palette-kbd {

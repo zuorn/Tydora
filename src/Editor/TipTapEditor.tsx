@@ -44,6 +44,7 @@ import { Mermaid } from "./extensions/mermaid";
 import { mermaidHljsLang } from "./extensions/mermaid-language";
 import { WikiLink } from "./extensions/wiki-link";
 import { SearchHighlight } from "./extensions/search-highlight";
+import { HeadingHighlight } from "./extensions/heading-highlight";
 import { CodeBlockToolbar } from "./extensions/code-block-toolbar";
 import { TableFloatingToolbar } from "./extensions/table-floating-toolbar";
 import { BulletListMindmap } from "./extensions/bullet-list-mindmap";
@@ -219,6 +220,11 @@ const TipTapEditor = forwardRef<EditorHandle, TipTapEditorProps>(
                   return this.editor.commands.splitBlock();
                 }
 
+                // 光标在标题前面时，创建新段落
+                if ($from.parent.type.name === "heading" && pos <= $from.start()) {
+                  return this.editor.commands.splitBlock();
+                }
+
                 return this.editor.commands.setHardBreak();
               },
 
@@ -321,6 +327,7 @@ const TipTapEditor = forwardRef<EditorHandle, TipTapEditorProps>(
         ...(editorSettings?.mermaid !== false ? [Mermaid] : []),
         ...(editorSettings?.wikiLink !== false ? [WikiLink] : []),
         SearchHighlight,
+        HeadingHighlight,
         CodeBlockToolbar,
         ...(editorSettings?.tableToolbar !== false ? [TableFloatingToolbar] : []),
         BulletListMindmap,
@@ -803,17 +810,25 @@ const TipTapEditor = forwardRef<EditorHandle, TipTapEditorProps>(
 
         if (bestPos !== null && bestScore > 0) {
           editor.chain().focus().setTextSelection(bestPos).run();
-          // 滚动到该位置
-          const { view } = editor;
-          const coords = view.coordsAtPos(bestPos);
-          if (coords) {
-            const editorEl = containerRef.current;
-            if (editorEl) {
-              const editorRect = editorEl.getBoundingClientRect();
-              const scrollTop = coords.top - editorRect.top - editorRect.height / 3;
-              editorEl.scrollTop += scrollTop;
+          
+          // 高亮标题文字 1.5 秒
+          editor.commands.highlightHeading(bestPos, 1500);
+          
+          // 使用 requestAnimationFrame 确保编辑器更新后滚动
+          requestAnimationFrame(() => {
+            // 滚动容器是 .tiptap-editor，不是 editor-container
+            const scrollContainer = containerRef.current?.querySelector('.tiptap-editor');
+            if (!scrollContainer) return;
+            
+            const { view } = editor;
+            const coords = view.coordsAtPos(bestPos!);
+            if (coords) {
+              const containerRect = scrollContainer.getBoundingClientRect();
+              // 计算滚动距离：元素在视口的位置 - 容器在视口的位置 - 顶部边距
+              const scrollDistance = coords.top - containerRect.top - 20;
+              scrollContainer.scrollTop += scrollDistance;
             }
-          }
+          });
         }
       },
       scrollToLine: (line: number) => {
@@ -824,16 +839,18 @@ const TipTapEditor = forwardRef<EditorHandle, TipTapEditorProps>(
         const pos = Math.floor(ratio * doc.content.size);
         editor.chain().focus().setTextSelection(pos).run();
 
-        const { view } = editor;
-        const coords = view.coordsAtPos(pos);
-        if (coords) {
-          const editorEl = containerRef.current;
-          if (editorEl) {
-            const editorRect = editorEl.getBoundingClientRect();
-            const scrollTop = coords.top - editorRect.top - editorRect.height / 3;
-            editorEl.scrollTop += scrollTop;
+        requestAnimationFrame(() => {
+          const scrollContainer = containerRef.current?.querySelector('.tiptap-editor');
+          if (!scrollContainer) return;
+          
+          const { view } = editor;
+          const coords = view.coordsAtPos(pos);
+          if (coords) {
+            const containerRect = scrollContainer.getBoundingClientRect();
+            const scrollTop = coords.top - containerRect.top - containerRect.height / 3;
+            scrollContainer.scrollTop += scrollTop;
           }
-        }
+        });
       },
       getCursorOffset: () => {
         if (!editor) return -1;

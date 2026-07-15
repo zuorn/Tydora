@@ -19,6 +19,9 @@ import { checkForUpdate, downloadAndInstall, relaunchApp, type UpdateInfo } from
 import { LinkIndexService } from "./wikilink";
 import { WikiLinkAutocomplete } from "./wikilink";
 import { GraphView } from "./graph";
+import CanvasView from "./Canvas/CanvasView";
+import { ReactFlowProvider } from "@xyflow/react";
+import { useCanvasStore } from "./Canvas/canvas-store";
 import { useVaultWatcher } from "./services";
 import PublishPanel from "./publish/PublishPanel";
 import { BookmarkDialog, BookmarksService } from "./Bookmarks";
@@ -144,13 +147,25 @@ function App({ initialFilePath }: { initialFilePath?: string | null }) {
   }, []);
 
   // 滚动条自动隐藏：滚动时立即显示，停止滚动 400ms 后快速隐藏
+  // 将 data-scrolling 设置在具体的滚动容器上，避免侧栏和编辑器滚动条互相干扰
   useEffect(() => {
     let timer: ReturnType<typeof setTimeout>;
-    const handleScroll = () => {
-      document.documentElement.setAttribute('data-scrolling', '');
+    let currentTarget: HTMLElement | null = null;
+
+    const handleScroll = (e: Event) => {
+      const target = e.target as HTMLElement;
+      // 如果滚动目标变了，清除旧目标的属性
+      if (currentTarget && currentTarget !== target) {
+        currentTarget.removeAttribute('data-scrolling');
+      }
+      currentTarget = target;
+      target.setAttribute('data-scrolling', '');
       clearTimeout(timer);
       timer = setTimeout(() => {
-        document.documentElement.removeAttribute('data-scrolling');
+        if (currentTarget) {
+          currentTarget.removeAttribute('data-scrolling');
+          currentTarget = null;
+        }
       }, 400);
     };
     document.addEventListener('scroll', handleScroll, { capture: true, passive: true });
@@ -203,6 +218,22 @@ function App({ initialFilePath }: { initialFilePath?: string | null }) {
   const [pendingFilePath, setPendingFilePath] = useState<string | null>(null);
   // 预览模式状态
   const [previewFilePath, setPreviewFilePath] = useState<string | null>(null);
+
+  // 白板文件路径（在主区域显示白板时设置）
+  const [canvasFilePath, setCanvasFilePath] = useState<string | null>(null);
+
+  // 加载白板文件并同步保存状态到顶部红绿灯
+  useEffect(() => {
+    if (!canvasFilePath) return;
+    const vault = activeVaultIndex >= 0 ? vaults[activeVaultIndex]?.path ?? "" : "";
+    useCanvasStore.getState().loadCanvas(canvasFilePath, vault);
+    const unsub = useCanvasStore.subscribe((state, prevState) => {
+      if (state.isModified !== prevState.isModified) {
+        setSaveStatus(state.isModified ? "modified" : "saved");
+      }
+    });
+    return unsub;
+  }, [canvasFilePath, activeVaultIndex, vaults]);
 
   // 快速打开文件弹窗状态
   const [quickOpenOpen, setQuickOpenOpen] = useState(false);
@@ -306,6 +337,15 @@ function App({ initialFilePath }: { initialFilePath?: string | null }) {
     if (matchingVaultIndex >= 0) {
       setActiveVaultIndex(matchingVaultIndex);
     }
+    // .canvas 文件：在主区域显示白板
+    if (initialFilePath.endsWith('.canvas')) {
+      setCanvasFilePath(initialFilePath);
+      setFileName(initialFilePath);
+      setPreviewFilePath(null);
+      setModified(false);
+      setContent("");
+      return;
+    }
     readTextFile(initialFilePath)
       .then((text) => {
         savedContentRef.current = text;
@@ -340,6 +380,15 @@ function App({ initialFilePath }: { initialFilePath?: string | null }) {
               : typeof payload === "object" && payload !== null
                 ? JSON.stringify(payload)
                 : String(payload ?? "");
+          // .canvas 文件：在主区域显示白板
+          if (filePath.endsWith('.canvas')) {
+            setCanvasFilePath(filePath);
+            setFileName(filePath);
+            setPreviewFilePath(null);
+            setModified(false);
+            setContent("");
+            return;
+          }
           readTextFile(filePath)
             .then((text) => {
               savedContentRef.current = text;
@@ -549,12 +598,16 @@ function App({ initialFilePath }: { initialFilePath?: string | null }) {
     const handler = (e: KeyboardEvent) => {
       if ((e.ctrlKey || e.metaKey) && e.key === "s") {
         e.preventDefault();
-        handleSave();
+        if (canvasFilePath) {
+          useCanvasStore.getState().saveCanvas();
+        } else {
+          handleSave();
+        }
       }
     };
     window.addEventListener("keydown", handler);
     return () => window.removeEventListener("keydown", handler);
-  }, [handleSave]);
+  }, [handleSave, canvasFilePath]);
 
   // 自动保存：内容变化且有已保存的文件路径时，延迟 1 秒自动写入
   useEffect(() => {
@@ -654,9 +707,13 @@ function App({ initialFilePath }: { initialFilePath?: string | null }) {
     // 判断文件类型
     const fileName = path.split(/[/\\]/).pop() || path;
 
-    // .canvas 文件：打开白板窗口
+    // .canvas 文件：在主区域显示白板
     if (fileName.endsWith('.canvas')) {
-      invoke("open_canvas_window", { canvasPath: path });
+      setCanvasFilePath(path);
+      setFileName(path);
+      setPreviewFilePath(null);
+      setModified(false);
+      setContent("");
       return;
     }
 
@@ -664,6 +721,7 @@ function App({ initialFilePath }: { initialFilePath?: string | null }) {
       // 非文本文件，直接预览，同时更新 fileName 以显示选中状态
       setFileName(path);
       setPreviewFilePath(path);
+      setCanvasFilePath(null);
       return;
     }
 
@@ -690,6 +748,7 @@ function App({ initialFilePath }: { initialFilePath?: string | null }) {
       setModified(false);
       setSaveStatus("idle");
       setPreviewFilePath(null); // 关闭预览模式
+      setCanvasFilePath(null); // 关闭白板模式
       setIsCurrentFileMarkdown(isMarkdownFile(path));
 
       // 跳转到指定行并高亮搜索结果
@@ -1099,6 +1158,7 @@ function App({ initialFilePath }: { initialFilePath?: string | null }) {
     { id: "settings-mindmap", label: "思维导图设置", category: "设置", aliases: ["思维导图", "mindmap"], action: () => { localStorage.setItem("zmd-settings-initial-tab", "mindmap"); invoke("open_settings_window"); } },
     { id: "settings-graph", label: "关系图谱设置", category: "设置", aliases: ["图谱", "graph", "关系"], action: () => { localStorage.setItem("zmd-settings-initial-tab", "graph"); invoke("open_settings_window"); } },
     { id: "settings-image", label: "图像设置", category: "设置", aliases: ["图像", "image", "图片"], action: () => { localStorage.setItem("zmd-settings-initial-tab", "image"); invoke("open_settings_window"); } },
+    { id: "settings-canvas", label: "白板设置", category: "设置", aliases: ["白板", "canvas", "画布"], action: () => { localStorage.setItem("zmd-settings-initial-tab", "canvas"); invoke("open_settings_window"); } },
     { id: "settings-about", label: "关于", category: "设置", aliases: ["about", "版本"], action: () => { localStorage.setItem("zmd-settings-initial-tab", "about"); invoke("open_settings_window"); } },
   ], [handleSave, activeVaultIndex, fileName, handleNewWindow, handleSidebarToggle, cycleMode, handleMinimize, handleToggleMaximize, handleClose, setViewMode, viewMode]);
 
@@ -1229,6 +1289,12 @@ function App({ initialFilePath }: { initialFilePath?: string | null }) {
                 filePath={previewFilePath}
                 onBack={() => setPreviewFilePath(null)}
               />
+            ) : canvasFilePath ? (
+              <div style={{ width: '100%', height: '100%' }}>
+                <ReactFlowProvider>
+                  <CanvasView />
+                </ReactFlowProvider>
+              </div>
             ) : isCurrentFileMarkdown ? (
               <EditorErrorBoundary>
                 <Editor
@@ -1259,7 +1325,7 @@ function App({ initialFilePath }: { initialFilePath?: string | null }) {
           </div>
 
           {/* 底部浮动控件 */}
-          {isCurrentFileMarkdown && (
+          {!canvasFilePath && isCurrentFileMarkdown && (
             <button
               className="editor-mode-toggle source-mode-toggle floating-mode-toggle"
               onClick={cycleMode}
@@ -1268,6 +1334,7 @@ function App({ initialFilePath }: { initialFilePath?: string | null }) {
               {MODE_LABELS[viewMode]}
             </button>
           )}
+          {!canvasFilePath && (
           <div className="editor-bottom-controls editor-bottom-right">
             <button
               className={`typewriter-indicator ${typewriterMode ? 'active' : ''}`}
@@ -1287,6 +1354,7 @@ function App({ initialFilePath }: { initialFilePath?: string | null }) {
               {wordCount} 字
             </span>
           </div>
+          )}
         </main>
       </div>
 

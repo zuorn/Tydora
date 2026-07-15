@@ -1,10 +1,12 @@
 import { memo } from 'react';
 import { Handle, Position, type NodeProps } from '@xyflow/react';
 import { getCanvasColor } from '../canvas-utils';
+import { useNearestEdge } from '../useNearestEdge';
 
 function UrlNode({ data, selected }: NodeProps) {
   const url = (data as any)?.url || '';
   const label = (data as any)?.label || '';
+  const { nodeRef, activeEdge, handleMouseMove, handleMouseLeave } = useNearestEdge();
 
   const handleOpenUrl = () => {
     if (url) {
@@ -27,6 +29,7 @@ function UrlNode({ data, selected }: NodeProps) {
 
   return (
     <div
+      ref={nodeRef}
       className={`canvas-node canvas-url-node ${selected ? 'selected' : ''}`}
       style={{
         width: '100%',
@@ -34,11 +37,13 @@ function UrlNode({ data, selected }: NodeProps) {
         background: backgroundColor,
         borderColor: borderColor,
       }}
+      onMouseMove={handleMouseMove}
+      onMouseLeave={handleMouseLeave}
     >
-      <Handle type="target" position={Position.Top} id="top" className="canvas-handle" />
-      <Handle type="target" position={Position.Left} id="left" className="canvas-handle" />
-      <Handle type="source" position={Position.Right} id="right" className="canvas-handle" />
-      <Handle type="source" position={Position.Bottom} id="bottom" className="canvas-handle" />
+      <Handle type="target" position={Position.Top} id="top" className={`canvas-handle ${activeEdge === 'top' ? 'visible' : ''}`} />
+      <Handle type="target" position={Position.Left} id="left" className={`canvas-handle ${activeEdge === 'left' ? 'visible' : ''}`} />
+      <Handle type="source" position={Position.Right} id="right" className={`canvas-handle ${activeEdge === 'right' ? 'visible' : ''}`} />
+      <Handle type="source" position={Position.Bottom} id="bottom" className={`canvas-handle ${activeEdge === 'bottom' ? 'visible' : ''}`} />
 
       <div className="canvas-node-header" onClick={handleOpenUrl} style={{ cursor: 'pointer' }}>
         <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">

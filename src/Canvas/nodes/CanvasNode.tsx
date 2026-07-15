@@ -4,6 +4,7 @@ import { readTextFile } from '@tauri-apps/plugin-fs';
 import { emit } from '@tauri-apps/api/event';
 import { getCanvasColor, resolveFilePath } from '../canvas-utils';
 import { CANVAS_COLORS } from '../canvas-utils';
+import { useNearestEdge } from '../useNearestEdge';
 
 interface CanvasData {
   nodes?: Array<{
@@ -22,6 +23,7 @@ interface CanvasData {
 function CanvasNode({ data, selected }: NodeProps) {
   const [title, setTitle] = useState('');
   const [canvasData, setCanvasData] = useState<CanvasData | null>(null);
+  const { nodeRef, activeEdge, handleMouseMove, handleMouseLeave } = useNearestEdge();
 
   const filePath = (data as any)?.file || '';
 
@@ -119,6 +121,7 @@ function CanvasNode({ data, selected }: NodeProps) {
 
   return (
     <div
+      ref={nodeRef}
       className={`canvas-node canvas-embed-node ${selected ? 'selected' : ''}`}
       style={{
         width: '100%',
@@ -127,19 +130,21 @@ function CanvasNode({ data, selected }: NodeProps) {
         borderColor: borderColor,
         overflow: 'hidden',
       }}
+      onMouseMove={handleMouseMove}
+      onMouseLeave={handleMouseLeave}
     >
       <NodeResizer
         color={color || 'var(--accent)'}
-        isVisible={selected}
+        isVisible={false}
         minWidth={150}
         minHeight={100}
         handleClassName="canvas-resize-handle"
       />
 
-      <Handle type="target" position={Position.Top} id="top" className="canvas-handle" />
-      <Handle type="target" position={Position.Left} id="left" className="canvas-handle" />
-      <Handle type="source" position={Position.Right} id="right" className="canvas-handle" />
-      <Handle type="source" position={Position.Bottom} id="bottom" className="canvas-handle" />
+      <Handle type="target" position={Position.Top} id="top" className={`canvas-handle ${activeEdge === 'top' ? 'visible' : ''}`} />
+      <Handle type="target" position={Position.Left} id="left" className={`canvas-handle ${activeEdge === 'left' ? 'visible' : ''}`} />
+      <Handle type="source" position={Position.Right} id="right" className={`canvas-handle ${activeEdge === 'right' ? 'visible' : ''}`} />
+      <Handle type="source" position={Position.Bottom} id="bottom" className={`canvas-handle ${activeEdge === 'bottom' ? 'visible' : ''}`} />
 
       <div className="canvas-embed-header" onClick={handleClick} style={{ cursor: 'pointer' }}>
         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">

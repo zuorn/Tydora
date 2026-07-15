@@ -2,9 +2,11 @@ import { useState, useEffect, memo } from 'react';
 import { Handle, Position, type NodeProps } from '@xyflow/react';
 import { convertFileSrc } from '@tauri-apps/api/core';
 import { getCanvasColor, resolveFilePath } from '../canvas-utils';
+import { useNearestEdge } from '../useNearestEdge';
 
 function ImageNode({ data, selected }: NodeProps) {
   const [imageSrc, setImageSrc] = useState('');
+  const { nodeRef, activeEdge, handleMouseMove, handleMouseLeave } = useNearestEdge();
   const filePath = (data as any)?.file || '';
 
   // Get vault path from localStorage
@@ -40,6 +42,7 @@ function ImageNode({ data, selected }: NodeProps) {
 
   return (
     <div
+      ref={nodeRef}
       className={`canvas-node canvas-image-node ${selected ? 'selected' : ''}`}
       style={{
         width: '100%',
@@ -49,11 +52,13 @@ function ImageNode({ data, selected }: NodeProps) {
         overflow: 'visible',
         padding: 0,
       }}
+      onMouseMove={handleMouseMove}
+      onMouseLeave={handleMouseLeave}
     >
-      <Handle type="target" position={Position.Top} id="top" className="canvas-handle" />
-      <Handle type="target" position={Position.Left} id="left" className="canvas-handle" />
-      <Handle type="source" position={Position.Right} id="right" className="canvas-handle" />
-      <Handle type="source" position={Position.Bottom} id="bottom" className="canvas-handle" />
+      <Handle type="target" position={Position.Top} id="top" className={`canvas-handle ${activeEdge === 'top' ? 'visible' : ''}`} />
+      <Handle type="target" position={Position.Left} id="left" className={`canvas-handle ${activeEdge === 'left' ? 'visible' : ''}`} />
+      <Handle type="source" position={Position.Right} id="right" className={`canvas-handle ${activeEdge === 'right' ? 'visible' : ''}`} />
+      <Handle type="source" position={Position.Bottom} id="bottom" className={`canvas-handle ${activeEdge === 'bottom' ? 'visible' : ''}`} />
 
       {imageSrc ? (
         <img

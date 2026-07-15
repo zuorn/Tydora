@@ -260,6 +260,61 @@ async fn open_canvas_window(
     }
 }
 
+/// 在新窗口中打开白板（非单例，可同时打开多个）
+#[tauri::command]
+async fn open_canvas_in_new_window(
+    app: tauri::AppHandle,
+    canvas_path: String,
+    width: Option<f64>,
+    height: Option<f64>,
+) -> Result<(), String> {
+    let file_name = canvas_path
+        .split('\\')
+        .last()
+        .or_else(|| canvas_path.split('/').last())
+        .unwrap_or("untitled");
+
+    let label = format!(
+        "canvas-{}",
+        std::time::SystemTime::now()
+            .duration_since(std::time::UNIX_EPOCH)
+            .unwrap()
+            .as_millis()
+    );
+
+    let safe_path = canvas_path.replace('\\', "/");
+    let encoded_path = percent_encode_path(&safe_path);
+    let url = format!("index.html?window=canvas&file={}", encoded_path);
+    let title = format!("{} - Tydora", file_name);
+
+    let window = WebviewWindowBuilder::new(
+        &app,
+        &label,
+        tauri::WebviewUrl::App(url.into()),
+    )
+    .title(&title)
+    .inner_size(width.unwrap_or(1200.0), height.unwrap_or(800.0))
+    .min_inner_size(500.0, 400.0)
+    .center()
+    .decorations(false)
+    .resizable(true)
+    .build();
+
+    match window {
+        Ok(_) => {
+            let app_handle = app.clone();
+            let cp = canvas_path.clone();
+            let lbl = label.clone();
+            std::thread::spawn(move || {
+                std::thread::sleep(std::time::Duration::from_millis(500));
+                let _ = app_handle.emit_to(&lbl, "canvas-file-open", &cp);
+            });
+            Ok(())
+        }
+        Err(e) => Err(e.to_string()),
+    }
+}
+
 /// 在系统文件管理器中打开文件位置并选中文件
 #[tauri::command]
 fn open_file_location(file_path: String) -> Result<(), String> {
@@ -681,6 +736,7 @@ pub fn run() {
             open_mindmap_window,
             open_graph_window,
             open_canvas_window,
+            open_canvas_in_new_window,
             watch_vault,
             unwatch_vault,
             run_markdown_publish,

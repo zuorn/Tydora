@@ -223,8 +223,8 @@
 
 /* Handle styles - full circles, visible on hover only */
 .canvas-handle {
-  width: 12px;
-  height: 12px;
+  width: 10px;
+  height: 10px;
   background: var(--bg-primary);
   border: 2px solid var(--accent, #6366f1);
   border-radius: 50%;
@@ -233,18 +233,31 @@
   z-index: 10;
 }
 
-/* Show handles on node hover only (not selection) */
-.canvas-node:hover .canvas-handle {
-  opacity: 0.7;
+/* Position handles on the edge (half in/half out) */
+.react-flow__handle-top {
+  transform: translate(-50%, -50%);
+}
+.react-flow__handle-bottom {
+  transform: translate(-50%, 50%);
+}
+.react-flow__handle-left {
+  transform: translate(-50%, -50%);
+}
+.react-flow__handle-right {
+  transform: translate(50%, -50%);
+}
+
+/* Show handle when near that edge */
+.canvas-handle.visible {
+  opacity: 1;
 }
 
 /* Enlarge and fill handle on handle hover */
-.canvas-handle:hover {
-  width: 16px;
-  height: 16px;
+.canvas-handle.visible:hover {
+  width: 14px;
+  height: 14px;
   background: var(--accent, #6366f1);
   border-color: var(--accent, #6366f1);
-  opacity: 1;
 }
 
 /* During connection drag, show all handles on all nodes */
@@ -253,24 +266,25 @@
 }
 
 .connecting .canvas-handle:hover {
-  width: 16px;
-  height: 16px;
+  width: 14px;
+  height: 14px;
   opacity: 1;
 }
 
 /* Resize Handle */
 .canvas-resize-handle {
-  width: 14px !important;
-  height: 14px !important;
-  background: var(--accent, #6366f1) !important;
-  border: 2px solid var(--bg-primary) !important;
+  width: 28px !important;
+  height: 28px !important;
+  background: transparent !important;
+  border: none !important;
   border-radius: 2px !important;
-  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.2) !important;
+  opacity: 0;
+  pointer-events: auto;
 }
 
 .canvas-resize-handle:hover {
-  width: 18px !important;
-  height: 18px !important;
+  width: 36px !important;
+  height: 36px !important;
 }
 
 /* Resize Line (edge handles) - wider hit area with visible line */
@@ -284,14 +298,14 @@
 /* Left/Right lines: wider hit area */
 .canvas-resize-line.left,
 .canvas-resize-line.right {
-  width: 16px !important;
+  width: 32px !important;
   background: transparent !important;
 }
 
 /* Top/Bottom lines: taller hit area */
 .canvas-resize-line.top,
 .canvas-resize-line.bottom {
-  height: 16px !important;
+  height: 32px !important;
   background: transparent !important;
 }
 
@@ -848,7 +862,7 @@
 
 /* Restore pointer events on interactive elements */
 .canvas-handle {
-  pointer-events: auto;
+  pointer-events: none;
 }
 
 .canvas-text-edit {

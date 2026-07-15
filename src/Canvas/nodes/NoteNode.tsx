@@ -6,15 +6,13 @@ import { Markdown } from 'tiptap-markdown';
 import { readTextFile } from '@tauri-apps/plugin-fs';
 import { emit } from '@tauri-apps/api/event';
 import { getCanvasColor, resolveFilePath } from '../canvas-utils';
+import { useNearestEdge } from '../useNearestEdge';
 
 function NoteNode({ data, selected }: NodeProps) {
   const [title, setTitle] = useState('');
   const [isLoading, setIsLoading] = useState(true);
   const [initialContent, setInitialContent] = useState('');
-  const [isHovered, setIsHovered] = useState(false);
-
-  const handleMouseEnter = useCallback(() => setIsHovered(true), []);
-  const handleMouseLeave = useCallback(() => setIsHovered(false), []);
+  const { nodeRef, activeEdge, handleMouseMove, handleMouseLeave } = useNearestEdge();
 
   const filePath = (data as any)?.file || '';
 
@@ -113,6 +111,7 @@ function NoteNode({ data, selected }: NodeProps) {
 
   return (
     <div
+      ref={nodeRef}
       className={`canvas-node canvas-note-node ${selected ? 'selected' : ''}`}
       style={{
         width: '100%',
@@ -121,12 +120,12 @@ function NoteNode({ data, selected }: NodeProps) {
         borderColor: borderColor,
         overflow: 'visible',
       }}
-      onMouseEnter={handleMouseEnter}
+      onMouseMove={handleMouseMove}
       onMouseLeave={handleMouseLeave}
     >
       <NodeResizer
         color={color || 'var(--accent)'}
-        isVisible={selected || isHovered}
+        isVisible={false}
         minWidth={150}
         minHeight={150}
         handleClassName="canvas-resize-handle"
@@ -134,10 +133,10 @@ function NoteNode({ data, selected }: NodeProps) {
         autoScale={false}
       />
 
-      <Handle type="target" position={Position.Top} id="top" className="canvas-handle" />
-      <Handle type="target" position={Position.Left} id="left" className="canvas-handle" />
-      <Handle type="source" position={Position.Right} id="right" className="canvas-handle" />
-      <Handle type="source" position={Position.Bottom} id="bottom" className="canvas-handle" />
+      <Handle type="target" position={Position.Top} id="top" className={`canvas-handle ${activeEdge === 'top' ? 'visible' : ''}`} />
+      <Handle type="target" position={Position.Left} id="left" className={`canvas-handle ${activeEdge === 'left' ? 'visible' : ''}`} />
+      <Handle type="source" position={Position.Right} id="right" className={`canvas-handle ${activeEdge === 'right' ? 'visible' : ''}`} />
+      <Handle type="source" position={Position.Bottom} id="bottom" className={`canvas-handle ${activeEdge === 'bottom' ? 'visible' : ''}`} />
 
       <div className="canvas-note-header" onClick={handleClick} style={{ cursor: 'pointer' }}>
         <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">

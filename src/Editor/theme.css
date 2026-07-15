@@ -580,6 +580,23 @@
   border-radius: 2px;
 }
 
+/* 标题高亮（点击大纲后）- 内联方式，只高亮文字 */
+.tiptap-editor .heading-highlight-inline {
+  background-color: rgba(255, 235, 150, 0.7);
+  border-radius: 3px;
+  padding: 1px 0;
+  animation: heading-highlight-fade 1.5s ease-in-out forwards;
+}
+
+@keyframes heading-highlight-fade {
+  0%, 60% {
+    background-color: rgba(255, 235, 150, 0.7);
+  }
+  100% {
+    background-color: transparent;
+  }
+}
+
 /* 任务列表 */
 .tiptap-editor ul[data-type="taskList"] {
   list-style: none;
@@ -649,9 +666,23 @@
   margin-top: 0.5em;
 }
 
-/* 嵌套任务列表 */
+/* 嵌套任务列表 - 缩进对齐复选框 */
 .tiptap-editor ul[data-type="taskList"] ul[data-type="taskList"] {
   margin: 0.25em 0;
+  margin-left: 10px;
+  position: relative;
+}
+
+/* 任务列表缩进引导竖线 - 穿过复选框中心 */
+.tiptap-editor ul[data-type="taskList"] ul[data-type="taskList"]::before {
+  content: '';
+  position: absolute;
+  left: -30px;
+  top: 0;
+  bottom: 0.5em;
+  width: 1px;
+  background: var(--border, #d9ede5);
+  opacity: 0.6;
 }
 
 .tiptap-editor ul[data-type="taskList"] li[data-checked="true"] > div > p {

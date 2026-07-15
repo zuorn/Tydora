@@ -499,11 +499,7 @@ export default function CanvasView({ onNodeClick }: CanvasViewProps) {
           onPaneContextMenu={onPaneContextMenu}
           onNodeDragStart={onNodeDragStart}
           onNodeDragStop={onNodeDragStop}
-          nodeDraggable={(_: Node, event: React.MouseEvent) => {
-            // Prevent drag when clicking on resize handles
-            const target = event.target as HTMLElement;
-            return !target.closest('.canvas-resize-handle') && !target.closest('.canvas-resize-line');
-          }}
+          nodesDraggable
           nodeTypes={nodeTypes}
           edgeTypes={edgeTypes}
           defaultEdgeOptions={defaultEdgeOptions}

@@ -73,6 +73,11 @@ function UrlNode({ data, selected }: NodeProps) {
     return () => { cancelled = true; };
   }, [url]);
 
+  // Sync interactive mode with selection
+  useEffect(() => {
+    setInteractive(selected);
+  }, [selected]);
+
   // Reset state when url changes
   useEffect(() => {
     setPageTitle(label || '');

@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback, memo } from 'react';
+import { useState, useEffect, useCallback, useRef, memo } from 'react';
 import { Handle, Position, NodeResizer, type NodeProps } from '@xyflow/react';
 import { useEditor, EditorContent } from '@tiptap/react';
 import StarterKit from '@tiptap/starter-kit';
@@ -14,6 +14,8 @@ function NoteNode({ data, selected }: NodeProps) {
   const [initialContent, setInitialContent] = useState('');
   const { nodeRef, activeEdge, handleMouseMove, handleMouseLeave } = useNearestEdge();
   const [isHovered, setIsHovered] = useState(false);
+  const [interactive, setInteractive] = useState(false);
+  const noteContentRef = useRef<HTMLDivElement>(null);
   const handleNodeMouseEnter = useCallback(() => setIsHovered(true), []);
   const handleNodeMouseLeave = useCallback(() => { setIsHovered(false); handleMouseLeave(); }, [handleMouseLeave]);
 
@@ -64,6 +66,11 @@ function NoteNode({ data, selected }: NodeProps) {
     loadContent();
   }, [filePath]);
 
+  // Sync interactive mode with selection
+  useEffect(() => {
+    setInteractive(selected);
+  }, [selected]);
+
   // Create editor with initial content
   const editor = useEditor({
     extensions: [
@@ -99,10 +106,28 @@ function NoteNode({ data, selected }: NodeProps) {
     }
   };
 
-  // Handle scroll inside note content - prevent canvas zoom
-  const handleWheel = useCallback((e: React.WheelEvent) => {
-    e.stopPropagation();
-  }, []);
+  // Capture-phase wheel listener: prevent React Flow zoom when scrolling note content
+  useEffect(() => {
+    const el = noteContentRef.current;
+    if (!el) return;
+
+    const handler = (e: WheelEvent) => {
+      if (!interactive) return;
+
+      const scrollable = el.scrollHeight > el.clientHeight;
+      if (!scrollable) return;
+
+      const atTop = el.scrollTop <= 0 && e.deltaY < 0;
+      const atBottom = el.scrollTop + el.clientHeight >= el.scrollHeight - 1 && e.deltaY > 0;
+
+      if (!atTop && !atBottom) {
+        e.stopPropagation();
+      }
+    };
+
+    el.addEventListener('wheel', handler, { capture: true });
+    return () => el.removeEventListener('wheel', handler, { capture: true });
+  }, [interactive]);
 
   const color = getCanvasColor((data as any)?.color);
 
@@ -150,7 +175,7 @@ function NoteNode({ data, selected }: NodeProps) {
         <span className="canvas-note-title">{title}</span>
       </div>
 
-      <div className="canvas-note-content no-wheel" onWheel={handleWheel}>
+      <div ref={noteContentRef} className="canvas-note-content no-wheel">
         {isLoading ? (
           <span className="canvas-placeholder">加载中...</span>
         ) : editor ? (

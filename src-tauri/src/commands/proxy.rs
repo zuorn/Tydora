@@ -438,8 +438,16 @@ pub async fn proxy_handler(
         }
     }
 
-    // Fetch the page
-    let resp = match state.client.get(url).send().await {
+    // Fetch the page with proper headers
+    let resp = match state
+        .client
+        .get(url)
+        .header("Accept", "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8")
+        .header("Accept-Language", "zh-CN,zh;q=0.9,en;q=0.8")
+        .header("Referer", url)
+        .send()
+        .await
+    {
         Ok(r) => r,
         Err(_) => return Err(StatusCode::BAD_GATEWAY),
     };
@@ -570,5 +578,45 @@ pub async fn start_proxy_server() -> Result<String, String> {
             .expect("Proxy server failed");
     });
 
+    // Wait briefly for the server to be ready
+    tokio::time::sleep(std::time::Duration::from_millis(100)).await;
+
+    // Verify the server is reachable
+    let check_url = format!("http://127.0.0.1:{}/", port);
+    let client = reqwest::Client::new();
+    let _ = client.get(&check_url).send().await;
+
     Ok(format!("http://127.0.0.1:{}", port))
+}
+
+#[tauri::command]
+pub async fn fetch_page_title(url: String) -> Result<String, String> {
+    if !url.starts_with("http://") && !url.starts_with("https://") {
+        return Err("Invalid URL".into());
+    }
+
+    let client = reqwest::Client::builder()
+        .user_agent("Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36")
+        .build()
+        .map_err(|e| e.to_string())?;
+
+    let resp = client.get(&url).send().await.map_err(|e| e.to_string())?;
+    let body = resp.text().await.map_err(|e| e.to_string())?;
+
+    // Extract <title> from HTML
+    if let Some(start) = body.to_lowercase().find("<title>") {
+        let rest = &body[start + 7..];
+        if let Some(end) = rest.to_lowercase().find("</title>") {
+            let title = rest[..end].trim();
+            if !title.is_empty() {
+                return Ok(title.to_string());
+            }
+        }
+    }
+
+    // Fallback to hostname
+    url::Url::parse(&url)
+        .ok()
+        .and_then(|u| u.host_str().map(|h| h.to_string()))
+        .ok_or_else(|| "Failed to extract title".into())
 }

@@ -22,7 +22,7 @@ tauri-plugin-process = "2"
 serde = { version = "1", features = ["derive"] }
 serde_json = "1"
 notify = "6"
-reqwest = { version = "0.12", features = ["json"] }
+reqwest = { version = "0.12", features = ["json", "gzip", "deflate", "brotli"] }
 base64 = "0.22"
 axum = "0.7"
 tokio = { version = "1", features = ["full"] }

@@ -31,6 +31,7 @@ function UrlNode({ data, selected }: NodeProps) {
   const [interactive, setInteractive] = useState(false);
   const [proxyUrl, setProxyUrl] = useState<string | null>(null);
   const [isHovered, setIsHovered] = useState(false);
+  const [retryCount, setRetryCount] = useState(0);
   const iframeRef = useRef<HTMLIFrameElement>(null);
 
   // Start proxy server and build proxy URL
@@ -56,10 +57,27 @@ function UrlNode({ data, selected }: NodeProps) {
     return () => { cancelled = true; };
   }, [url]);
 
+  // Fetch page title from backend
+  useEffect(() => {
+    if (!url) return;
+
+    let cancelled = false;
+    import('@tauri-apps/api/core').then(({ invoke }) => {
+      invoke<string>('fetch_page_title', { url }).then(title => {
+        if (!cancelled && title) {
+          setPageTitle(title);
+        }
+      }).catch(() => {});
+    });
+
+    return () => { cancelled = true; };
+  }, [url]);
+
   // Reset state when url changes
   useEffect(() => {
     setPageTitle(label || '');
     setIframeFailed(false);
+    setRetryCount(0);
     setInteractive(false);
   }, [url, label]);
 
@@ -72,27 +90,27 @@ function UrlNode({ data, selected }: NodeProps) {
   }, [url]);
 
   const handleIframeLoad = useCallback(() => {
-    // Try to extract title from iframe (will fail for cross-origin, that's ok)
     try {
       const iframeDoc = iframeRef.current?.contentDocument;
-      if (iframeDoc?.title) {
+      if (iframeDoc?.title && !pageTitle) {
         setPageTitle(iframeDoc.title);
       }
     } catch {
-      // Cross-origin - use URL hostname as fallback title
-      if (!pageTitle) {
-        try {
-          setPageTitle(new URL(url).hostname);
-        } catch {
-          setPageTitle(url);
-        }
-      }
+      // Cross-origin - backend fetch already handled title
     }
-  }, [url, pageTitle]);
+  }, [pageTitle]);
 
   const handleIframeError = useCallback(() => {
-    setIframeFailed(true);
-  }, []);
+    if (retryCount < 2) {
+      // Retry after a short delay
+      setTimeout(() => {
+        setRetryCount(c => c + 1);
+        setIframeFailed(false);
+      }, 500);
+    } else {
+      setIframeFailed(true);
+    }
+  }, [retryCount]);
 
   const toggleInteractive = useCallback((e: React.MouseEvent) => {
     e.stopPropagation();
@@ -138,11 +156,6 @@ function UrlNode({ data, selected }: NodeProps) {
 
       <div className="canvas-url-header">
         <div className="canvas-url-header-left" onClick={handleOpenUrl} style={{ cursor: 'pointer', flex: 1, minWidth: 0 }}>
-          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-            <path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6" />
-            <polyline points="15 3 21 3 21 9" />
-            <line x1="10" y1="14" x2="21" y2="3" />
-          </svg>
           <span className="canvas-url-label">{displayTitle}</span>
         </div>
         <div className="canvas-url-header-actions">

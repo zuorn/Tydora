@@ -38,6 +38,7 @@ const nodeTypes = {
   mediaNode: MediaNode,
   canvasNode: CanvasNode,
   urlNode: UrlNode,
+  linkNode: UrlNode,
   imageNode: ImageNode,
   groupNode: GroupNode,
 };

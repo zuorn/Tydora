@@ -211,6 +211,7 @@ function reactFlowTypeToCanvasType(type: string): CanvasNodeType {
     case 'mediaNode': return 'file'; // Save as 'file' for Obsidian compatibility
     case 'canvasNode': return 'file'; // Save as 'file' for Obsidian compatibility
     case 'urlNode': return 'link';
+    case 'linkNode': return 'link';
     case 'groupNode': return 'group';
     default: return 'text';
   }

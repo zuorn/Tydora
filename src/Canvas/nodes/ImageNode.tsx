@@ -1,5 +1,5 @@
-import { useState, useEffect, memo } from 'react';
-import { Handle, Position, type NodeProps } from '@xyflow/react';
+import { useState, useEffect, useCallback, memo } from 'react';
+import { Handle, Position, NodeResizer, type NodeProps } from '@xyflow/react';
 import { convertFileSrc } from '@tauri-apps/api/core';
 import { getCanvasColor, resolveFilePath } from '../canvas-utils';
 import { useNearestEdge } from '../useNearestEdge';
@@ -7,6 +7,9 @@ import { useNearestEdge } from '../useNearestEdge';
 function ImageNode({ data, selected }: NodeProps) {
   const [imageSrc, setImageSrc] = useState('');
   const { nodeRef, activeEdge, handleMouseMove, handleMouseLeave } = useNearestEdge();
+  const [isHovered, setIsHovered] = useState(false);
+  const handleNodeMouseEnter = useCallback(() => setIsHovered(true), []);
+  const handleNodeMouseLeave = useCallback(() => { setIsHovered(false); handleMouseLeave(); }, [handleMouseLeave]);
   const filePath = (data as any)?.file || '';
 
   // Get vault path from localStorage
@@ -52,9 +55,18 @@ function ImageNode({ data, selected }: NodeProps) {
         overflow: 'visible',
         padding: 0,
       }}
+      onMouseEnter={handleNodeMouseEnter}
       onMouseMove={handleMouseMove}
-      onMouseLeave={handleMouseLeave}
+      onMouseLeave={handleNodeMouseLeave}
     >
+      <NodeResizer
+        isVisible={selected || isHovered}
+        minWidth={100}
+        minHeight={100}
+        handleClassName="canvas-resize-handle"
+        lineClassName="canvas-resize-line"
+      />
+
       <Handle type="target" position={Position.Top} id="top" className={`canvas-handle ${activeEdge === 'top' ? 'visible' : ''}`} />
       <Handle type="target" position={Position.Left} id="left" className={`canvas-handle ${activeEdge === 'left' ? 'visible' : ''}`} />
       <Handle type="source" position={Position.Right} id="right" className={`canvas-handle ${activeEdge === 'right' ? 'visible' : ''}`} />

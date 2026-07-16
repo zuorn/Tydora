@@ -1,7 +1,6 @@
 import { useState, useEffect, useCallback, useRef, useLayoutEffect } from "react";
 import { createPortal } from "react-dom";
 import { readDir, readTextFile, writeTextFile, mkdir, remove, rename, exists } from "@tauri-apps/plugin-fs";
-import { open } from "@tauri-apps/plugin-dialog";
 import { invoke } from "@tauri-apps/api/core";
 import { ConfirmDialog } from "./components";
 import { UpdateLinkDialog } from "./components";
@@ -33,8 +32,6 @@ interface SidebarProps {
   content: string;
   onSelectFile: (path: string, line?: number, query?: string) => void;
   onSelectHeading: (level: number, text: string, line: number) => void;
-  onNewVault: (path: string, name: string) => void;
-  onSwitchVault: (index: number) => void;
   onRemoveVault: (index: number) => void;
   onNewWindow: (filePath: string) => void;
   onPublish: () => void;
@@ -1406,15 +1403,11 @@ function Outline({
 function VaultSwitcher({
   vaults,
   activeIndex,
-  onSwitch,
-  onNew,
   onRemove,
   onPublish,
 }: {
   vaults: VaultInfo[];
   activeIndex: number;
-  onSwitch: (index: number) => void;
-  onNew: () => void;
   onRemove: (index: number) => void;
   onPublish: () => void;
 }) {
@@ -1456,9 +1449,9 @@ function VaultSwitcher({
     return (
       <div className="sidebar-footer">
         <div className="vault-empty-row">
-          <button className="vault-open-btn" onClick={onNew}>
+          <button className="vault-open-btn" onClick={() => invoke("open_vault_manager_window")}>
             {vaultSvgIcon}
-            <span className="vault-name">打开仓库</span>
+            <span className="vault-name">管理仓库</span>
           </button>
           <button
             className="vault-menu-btn"
@@ -1518,7 +1511,8 @@ function VaultSwitcher({
                 key={vault.path}
                 className={`vault-menu-item${i === activeIndex ? " active" : ""}`}
                 onClick={() => {
-                  onSwitch(i);
+                  // 在新窗口中打开仓库
+                  invoke("open_vault_in_new_window", { vaultPath: vault.path });
                   setMenuOpen(false);
                 }}
               >
@@ -1543,7 +1537,7 @@ function VaultSwitcher({
             className="vault-menu-item vault-menu-manage"
             onClick={() => {
               setMenuOpen(false);
-              onNew();
+              invoke("open_vault_manager_window");
             }}
           >
             <svg className="vault-menu-icon" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
@@ -1551,7 +1545,7 @@ function VaultSwitcher({
               <path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z" />
               <path d="M9 7h6M9 11h4" />
             </svg>
-            <span>打开新仓库</span>
+            <span>管理仓库</span>
           </div>
           {activeIndex >= 0 && (
             <div
@@ -1569,20 +1563,6 @@ function VaultSwitcher({
               <span>发布为网站</span>
             </div>
           )}
-          <div
-            className="vault-menu-item vault-menu-manage"
-            onClick={() => {
-              setMenuOpen(false);
-              invoke("open_canvas_window", { canvasPath: null });
-            }}
-          >
-            <svg className="vault-menu-icon" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
-              <rect x="3" y="3" width="18" height="18" rx="2" />
-              <line x1="3" y1="9" x2="21" y2="9" />
-              <line x1="9" y1="21" x2="9" y2="9" />
-            </svg>
-            <span>打开白板</span>
-          </div>
         </div>
       )}
 
@@ -1610,8 +1590,6 @@ export default function Sidebar({
   content,
   onSelectFile,
   onSelectHeading,
-  onNewVault,
-  onSwitchVault,
   onRemoveVault,
   onNewWindow,
   onPublish,
@@ -1653,22 +1631,6 @@ export default function Sidebar({
     window.addEventListener("keydown", handler);
     return () => window.removeEventListener("keydown", handler);
   }, []);
-
-  const handleNewVault = useCallback(async () => {
-    try {
-      const selected = await open({
-        directory: true,
-        multiple: false,
-        title: "选择文件夹作为仓库",
-      });
-      if (selected) {
-        const name = selected.split(/[/\\]/).pop() || selected;
-        onNewVault(selected, name);
-      }
-    } catch (err) {
-      console.error("打开文件夹失败:", err);
-    }
-  }, [onNewVault]);
 
   // Resize logic
   const [startX, setStartX] = useState(0);
@@ -1803,8 +1765,6 @@ export default function Sidebar({
       <VaultSwitcher
         vaults={vaults}
         activeIndex={activeVaultIndex}
-        onSwitch={onSwitchVault}
-        onNew={handleNewVault}
         onRemove={onRemoveVault}
         onPublish={onPublish}
       />

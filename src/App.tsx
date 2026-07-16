@@ -88,7 +88,7 @@ function isMarkdownFile(fileName: string): boolean {
   return ["md", "markdown", "mdx"].includes(ext);
 }
 
-function App({ initialFilePath }: { initialFilePath?: string | null }) {
+function App({ initialFilePath, initialVaultPath }: { initialFilePath?: string | null; initialVaultPath?: string | null }) {
   const { theme } = useTheme();
   const [content, setContent] = useState("");
   const [fileName, setFileName] = useState<string | null>(null);
@@ -283,6 +283,32 @@ function App({ initialFilePath }: { initialFilePath?: string | null }) {
   useEffect(() => {
     localStorage.setItem(ACTIVE_VAULT_KEY, String(activeVaultIndex));
   }, [activeVaultIndex]);
+
+  // 监听管理仓库窗口的变更事件（实时同步）
+  useEffect(() => {
+    const unlisten = listen<{ vaults: VaultInfo[]; activeIndex: number }>("vaults-changed", (event) => {
+      setVaults(event.payload.vaults);
+      setActiveVaultIndex(event.payload.activeIndex);
+    });
+    return () => { unlisten.then(fn => fn()); };
+  }, []);
+
+  // 根据 initialVaultPath 设置活动仓库
+  useEffect(() => {
+    if (initialVaultPath && vaults.length > 0) {
+      const index = vaults.findIndex(v => v.path === initialVaultPath);
+      if (index >= 0 && index !== activeVaultIndex) {
+        setActiveVaultIndex(index);
+      }
+    }
+  }, [initialVaultPath, vaults]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // 启动时如果没有仓库，自动打开管理仓库窗口
+  useEffect(() => {
+    if (vaults.length === 0 && !initialFilePath) {
+      invoke("open_vault_manager_window");
+    }
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   // 构建链接索引
   useEffect(() => {
@@ -678,19 +704,6 @@ function App({ initialFilePath }: { initialFilePath?: string | null }) {
   }, []);
 
   // ── Vault callbacks ──
-
-  const handleNewVault = useCallback((path: string, name: string) => {
-    setVaults((prev) => {
-      if (prev.some((v) => v.path === path)) return prev;
-      const newVaults = [...prev, { name, path }];
-      setActiveVaultIndex(newVaults.length - 1);
-      return newVaults;
-    });
-  }, []);
-
-  const handleSwitchVault = useCallback((index: number) => {
-    setActiveVaultIndex(index);
-  }, []);
 
   const handleRemoveVault = useCallback((index: number) => {
     setVaults((prev) => prev.filter((_, i) => i !== index));
@@ -1174,8 +1187,6 @@ function App({ initialFilePath }: { initialFilePath?: string | null }) {
           content={content}
           onSelectFile={handleSelectFile}
           onSelectHeading={handleSelectHeading}
-          onNewVault={handleNewVault}
-          onSwitchVault={handleSwitchVault}
           onRemoveVault={handleRemoveVault}
           onNewWindow={handleNewWindow}
           onPublish={() => setPublishOpen(true)}

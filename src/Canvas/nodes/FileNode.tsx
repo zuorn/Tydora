@@ -1,5 +1,5 @@
-import { useState, useEffect, memo } from 'react';
-import { Handle, Position, type NodeProps } from '@xyflow/react';
+import { useState, useEffect, useCallback, memo } from 'react';
+import { Handle, Position, NodeResizer, type NodeProps } from '@xyflow/react';
 import { emit } from '@tauri-apps/api/event';
 import { readTextFile } from '@tauri-apps/plugin-fs';
 import { convertFileSrc } from '@tauri-apps/api/core';
@@ -14,6 +14,9 @@ function FileNode({ data, selected }: NodeProps) {
   const [isImage, setIsImage] = useState(false);
   const [imageSrc, setImageSrc] = useState('');
   const { nodeRef, activeEdge, handleMouseMove, handleMouseLeave } = useNearestEdge();
+  const [isHovered, setIsHovered] = useState(false);
+  const handleNodeMouseEnter = useCallback(() => setIsHovered(true), []);
+  const handleNodeMouseLeave = useCallback(() => { setIsHovered(false); handleMouseLeave(); }, [handleMouseLeave]);
 
   const filePath = (data as any)?.file || '';
   const subpath = (data as any)?.subpath || '';
@@ -99,9 +102,18 @@ function FileNode({ data, selected }: NodeProps) {
         borderColor: borderColor,
         overflow: 'visible',
       }}
+      onMouseEnter={handleNodeMouseEnter}
       onMouseMove={handleMouseMove}
-      onMouseLeave={handleMouseLeave}
+      onMouseLeave={handleNodeMouseLeave}
     >
+      <NodeResizer
+        isVisible={selected || isHovered}
+        minWidth={150}
+        minHeight={100}
+        handleClassName="canvas-resize-handle"
+        lineClassName="canvas-resize-line"
+      />
+
       <Handle type="target" position={Position.Top} id="top" className={`canvas-handle ${activeEdge === 'top' ? 'visible' : ''}`} />
       <Handle type="target" position={Position.Left} id="left" className={`canvas-handle ${activeEdge === 'left' ? 'visible' : ''}`} />
       <Handle type="source" position={Position.Right} id="right" className={`canvas-handle ${activeEdge === 'right' ? 'visible' : ''}`} />

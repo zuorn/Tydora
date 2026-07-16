@@ -6,6 +6,7 @@ use tauri::{Emitter, Manager, WebviewWindowBuilder, State};
 mod commands;
 use commands::watcher_commands::{watch_vault, unwatch_vault, WatcherState};
 use commands::remote_image::{fetch_remote_image, HttpClientState};
+use commands::proxy::start_proxy_server;
 
 struct PreviewServer(Mutex<Option<std::process::Child>>);
 
@@ -313,6 +314,134 @@ async fn open_canvas_in_new_window(
         }
         Err(e) => Err(e.to_string()),
     }
+}
+
+/// 打开管理仓库窗口
+#[tauri::command]
+async fn open_vault_manager_window(app: tauri::AppHandle) -> Result<(), String> {
+    let label = "vault-manager";
+
+    // 如果窗口已存在，直接聚焦
+    if let Some(existing) = app.get_webview_window(label) {
+        let _ = existing.set_focus();
+        return Ok(());
+    }
+
+    let window = WebviewWindowBuilder::new(
+        &app,
+        label,
+        tauri::WebviewUrl::App("index.html?window=vault-manager".into()),
+    )
+    .title("管理仓库")
+    .inner_size(950.0, 700.0)
+    .min_inner_size(700.0, 500.0)
+    .center()
+    .visible(false)
+    .decorations(false)
+    .resizable(true)
+    .build();
+
+    match window {
+        Ok(_) => Ok(()),
+        Err(e) => Err(e.to_string()),
+    }
+}
+
+/// 关闭所有编辑器窗口（保留主窗口）
+#[tauri::command]
+async fn close_all_editor_windows(app: tauri::AppHandle) -> Result<(), String> {
+    let windows = app.webview_windows();
+    for (label, window) in windows {
+        // 保留主窗口、设置窗口、管理仓库窗口
+        if label == "main" || label == "settings" || label == "vault-manager" {
+            continue;
+        }
+        let _ = window.close();
+    }
+    Ok(())
+}
+
+/// 在新窗口中打开仓库
+#[tauri::command]
+async fn open_vault_in_new_window(app: tauri::AppHandle, vault_path: String) -> Result<(), String> {
+    // 先关闭所有编辑器窗口
+    let windows = app.webview_windows();
+    for (label, window) in windows {
+        if label == "main" || label == "settings" || label == "vault-manager" {
+            continue;
+        }
+        let _ = window.close();
+    }
+
+    // 获取仓库名称
+    let vault_name = std::path::Path::new(&vault_path)
+        .file_name()
+        .map(|n| n.to_string_lossy().to_string())
+        .unwrap_or_else(|| "untitled".to_string());
+
+    let label = format!(
+        "editor-{}",
+        std::time::SystemTime::now()
+            .duration_since(std::time::UNIX_EPOCH)
+            .unwrap()
+            .as_millis()
+    );
+
+    let safe_path = vault_path.replace('\\', "/");
+    let encoded_path = percent_encode_path(&safe_path);
+    let url = format!("index.html?window=editor&vault={}", encoded_path);
+    let title = format!("{} - Tydora", vault_name);
+
+    let window = WebviewWindowBuilder::new(
+        &app,
+        &label,
+        tauri::WebviewUrl::App(url.into()),
+    )
+    .title(&title)
+    .inner_size(1200.0, 800.0)
+    .min_inner_size(600.0, 400.0)
+    .center()
+    .decorations(false)
+    .resizable(true)
+    .build();
+
+    match window {
+        Ok(_) => Ok(()),
+        Err(e) => Err(e.to_string()),
+    }
+}
+
+/// 递归复制目录
+fn copy_dir_all(src: &std::path::Path, dst: &std::path::Path) -> Result<(), String> {
+    fs::create_dir_all(dst).map_err(|e| format!("创建目录失败: {}", e))?;
+    for entry in fs::read_dir(src).map_err(|e| format!("读取目录失败: {}", e))? {
+        let entry = entry.map_err(|e| format!("读取目录项失败: {}", e))?;
+        let ty = entry.file_type().map_err(|e| e.to_string())?;
+        let src_path = entry.path();
+        let dst_path = dst.join(entry.file_name());
+        if ty.is_dir() {
+            copy_dir_all(&src_path, &dst_path)?;
+        } else {
+            fs::copy(&src_path, &dst_path).map_err(|e| format!("复制文件失败: {}", e))?;
+        }
+    }
+    Ok(())
+}
+
+/// 移动仓库 - 将源目录内容复制到目标目录
+#[tauri::command]
+async fn move_vault(source: String, destination: String) -> Result<(), String> {
+    let src = std::path::Path::new(&source);
+    let dst = std::path::Path::new(&destination);
+
+    if !src.exists() {
+        return Err("源目录不存在".to_string());
+    }
+    if dst.exists() {
+        return Err("目标目录已存在".to_string());
+    }
+
+    copy_dir_all(src, dst)
 }
 
 /// 在系统文件管理器中打开文件位置并选中文件
@@ -737,12 +866,17 @@ pub fn run() {
             open_graph_window,
             open_canvas_window,
             open_canvas_in_new_window,
+            open_vault_manager_window,
+            close_all_editor_windows,
+            open_vault_in_new_window,
+            move_vault,
             watch_vault,
             unwatch_vault,
             run_markdown_publish,
             preview_site,
             stop_preview,
-            fetch_remote_image
+            fetch_remote_image,
+            start_proxy_server
         ])
         .setup(|app| {
             // 初始化文件监听器状态

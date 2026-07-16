@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo, memo } from 'react';
+import { useState, useEffect, useMemo, useCallback, memo } from 'react';
 import { Handle, Position, NodeResizer, type NodeProps } from '@xyflow/react';
 import { readTextFile } from '@tauri-apps/plugin-fs';
 import { emit } from '@tauri-apps/api/event';
@@ -24,6 +24,9 @@ function CanvasNode({ data, selected }: NodeProps) {
   const [title, setTitle] = useState('');
   const [canvasData, setCanvasData] = useState<CanvasData | null>(null);
   const { nodeRef, activeEdge, handleMouseMove, handleMouseLeave } = useNearestEdge();
+  const [isHovered, setIsHovered] = useState(false);
+  const handleNodeMouseEnter = useCallback(() => setIsHovered(true), []);
+  const handleNodeMouseLeave = useCallback(() => { setIsHovered(false); handleMouseLeave(); }, [handleMouseLeave]);
 
   const filePath = (data as any)?.file || '';
 
@@ -130,12 +133,12 @@ function CanvasNode({ data, selected }: NodeProps) {
         borderColor: borderColor,
         overflow: 'hidden',
       }}
+      onMouseEnter={handleNodeMouseEnter}
       onMouseMove={handleMouseMove}
-      onMouseLeave={handleMouseLeave}
+      onMouseLeave={handleNodeMouseLeave}
     >
       <NodeResizer
-        color={color || 'var(--accent)'}
-        isVisible={false}
+        isVisible={selected || isHovered}
         minWidth={150}
         minHeight={100}
         handleClassName="canvas-resize-handle"

@@ -6,6 +6,7 @@ import {
   Background,
   BackgroundVariant,
   useReactFlow,
+  useStoreApi,
   type Node,
   type Connection,
 } from '@xyflow/react';
@@ -64,6 +65,7 @@ interface CanvasViewProps {
 export default function CanvasView({ onNodeClick }: CanvasViewProps) {
   const reactFlowWrapper = useRef<HTMLDivElement>(null);
   const { screenToFlowPosition, getNodes, getViewport, fitView } = useReactFlow();
+  const storeApi = useStoreApi();
 
   const nodes = useCanvasStore((s) => s.nodes);
   const edges = useCanvasStore((s) => s.edges);
@@ -102,15 +104,26 @@ export default function CanvasView({ onNodeClick }: CanvasViewProps) {
     setNodePositions(positions);
   }, [nodes]);
 
-  // Handle node drag start
+  // Handle node drag start — hide toolbar during drag
   const onNodeDragStart = useCallback((_: any, node: Node) => {
     setDraggedNodeId(node.id);
+    setSelectedNodeId(null);
+    setToolbarPosition(null);
   }, []);
 
-  // Handle node drag stop
-  const onNodeDragStop = useCallback(() => {
+  // Handle node drag stop — show toolbar at new position
+  const onNodeDragStop = useCallback((_: any, node: Node) => {
     setDraggedNodeId(null);
-  }, []);
+    // Recalculate toolbar position after drag
+    const viewport = getViewport();
+    const nodeScreenX = node.position.x * viewport.zoom + viewport.x;
+    const nodeScreenY = node.position.y * viewport.zoom + viewport.y;
+    setSelectedNodeId(node.id);
+    setToolbarPosition({
+      x: nodeScreenX + (node.measured?.width || 400) * viewport.zoom / 2,
+      y: nodeScreenY - 10,
+    });
+  }, [getViewport]);
 
   // Context menu state
   const [contextMenu, setContextMenu] = useState<{ x: number; y: number } | null>(null);
@@ -129,6 +142,73 @@ export default function CanvasView({ onNodeClick }: CanvasViewProps) {
 
   // Connection drag state - for showing handles during drag
   const [connecting, setConnecting] = useState(false);
+
+  // Right-click drag panning state
+  const isRightDragging = useRef(false);
+  const lastRightMousePos = useRef({ x: 0, y: 0 });
+  const accumulatedDelta = useRef({ x: 0, y: 0 });
+  const panRafId = useRef<number | null>(null);
+
+  // Manual right-click drag panning on nodes (React Flow's panOnDrag only pans on pane).
+  // Uses capture-phase mousedown to intercept before React Flow, and RAF-batched panBy
+  // for smooth 60fps panning matching React Flow's native feel.
+  useEffect(() => {
+    const wrapper = reactFlowWrapper.current;
+    if (!wrapper) return;
+
+    const handleMouseDown = (e: MouseEvent) => {
+      if (e.button !== 2) return;
+      const target = e.target as HTMLElement;
+      // Only intercept right-click on nodes — pane panning is handled by React Flow
+      if (!target.closest('.react-flow__node')) return;
+      isRightDragging.current = true;
+      lastRightMousePos.current = { x: e.clientX, y: e.clientY };
+      accumulatedDelta.current = { x: 0, y: 0 };
+    };
+
+    const handleMouseMove = (e: MouseEvent) => {
+      if (!isRightDragging.current) return;
+      accumulatedDelta.current.x += e.clientX - lastRightMousePos.current.x;
+      accumulatedDelta.current.y += e.clientY - lastRightMousePos.current.y;
+      lastRightMousePos.current = { x: e.clientX, y: e.clientY };
+
+      if (!panRafId.current) {
+        panRafId.current = requestAnimationFrame(() => {
+          const panBy = storeApi.getState().panBy;
+          panBy?.({ x: accumulatedDelta.current.x, y: accumulatedDelta.current.y });
+          accumulatedDelta.current = { x: 0, y: 0 };
+          panRafId.current = null;
+        });
+      }
+    };
+
+    const handleMouseUp = (e: MouseEvent) => {
+      if (e.button === 2) {
+        isRightDragging.current = false;
+        accumulatedDelta.current = { x: 0, y: 0 };
+      }
+    };
+
+    // Capture phase ensures we see the event before React Flow processes it
+    wrapper.addEventListener('mousedown', handleMouseDown, true);
+    window.addEventListener('mousemove', handleMouseMove);
+    window.addEventListener('mouseup', handleMouseUp);
+
+    return () => {
+      wrapper.removeEventListener('mousedown', handleMouseDown, true);
+      window.removeEventListener('mousemove', handleMouseMove);
+      window.removeEventListener('mouseup', handleMouseUp);
+      if (panRafId.current) cancelAnimationFrame(panRafId.current);
+    };
+  }, [storeApi]);
+
+  // Hide toolbar when the selected node is deleted
+  useEffect(() => {
+    if (selectedNodeId && !nodes.find(n => n.id === selectedNodeId)) {
+      setSelectedNodeId(null);
+      setToolbarPosition(null);
+    }
+  }, [nodes, selectedNodeId]);
 
   // Handle connection start - track that user is dragging a connection
   const onConnectStart = useCallback((_: any, __: any) => {
@@ -240,11 +320,9 @@ export default function CanvasView({ onNodeClick }: CanvasViewProps) {
     setContextMenu({ x: event.clientX, y: event.clientY });
   }, []);
 
-  // Close context menu on any click
-  useEffect(() => {
-    const handler = () => setContextMenu(null);
-    window.addEventListener('mousedown', handler);
-    return () => window.removeEventListener('mousedown', handler);
+  // Prevent browser context menu on nodes so right-click drag panning works
+  const onNodeContextMenu = useCallback((event: MouseEvent | React.MouseEvent) => {
+    event.preventDefault();
   }, []);
 
   // Handle node click - show toolbar
@@ -332,17 +410,28 @@ export default function CanvasView({ onNodeClick }: CanvasViewProps) {
         if (target.tagName === 'INPUT' || target.tagName === 'TEXTAREA' || target.isContentEditable) {
           return;
         }
-        
+
         // For canvas paste, we need to check clipboard asynchronously
-        // Use navigator.clipboard.read() to check for images
+        // Use navigator.clipboard.read() to check for images and URLs
         navigator.clipboard.read().then(clipboardItems => {
-          const hasImage = clipboardItems.some(item => 
+          const hasImage = clipboardItems.some(item =>
             item.types.some(type => type.startsWith('image/'))
           );
-          
+
           if (!hasImage) {
-            // No image in clipboard, paste canvas nodes
-            paste();
+            // Check for URL text in clipboard
+            navigator.clipboard.readText().then(text => {
+              const trimmed = text?.trim();
+              if (trimmed && /^((https?:\/\/)|(www\.)).+/i.test(trimmed)) {
+                // URL detected - the window paste event handler will create a link node
+                return;
+              }
+              // No URL, paste canvas nodes
+              paste();
+            }).catch(() => {
+              // If readText fails, just paste canvas nodes
+              paste();
+            });
           }
           // If there's an image, the paste event handler will process it
         }).catch(() => {
@@ -437,12 +526,34 @@ export default function CanvasView({ onNodeClick }: CanvasViewProps) {
     }
   }, [addNode, getViewport, vaultPath]);
 
-  // Paste event listener for images
+  // Handle URL paste - detect URLs and create link nodes at viewport center
+  const handleUrlPaste = useCallback((url: string) => {
+    const viewport = getViewport();
+    const centerX = (window.innerWidth / 2 - viewport.x) / viewport.zoom;
+    const centerY = (window.innerHeight / 2 - viewport.y) / viewport.zoom;
+
+    // Add protocol if missing so iframe loads correctly
+    const normalizedUrl = /^https?:\/\//i.test(url) ? url : `https://${url}`;
+
+    addNode('link', { x: centerX - 200, y: centerY - 100 }, {
+      url: normalizedUrl,
+      label: url,
+    });
+  }, [addNode, getViewport]);
+
+  // Paste event listener for images and URLs
   useEffect(() => {
     const handler = (e: ClipboardEvent) => {
+      // Check if focus is in an input/textarea - if so, let default paste work
+      const target = e.target as HTMLElement;
+      if (target.tagName === 'INPUT' || target.tagName === 'TEXTAREA' || target.isContentEditable) {
+        return;
+      }
+
       const items = e.clipboardData?.items;
       if (!items) return;
 
+      // Check for images first
       for (const item of items) {
         if (item.type.startsWith('image/')) {
           e.preventDefault();
@@ -453,11 +564,19 @@ export default function CanvasView({ onNodeClick }: CanvasViewProps) {
           return;
         }
       }
+
+      // Check for URL text
+      const text = e.clipboardData?.getData('text')?.trim();
+      if (text && /^((https?:\/\/)|(www\.)).+/i.test(text)) {
+        e.preventDefault();
+        handleUrlPaste(text);
+        return;
+      }
     };
 
     window.addEventListener('paste', handler);
     return () => window.removeEventListener('paste', handler);
-  }, [handleImagePaste]);
+  }, [handleImagePaste, handleUrlPaste]);
 
   // Auto-save on changes
   useEffect(() => {
@@ -497,6 +616,7 @@ export default function CanvasView({ onNodeClick }: CanvasViewProps) {
           onNodeClick={onNodeClickHandler}
           onPaneClick={onPaneClick}
           onPaneContextMenu={onPaneContextMenu}
+          onNodeContextMenu={onNodeContextMenu}
           onNodeDragStart={onNodeDragStart}
           onNodeDragStop={onNodeDragStop}
           nodesDraggable

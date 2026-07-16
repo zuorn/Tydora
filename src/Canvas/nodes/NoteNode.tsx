@@ -13,6 +13,9 @@ function NoteNode({ data, selected }: NodeProps) {
   const [isLoading, setIsLoading] = useState(true);
   const [initialContent, setInitialContent] = useState('');
   const { nodeRef, activeEdge, handleMouseMove, handleMouseLeave } = useNearestEdge();
+  const [isHovered, setIsHovered] = useState(false);
+  const handleNodeMouseEnter = useCallback(() => setIsHovered(true), []);
+  const handleNodeMouseLeave = useCallback(() => { setIsHovered(false); handleMouseLeave(); }, [handleMouseLeave]);
 
   const filePath = (data as any)?.file || '';
 
@@ -120,17 +123,16 @@ function NoteNode({ data, selected }: NodeProps) {
         borderColor: borderColor,
         overflow: 'visible',
       }}
+      onMouseEnter={handleNodeMouseEnter}
       onMouseMove={handleMouseMove}
-      onMouseLeave={handleMouseLeave}
+      onMouseLeave={handleNodeMouseLeave}
     >
       <NodeResizer
-        color={color || 'var(--accent)'}
-        isVisible={false}
+        isVisible={selected || isHovered}
         minWidth={150}
         minHeight={150}
         handleClassName="canvas-resize-handle"
         lineClassName="canvas-resize-line"
-        autoScale={false}
       />
 
       <Handle type="target" position={Position.Top} id="top" className={`canvas-handle ${activeEdge === 'top' ? 'visible' : ''}`} />

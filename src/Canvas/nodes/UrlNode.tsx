@@ -1,31 +1,113 @@
-import { memo } from 'react';
-import { Handle, Position, type NodeProps } from '@xyflow/react';
+import { memo, useState, useCallback, useRef, useEffect } from 'react';
+import { Handle, Position, NodeResizer, type NodeProps } from '@xyflow/react';
 import { getCanvasColor } from '../canvas-utils';
 import { useNearestEdge } from '../useNearestEdge';
+
+// Shared proxy server state
+let proxyServerUrl: string | null = null;
+let proxyServerPromise: Promise<string> | null = null;
+
+async function getProxyServerUrl(): Promise<string> {
+  if (proxyServerUrl) return proxyServerUrl;
+  if (proxyServerPromise) return proxyServerPromise;
+
+  proxyServerPromise = import('@tauri-apps/api/core').then(({ invoke }) =>
+    invoke<string>('start_proxy_server')
+  ).then(url => {
+    proxyServerUrl = url;
+    return url;
+  });
+
+  return proxyServerPromise;
+}
 
 function UrlNode({ data, selected }: NodeProps) {
   const url = (data as any)?.url || '';
   const label = (data as any)?.label || '';
   const { nodeRef, activeEdge, handleMouseMove, handleMouseLeave } = useNearestEdge();
 
-  const handleOpenUrl = () => {
+  const [pageTitle, setPageTitle] = useState(label);
+  const [iframeFailed, setIframeFailed] = useState(false);
+  const [interactive, setInteractive] = useState(false);
+  const [proxyUrl, setProxyUrl] = useState<string | null>(null);
+  const [isHovered, setIsHovered] = useState(false);
+  const iframeRef = useRef<HTMLIFrameElement>(null);
+
+  // Start proxy server and build proxy URL
+  useEffect(() => {
+    if (!url) {
+      setProxyUrl(null);
+      return;
+    }
+
+    let cancelled = false;
+
+    getProxyServerUrl().then(baseUrl => {
+      if (!cancelled) {
+        setProxyUrl(`${baseUrl}/proxy?url=${encodeURIComponent(url)}`);
+      }
+    }).catch(() => {
+      // If proxy fails, fall back to direct URL
+      if (!cancelled) {
+        setProxyUrl(url);
+      }
+    });
+
+    return () => { cancelled = true; };
+  }, [url]);
+
+  // Reset state when url changes
+  useEffect(() => {
+    setPageTitle(label || '');
+    setIframeFailed(false);
+    setInteractive(false);
+  }, [url, label]);
+
+  const handleOpenUrl = useCallback(() => {
     if (url) {
-      // Use Tauri to open URL in default browser
       import('@tauri-apps/api/core').then(({ invoke }) => {
         invoke('open_url', { url });
       });
     }
-  };
+  }, [url]);
+
+  const handleIframeLoad = useCallback(() => {
+    // Try to extract title from iframe (will fail for cross-origin, that's ok)
+    try {
+      const iframeDoc = iframeRef.current?.contentDocument;
+      if (iframeDoc?.title) {
+        setPageTitle(iframeDoc.title);
+      }
+    } catch {
+      // Cross-origin - use URL hostname as fallback title
+      if (!pageTitle) {
+        try {
+          setPageTitle(new URL(url).hostname);
+        } catch {
+          setPageTitle(url);
+        }
+      }
+    }
+  }, [url, pageTitle]);
+
+  const handleIframeError = useCallback(() => {
+    setIframeFailed(true);
+  }, []);
+
+  const toggleInteractive = useCallback((e: React.MouseEvent) => {
+    e.stopPropagation();
+    setInteractive(prev => !prev);
+  }, []);
+
+  const handleNodeMouseEnter = useCallback(() => setIsHovered(true), []);
+  const handleNodeMouseLeave = useCallback(() => { setIsHovered(false); handleMouseLeave(); }, [handleMouseLeave]);
 
   const color = getCanvasColor((data as any)?.color);
-
-  // Calculate background: light tint of the color, or default
-  const backgroundColor = color
-    ? `${color}15` // 15 = ~8% opacity in hex
-    : 'var(--bg-primary)';
-
-  // Calculate border color: use node color if set, otherwise accent when selected
+  const backgroundColor = color ? `${color}15` : 'var(--bg-primary)';
   const borderColor = color || (selected ? 'var(--accent)' : 'var(--border)');
+
+  const displayTitle = pageTitle || url || '未设置 URL';
+  const iframeSrc = proxyUrl || url;
 
   return (
     <div
@@ -37,41 +119,101 @@ function UrlNode({ data, selected }: NodeProps) {
         background: backgroundColor,
         borderColor: borderColor,
       }}
+      onMouseEnter={handleNodeMouseEnter}
       onMouseMove={handleMouseMove}
-      onMouseLeave={handleMouseLeave}
+      onMouseLeave={handleNodeMouseLeave}
     >
+      <NodeResizer
+        isVisible={selected || isHovered}
+        minWidth={200}
+        minHeight={150}
+        lineClassName="canvas-resize-line"
+        handleClassName="canvas-resize-handle"
+      />
+
       <Handle type="target" position={Position.Top} id="top" className={`canvas-handle ${activeEdge === 'top' ? 'visible' : ''}`} />
       <Handle type="target" position={Position.Left} id="left" className={`canvas-handle ${activeEdge === 'left' ? 'visible' : ''}`} />
       <Handle type="source" position={Position.Right} id="right" className={`canvas-handle ${activeEdge === 'right' ? 'visible' : ''}`} />
       <Handle type="source" position={Position.Bottom} id="bottom" className={`canvas-handle ${activeEdge === 'bottom' ? 'visible' : ''}`} />
 
-      <div className="canvas-node-header" onClick={handleOpenUrl} style={{ cursor: 'pointer' }}>
-        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-          <path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6" />
-          <polyline points="15 3 21 3 21 9" />
-          <line x1="10" y1="14" x2="21" y2="3" />
-        </svg>
-        <span className="canvas-url-label">
-          {label || url || '未设置 URL'}
-        </span>
+      <div className="canvas-url-header">
+        <div className="canvas-url-header-left" onClick={handleOpenUrl} style={{ cursor: 'pointer', flex: 1, minWidth: 0 }}>
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+            <path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6" />
+            <polyline points="15 3 21 3 21 9" />
+            <line x1="10" y1="14" x2="21" y2="3" />
+          </svg>
+          <span className="canvas-url-label">{displayTitle}</span>
+        </div>
+        <div className="canvas-url-header-actions">
+          <button
+            className="canvas-url-action-btn"
+            onClick={handleOpenUrl}
+            title="在浏览器中打开"
+          >
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+              <path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6" />
+              <polyline points="15 3 21 3 21 9" />
+              <line x1="10" y1="14" x2="21" y2="3" />
+            </svg>
+          </button>
+          {url && !iframeFailed && (
+            <button
+              className={`canvas-url-action-btn ${interactive ? 'active' : ''}`}
+              onClick={toggleInteractive}
+              title={interactive ? '关闭交互' : '开启交互'}
+            >
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                {interactive ? (
+                  <>
+                    <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z" />
+                    <circle cx="12" cy="12" r="3" />
+                  </>
+                ) : (
+                  <>
+                    <path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24" />
+                    <line x1="1" y1="1" x2="23" y2="23" />
+                  </>
+                )}
+              </svg>
+            </button>
+          )}
+        </div>
       </div>
 
-      <div className="canvas-node-content canvas-url-content">
-        {url ? (
-          <div className="canvas-url-display">
+      <div className="canvas-url-content">
+        {url && !iframeFailed ? (
+          <div
+            className="canvas-url-iframe-wrapper"
+            onWheel={(e) => e.stopPropagation()}
+          >
+            <iframe
+              ref={iframeRef}
+              src={iframeSrc}
+              className="canvas-url-iframe"
+              sandbox="allow-scripts allow-same-origin allow-forms allow-popups allow-popups-to-escape-sandbox"
+              onLoad={handleIframeLoad}
+              onError={handleIframeError}
+              title={displayTitle}
+              style={{ pointerEvents: interactive ? 'auto' : 'none' }}
+            />
+            {!interactive && (
+              <div className="canvas-url-iframe-overlay" />
+            )}
+          </div>
+        ) : (
+          <div className="canvas-url-fallback">
             <div className="canvas-url-favicon">
               <img
-                src={`https://www.google.com/s2/favicons?domain=${new URL(url).hostname}&sz=32`}
+                src={url ? `https://www.google.com/s2/favicons?domain=${new URL(url).hostname}&sz=32` : ''}
                 alt=""
                 onError={(e) => {
                   (e.target as HTMLImageElement).style.display = 'none';
                 }}
               />
             </div>
-            <span className="canvas-url-text">{url}</span>
+            <span className="canvas-url-text">{url || '输入 URL'}</span>
           </div>
-        ) : (
-          <span className="canvas-placeholder">输入 URL</span>
         )}
       </div>
     </div>

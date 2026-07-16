@@ -61,13 +61,6 @@ function TextNode({ data, selected, id }: NodeProps) {
     }
   }, [editor]);
 
-  // Focus editor on click (for IR mode)
-  const handleClick = useCallback(() => {
-    if (editor) {
-      editor.commands.focus();
-    }
-  }, [editor]);
-
   const color = getCanvasColor((data as any)?.color);
 
   // Calculate background: light tint of the color, or default
@@ -88,7 +81,6 @@ function TextNode({ data, selected, id }: NodeProps) {
         background: backgroundColor,
         borderColor: borderColor,
       }}
-      onClick={handleClick}
       onDoubleClick={handleDoubleClick}
       onMouseEnter={handleNodeMouseEnter}
       onMouseMove={handleMouseMove}

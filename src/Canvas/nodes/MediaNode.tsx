@@ -1,4 +1,4 @@
-import { useState, useEffect, memo } from 'react';
+import { useState, useEffect, useCallback, memo } from 'react';
 import { Handle, Position, NodeResizer, type NodeProps } from '@xyflow/react';
 import { convertFileSrc } from '@tauri-apps/api/core';
 import { getCanvasColor, resolveFilePath } from '../canvas-utils';
@@ -13,6 +13,9 @@ function MediaNode({ data, selected }: NodeProps) {
   const [mediaType, setMediaType] = useState<'image' | 'video' | 'audio' | 'pdf' | 'unknown'>('unknown');
   const [mediaSrc, setMediaSrc] = useState('');
   const { nodeRef, activeEdge, handleMouseMove, handleMouseLeave } = useNearestEdge();
+  const [isHovered, setIsHovered] = useState(false);
+  const handleNodeMouseEnter = useCallback(() => setIsHovered(true), []);
+  const handleNodeMouseLeave = useCallback(() => { setIsHovered(false); handleMouseLeave(); }, [handleMouseLeave]);
 
   const filePath = (data as any)?.file || '';
 
@@ -132,12 +135,12 @@ function MediaNode({ data, selected }: NodeProps) {
         overflow: 'visible',
         padding: 0,
       }}
+      onMouseEnter={handleNodeMouseEnter}
       onMouseMove={handleMouseMove}
-      onMouseLeave={handleMouseLeave}
+      onMouseLeave={handleNodeMouseLeave}
     >
       <NodeResizer
-        color={color || 'var(--accent)'}
-        isVisible={false}
+        isVisible={selected || isHovered}
         minWidth={100}
         minHeight={100}
         handleClassName="canvas-resize-handle"

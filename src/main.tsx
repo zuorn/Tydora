@@ -1,6 +1,7 @@
 import ReactDOM from "react-dom/client";
 import App from "./App";
 import Settings from "./Settings";
+import VaultManagerWindow from "./VaultManager/VaultManagerWindow";
 import { MindmapWindow } from "./mindmap";
 import { GraphWindow } from "./graph";
 import CanvasWindow from "./Canvas/CanvasWindow";
@@ -18,15 +19,19 @@ if (import.meta.env.DEV) {
 
 const urlParams = new URLSearchParams(window.location.search);
 const isSettingsWindow = urlParams.get("window") === "settings";
+const isVaultManagerWindow = urlParams.get("window") === "vault-manager";
 const isMindmapWindow = urlParams.get("window") === "mindmap";
 const isGraphWindow = urlParams.get("window") === "graph";
 const isCanvasWindow = urlParams.get("window") === "canvas";
 const initialFilePath = urlParams.get("window") === "editor"
   ? urlParams.get("file")?.replace(/\//g, "\\")
   : null;
+const initialVaultPath = urlParams.get("window") === "editor"
+  ? urlParams.get("vault")?.replace(/\//g, "\\")
+  : null;
 
 ReactDOM.createRoot(document.getElementById("root") as HTMLElement).render(
   <ThemeProvider>
-    {isSettingsWindow ? <Settings /> : isMindmapWindow ? <MindmapWindow /> : isGraphWindow ? <GraphWindow /> : isCanvasWindow ? <CanvasWindow /> : <App initialFilePath={initialFilePath} />}
+    {isSettingsWindow ? <Settings /> : isVaultManagerWindow ? <VaultManagerWindow /> : isMindmapWindow ? <MindmapWindow /> : isGraphWindow ? <GraphWindow /> : isCanvasWindow ? <CanvasWindow /> : <App initialFilePath={initialFilePath} initialVaultPath={initialVaultPath} />}
   </ThemeProvider>,
 );

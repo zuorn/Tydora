@@ -584,6 +584,26 @@ export default function CanvasView({ onNodeClick }: CanvasViewProps) {
     scheduleAutoSave();
   }, [nodes, edges]);
 
+  // Hide toolbar during viewport move (zoom/pan), re-show after
+  const onMoveStart = useCallback(() => {
+    setToolbarPosition(null);
+    setShowAlignmentToolbar(false);
+  }, []);
+
+  const onMoveEnd = useCallback((_: any, viewport: { x: number; y: number; zoom: number }) => {
+    if (selectedNodeId) {
+      const currentNode = nodes.find(n => n.id === selectedNodeId);
+      if (currentNode) {
+        const nodeScreenX = currentNode.position.x * viewport.zoom + viewport.x;
+        const nodeScreenY = currentNode.position.y * viewport.zoom + viewport.y;
+        setToolbarPosition({
+          x: nodeScreenX + (currentNode.measured?.width || 400) * viewport.zoom / 2,
+          y: nodeScreenY - 10,
+        });
+      }
+    }
+  }, [selectedNodeId, nodes]);
+
   // Close toolbar when clicking outside
   useEffect(() => {
     const handler = (e: MouseEvent) => {
@@ -620,6 +640,8 @@ export default function CanvasView({ onNodeClick }: CanvasViewProps) {
           onNodeContextMenu={onNodeContextMenu}
           onNodeDragStart={onNodeDragStart}
           onNodeDragStop={onNodeDragStop}
+          onMoveStart={onMoveStart}
+          onMoveEnd={onMoveEnd}
           nodesDraggable
           nodeTypes={nodeTypes}
           edgeTypes={edgeTypes}

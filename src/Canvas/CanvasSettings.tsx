@@ -159,6 +159,30 @@ export default function CanvasSettings({ isOpen, onClose }: CanvasSettingsProps)
                   </select>
                 </div>
               )}
+              <div className="canvas-settings-inline">
+                <label>最小缩放：</label>
+                <input
+                  type="number"
+                  className="canvas-settings-input-small"
+                  value={settings.minZoom}
+                  onChange={(e) => handleChange('minZoom', parseFloat(e.target.value) || 0.05)}
+                  min="0.01"
+                  max="1"
+                  step="0.01"
+                />
+              </div>
+              <div className="canvas-settings-inline">
+                <label>最大缩放：</label>
+                <input
+                  type="number"
+                  className="canvas-settings-input-small"
+                  value={settings.maxZoom}
+                  onChange={(e) => handleChange('maxZoom', parseFloat(e.target.value) || 2)}
+                  min="1"
+                  max="10"
+                  step="0.5"
+                />
+              </div>
             </div>
           </div>
 

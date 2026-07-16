@@ -13,6 +13,7 @@ import {
 import '@xyflow/react/dist/style.css';
 
 import TextNode from './nodes/TextNode';
+import { loadCanvasSettings } from './canvas-settings';
 import FileNode from './nodes/FileNode';
 import NoteNode from './nodes/NoteNode';
 import MediaNode from './nodes/MediaNode';
@@ -66,6 +67,7 @@ interface CanvasViewProps {
 export default function CanvasView({ onNodeClick }: CanvasViewProps) {
   const reactFlowWrapper = useRef<HTMLDivElement>(null);
   const { screenToFlowPosition, getNodes, getViewport, fitView } = useReactFlow();
+  const [canvasSettings] = useState(loadCanvasSettings);
   const storeApi = useStoreApi();
 
   const nodes = useCanvasStore((s) => s.nodes);
@@ -656,6 +658,8 @@ export default function CanvasView({ onNodeClick }: CanvasViewProps) {
           panOnDrag={[1, 2]} // Middle and right click
           panActivationKeyCode="Space"
           paneClickDistance={5}
+          minZoom={canvasSettings.minZoom}
+          maxZoom={canvasSettings.maxZoom}
         >
           <Controls position="top-right" />
           <MiniMap

@@ -15,6 +15,10 @@ export interface CanvasSettings {
   minimapEnabled: boolean;
   minimapPosition: 'top-left' | 'bottom-left' | 'bottom-right';
 
+  // Zoom limits
+  minZoom: number;
+  maxZoom: number;
+
   // Default card sizes
   defaultTextCardSize: { width: number; height: number };
   defaultNoteCardSize: { width: number; height: number };
@@ -32,6 +36,8 @@ export const DEFAULT_CANVAS_SETTINGS: CanvasSettings = {
   hideContentZoomThreshold: 0.3,
   minimapEnabled: true,
   minimapPosition: 'bottom-right',
+  minZoom: 0.05,
+  maxZoom: 2,
   defaultTextCardSize: { width: 250, height: 60 },
   defaultNoteCardSize: { width: 400, height: 400 },
   defaultMediaCardSize: { width: 400, height: 300 },

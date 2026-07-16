@@ -92,6 +92,9 @@ export default function CanvasContextMenu({ x, y, onClose }: ContextMenuProps) {
 
   const [showNotePicker, setShowNotePicker] = useState(false);
   const [showMediaPicker, setShowMediaPicker] = useState(false);
+  const [showLinkInput, setShowLinkInput] = useState(false);
+  const [linkUrl, setLinkUrl] = useState('');
+  const linkInputRef = useRef<HTMLInputElement>(null);
 
   // Get vault path from localStorage
   const getVaultPath = (): string => {
@@ -141,12 +144,28 @@ export default function CanvasContextMenu({ x, y, onClose }: ContextMenuProps) {
   }, [addNode, getFlowPosition, onClose]);
 
   const handleAddLink = useCallback(() => {
-    const url = prompt('输入 URL:');
+    setLinkUrl('');
+    setShowLinkInput(true);
+  }, []);
+
+  const handleLinkSubmit = useCallback(() => {
+    const url = linkUrl.trim();
     if (url) {
-      addNode('link', getFlowPosition(), { url, label: url });
+      const normalizedUrl = /^https?:\/\//i.test(url) ? url : `https://${url}`;
+      addNode('link', getFlowPosition(), { url: normalizedUrl, label: url });
     }
+    setShowLinkInput(false);
     onClose();
-  }, [addNode, getFlowPosition, onClose]);
+  }, [linkUrl, addNode, getFlowPosition, onClose]);
+
+  const handleLinkKeyDown = useCallback((e: React.KeyboardEvent) => {
+    if (e.key === 'Enter') {
+      handleLinkSubmit();
+    } else if (e.key === 'Escape') {
+      setShowLinkInput(false);
+      onClose();
+    }
+  }, [handleLinkSubmit, onClose]);
 
   const handleAddGroup = useCallback(() => {
     addNode('group', getFlowPosition(), { label: '分组' });
@@ -163,18 +182,17 @@ export default function CanvasContextMenu({ x, y, onClose }: ContextMenuProps) {
     onClose();
   }, [redo, onClose]);
 
-  // Close on outside click (but not when pickers are open)
+  // Close on outside click (but not when pickers or link input are open)
   useEffect(() => {
     const handler = (e: MouseEvent) => {
-      // Don't close if a picker is open — the picker renders outside menuRef
-      if (showNotePicker || showMediaPicker) return;
+      if (showNotePicker || showMediaPicker || showLinkInput) return;
       if (menuRef.current && !menuRef.current.contains(e.target as Node)) {
         onClose();
       }
     };
     document.addEventListener('mousedown', handler);
     return () => document.removeEventListener('mousedown', handler);
-  }, [onClose, showNotePicker, showMediaPicker]);
+  }, [onClose, showNotePicker, showMediaPicker, showLinkInput]);
 
   // Close on Escape
   useEffect(() => {
@@ -235,6 +253,29 @@ export default function CanvasContextMenu({ x, y, onClose }: ContextMenuProps) {
           onSelect={handleMediaSelect}
           onClose={() => setShowMediaPicker(false)}
         />
+      )}
+
+      {showLinkInput && (
+        <div
+          className="canvas-link-input-popover"
+          style={{ left: x + 200, top: y }}
+        >
+          <input
+            ref={linkInputRef}
+            className="canvas-link-input"
+            type="text"
+            placeholder="输入 URL..."
+            value={linkUrl}
+            onChange={(e) => setLinkUrl(e.target.value)}
+            onKeyDown={handleLinkKeyDown}
+            autoFocus
+          />
+          <button className="canvas-link-input-btn" onClick={handleLinkSubmit}>
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <polyline points="20 6 9 17 4 12" />
+            </svg>
+          </button>
+        </div>
       )}
     </>
   );

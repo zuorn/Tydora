@@ -1684,6 +1684,40 @@ function CanvasSettingsContent({
             </select>
           </div>
         )}
+        <div className="canvas-settings-row">
+          <div className="canvas-settings-row-label">
+            <span className="canvas-settings-row-title">最小缩放</span>
+            <span className="canvas-settings-row-desc">允许的最小缩放比例。</span>
+          </div>
+          <div className="canvas-settings-row-control">
+            <input
+              type="number"
+              className="settings-input-small"
+              value={settings.minZoom}
+              onChange={(e) => handleChange('minZoom', parseFloat(e.target.value) || 0.05)}
+              min="0.01"
+              max="1"
+              step="0.01"
+            />
+          </div>
+        </div>
+        <div className="canvas-settings-row">
+          <div className="canvas-settings-row-label">
+            <span className="canvas-settings-row-title">最大缩放</span>
+            <span className="canvas-settings-row-desc">允许的最大缩放比例。</span>
+          </div>
+          <div className="canvas-settings-row-control">
+            <input
+              type="number"
+              className="settings-input-small"
+              value={settings.maxZoom}
+              onChange={(e) => handleChange('maxZoom', parseFloat(e.target.value) || 2)}
+              min="1"
+              max="10"
+              step="0.5"
+            />
+          </div>
+        </div>
       </div>
 
       {/* Default Card Sizes */}

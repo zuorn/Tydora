@@ -1202,6 +1202,53 @@
   margin: 4px 0;
 }
 
+/* Link Input Popover */
+.canvas-link-input-popover {
+  position: fixed;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  background: var(--bg-secondary);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 4px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+  z-index: 1001;
+}
+
+.canvas-link-input {
+  width: 220px;
+  padding: 6px 10px;
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  background: var(--bg-primary);
+  color: var(--text-primary);
+  font-size: 13px;
+  outline: none;
+}
+
+.canvas-link-input:focus {
+  border-color: var(--accent);
+}
+
+.canvas-link-input-btn {
+  width: 30px;
+  height: 30px;
+  border: none;
+  background: var(--accent);
+  color: white;
+  border-radius: 4px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.canvas-link-input-btn:hover {
+  opacity: 0.9;
+}
+
 /* Node Toolbar */
 .node-toolbar {
   position: absolute;

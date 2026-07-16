@@ -9,17 +9,6 @@
 [![Tauri](https://img.shields.io/badge/Tauri-v2-blue?style=flat-square)](https://v2.tauri.app/)
 [![React](https://img.shields.io/badge/React-19-61DAFB?style=flat-square)](https://react.dev/)
 
-## 截图
-
-<!-- 请替换为实际截图 -->
-<table>
-  <tr>
-    <td><img src="docs/screenshot-main.png" alt="主界面" width="800"/></td>
-  </tr>
-  <tr>
-    <td><img src="docs/screenshot-graph.png" alt="知识图谱" width="800"/></td>
-  </tr>
-</table>
 
 ## 核心特性
 

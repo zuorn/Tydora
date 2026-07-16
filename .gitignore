@@ -22,9 +22,9 @@ dist/
 dist-ssr/
 
 
-themes/
+/themes/
 
-public/
+/public/
 
 # Tauri
 src-tauri/target/

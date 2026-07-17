@@ -73,11 +73,6 @@ function UrlNode({ data, selected }: NodeProps) {
     return () => { cancelled = true; };
   }, [url]);
 
-  // Sync interactive mode with selection
-  useEffect(() => {
-    setInteractive(selected);
-  }, [selected]);
-
   // Reset state when url changes
   useEffect(() => {
     setPageTitle(label || '');
@@ -125,6 +120,29 @@ function UrlNode({ data, selected }: NodeProps) {
   const handleNodeMouseEnter = useCallback(() => setIsHovered(true), []);
   const handleNodeMouseLeave = useCallback(() => { setIsHovered(false); handleMouseLeave(); }, [handleMouseLeave]);
 
+  // Double-click to toggle iframe interactive mode
+  const handleDoubleClick = useCallback(() => {
+    setInteractive(prev => !prev);
+  }, []);
+
+  // When user releases mouse over the iframe area, the mouseup event may be
+  // captured by the iframe and not reach React Flow's window listener.
+  // Re-dispatch the event to the window so React Flow can end the drag.
+  const handleWrapperMouseUp = useCallback((e: React.MouseEvent) => {
+    if (e.button === 0) {
+      const win = window;
+      if (win) {
+        win.dispatchEvent(new MouseEvent('mouseup', {
+          bubbles: true,
+          cancelable: true,
+          clientX: e.clientX,
+          clientY: e.clientY,
+          button: 0,
+        }));
+      }
+    }
+  }, []);
+
   const color = getCanvasColor((data as any)?.color);
   const backgroundColor = color ? `${color}15` : 'var(--bg-primary)';
   const borderColor = color || (selected ? 'var(--accent)' : 'var(--border)');
@@ -145,6 +163,8 @@ function UrlNode({ data, selected }: NodeProps) {
       onMouseEnter={handleNodeMouseEnter}
       onMouseMove={handleMouseMove}
       onMouseLeave={handleNodeMouseLeave}
+      onMouseUp={handleWrapperMouseUp}
+      onDoubleClick={handleDoubleClick}
     >
       <NodeResizer
         isVisible={selected || isHovered}

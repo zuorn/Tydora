@@ -98,6 +98,7 @@ export function jsonCanvasToReactFlow(canvas: JsonCanvasFile): {
       width: n.width,
       height: n.height,
     },
+    zIndex: n.type === 'group' ? 0 : 1,
   }));
 
   const edges: Edge[] = (canvas.edges || []).map((e) => ({

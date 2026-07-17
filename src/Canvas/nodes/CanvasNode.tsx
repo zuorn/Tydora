@@ -108,11 +108,18 @@ function CanvasNode({ data, selected }: NodeProps) {
     return { nodes, edges, minX, minY, width, height, nodeIndexMap };
   }, [canvasData]);
 
-  const handleClick = () => {
+  const handleDoubleClick = useCallback(() => {
     if (filePath) {
-      emit('open-file', { path: filePath });
+      let resolvedPath = filePath;
+      if (!filePath.match(/^[A-Z]:\\/i) && !filePath.startsWith('/')) {
+        const vaultPath = getVaultPath();
+        if (vaultPath) {
+          resolvedPath = resolveFilePath(vaultPath, filePath);
+        }
+      }
+      emit('open-file', { path: resolvedPath });
     }
-  };
+  }, [filePath]);
 
   const color = getCanvasColor((data as any)?.color);
 
@@ -136,6 +143,7 @@ function CanvasNode({ data, selected }: NodeProps) {
       onMouseEnter={handleNodeMouseEnter}
       onMouseMove={handleMouseMove}
       onMouseLeave={handleNodeMouseLeave}
+      onDoubleClick={handleDoubleClick}
     >
       <NodeResizer
         isVisible={selected || isHovered}
@@ -149,7 +157,7 @@ function CanvasNode({ data, selected }: NodeProps) {
       <Handle type="source" position={Position.Right} id="right" className={`canvas-handle ${activeEdge === 'right' ? 'visible' : ''}`} />
       <Handle type="source" position={Position.Bottom} id="bottom" className={`canvas-handle ${activeEdge === 'bottom' ? 'visible' : ''}`} />
 
-      <div className="canvas-embed-header" onClick={handleClick} style={{ cursor: 'pointer' }}>
+      <div className="canvas-embed-header" style={{ cursor: 'pointer' }}>
         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
           <rect x="3" y="3" width="18" height="18" rx="2" />
           <line x1="3" y1="9" x2="21" y2="9" />
@@ -158,7 +166,7 @@ function CanvasNode({ data, selected }: NodeProps) {
         <span className="canvas-embed-title">{title}</span>
       </div>
 
-      <div className="canvas-embed-content" onClick={handleClick} style={{ cursor: 'pointer' }}>
+      <div className="canvas-embed-content" style={{ cursor: 'pointer' }}>
         {preview ? (
           <svg
             className="canvas-embed-preview"

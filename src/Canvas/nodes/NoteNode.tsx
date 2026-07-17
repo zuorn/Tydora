@@ -100,11 +100,18 @@ function NoteNode({ data, selected }: NodeProps) {
     }
   }, [initialContent, editor]);
 
-  const handleClick = () => {
+  const handleDoubleClick = useCallback(() => {
     if (filePath) {
-      emit('open-file', { path: filePath });
+      let resolvedPath = filePath;
+      if (!filePath.match(/^[A-Z]:\\/i) && !filePath.startsWith('/')) {
+        const vaultPath = getVaultPath();
+        if (vaultPath) {
+          resolvedPath = resolveFilePath(vaultPath, filePath);
+        }
+      }
+      emit('open-file', { path: resolvedPath });
     }
-  };
+  }, [filePath]);
 
   // Capture-phase wheel listener: prevent React Flow zoom when scrolling note content
   useEffect(() => {
@@ -151,6 +158,7 @@ function NoteNode({ data, selected }: NodeProps) {
       onMouseEnter={handleNodeMouseEnter}
       onMouseMove={handleMouseMove}
       onMouseLeave={handleNodeMouseLeave}
+      onDoubleClick={handleDoubleClick}
     >
       <NodeResizer
         isVisible={selected || isHovered}
@@ -165,7 +173,7 @@ function NoteNode({ data, selected }: NodeProps) {
       <Handle type="source" position={Position.Right} id="right" className={`canvas-handle ${activeEdge === 'right' ? 'visible' : ''}`} />
       <Handle type="source" position={Position.Bottom} id="bottom" className={`canvas-handle ${activeEdge === 'bottom' ? 'visible' : ''}`} />
 
-      <div className="canvas-note-header" onClick={handleClick} style={{ cursor: 'pointer' }}>
+      <div className="canvas-note-header" style={{ cursor: 'pointer' }}>
         <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
           <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
           <polyline points="14 2 14 8 20 8" />

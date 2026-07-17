@@ -35,6 +35,7 @@ interface SidebarProps {
   onRemoveVault: (index: number) => void;
   onNewWindow: (filePath: string) => void;
   onPublish: () => void;
+  onSelectVault: (index: number) => void;
   collapsed: boolean;
   refreshKey: number;
   width: number;
@@ -1405,11 +1406,13 @@ function VaultSwitcher({
   activeIndex,
   onRemove,
   onPublish,
+  onSelectVault,
 }: {
   vaults: VaultInfo[];
   activeIndex: number;
   onRemove: (index: number) => void;
   onPublish: () => void;
+  onSelectVault: (index: number) => void;
 }) {
   const [menuOpen, setMenuOpen] = useState(false);
   const [removeConfirmOpen, setRemoveConfirmOpen] = useState(false);
@@ -1511,8 +1514,7 @@ function VaultSwitcher({
                 key={vault.path}
                 className={`vault-menu-item${i === activeIndex ? " active" : ""}`}
                 onClick={() => {
-                  // 在新窗口中打开仓库
-                  invoke("open_vault_in_new_window", { vaultPath: vault.path });
+                  onSelectVault(i);
                   setMenuOpen(false);
                 }}
               >
@@ -1593,6 +1595,7 @@ export default function Sidebar({
   onRemoveVault,
   onNewWindow,
   onPublish,
+  onSelectVault,
   collapsed,
   refreshKey,
   width,
@@ -1767,6 +1770,7 @@ export default function Sidebar({
         activeIndex={activeVaultIndex}
         onRemove={onRemoveVault}
         onPublish={onPublish}
+        onSelectVault={onSelectVault}
       />
 
       {!collapsed && (

@@ -82,6 +82,8 @@ export default function CanvasView({ onNodeClick }: CanvasViewProps) {
   const paste = useCanvasStore((s) => s.paste);
   const vaultPath = useCanvasStore((s) => s.vaultPath);
   const filePath = useCanvasStore((s) => s.filePath);
+  const startGroupDrag = useCanvasStore((s) => s.startGroupDrag);
+  const stopGroupDrag = useCanvasStore((s) => s.stopGroupDrag);
 
   // Fit view when canvas file changes
   useEffect(() => {
@@ -112,11 +114,17 @@ export default function CanvasView({ onNodeClick }: CanvasViewProps) {
     setDraggedNodeId(node.id);
     setSelectedNodeId(null);
     setToolbarPosition(null);
-  }, []);
+    // Start group drag tracking if dragging a group node
+    if (node.type === 'groupNode') {
+      startGroupDrag(node.id);
+    }
+  }, [startGroupDrag]);
 
   // Handle node drag stop — show toolbar at new position
   const onNodeDragStop = useCallback((_: any, node: Node) => {
     setDraggedNodeId(null);
+    // Stop group drag tracking
+    stopGroupDrag();
     // Recalculate toolbar position after drag
     const viewport = getViewport();
     const nodeScreenX = node.position.x * viewport.zoom + viewport.x;
@@ -126,7 +134,7 @@ export default function CanvasView({ onNodeClick }: CanvasViewProps) {
       x: nodeScreenX + (node.measured?.width || 400) * viewport.zoom / 2,
       y: nodeScreenY - 10,
     });
-  }, [getViewport]);
+  }, [getViewport, stopGroupDrag]);
 
   // Context menu state
   const [contextMenu, setContextMenu] = useState<{ x: number; y: number } | null>(null);

@@ -147,8 +147,8 @@ export default function VaultManagerWindow() {
 
   const handleSelectVault = useCallback(async (index: number) => {
     setActiveIndex(index);
-    await notifyChange(vaults, index);
-  }, [vaults, notifyChange]);
+    await invoke("open_vault_in_new_window", { vaultPath: vaults[index].path });
+  }, [vaults]);
 
   const handleRename = useCallback((index: number) => {
     setRenamingIndex(index);

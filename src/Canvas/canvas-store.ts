@@ -25,6 +25,10 @@ interface CanvasState {
   // Clipboard for copy/paste
   clipboard: { nodes: Node[]; edges: Edge[] };
 
+  // Group drag state
+  draggedGroupId: string | null;
+  groupChildIds: string[];
+
   // Actions
   setNodes: (nodes: Node[]) => void;
   setEdges: (edges: Edge[]) => void;
@@ -47,6 +51,8 @@ interface CanvasState {
   canUndo: () => boolean;
   canRedo: () => boolean;
   pushHistory: () => void;
+  startGroupDrag: (groupId: string) => void;
+  stopGroupDrag: () => void;
 }
 
 // Debounce timer for auto-save
@@ -66,12 +72,54 @@ export const useCanvasStore = create<CanvasState>((set, get) => ({
   history: [],
   historyIndex: -1,
   clipboard: { nodes: [], edges: [] },
+  draggedGroupId: null,
+  groupChildIds: [],
 
   setNodes: (nodes) => set({ nodes, isModified: true }),
   setEdges: (edges) => set({ edges, isModified: true }),
 
   onNodesChange: (changes) => {
-    const newNodes = applyNodeChanges(changes, get().nodes);
+    const oldNodes = get().nodes;
+    const { draggedGroupId, groupChildIds } = get();
+
+    // If a group is being dragged, move its children together
+    if (draggedGroupId && groupChildIds.length > 0) {
+      const groupPositionChange = changes.find(
+        (c: any) => c.type === 'position' && c.id === draggedGroupId
+      );
+
+      if (groupPositionChange && groupPositionChange.position) {
+        const oldGroupNode = oldNodes.find(n => n.id === draggedGroupId);
+        if (oldGroupNode) {
+          const dx = groupPositionChange.position.x - oldGroupNode.position.x;
+          const dy = groupPositionChange.position.y - oldGroupNode.position.y;
+
+          // Apply original changes first
+          let newNodes = applyNodeChanges(changes, oldNodes);
+
+          // Move all child nodes by the same delta
+          if (dx !== 0 || dy !== 0) {
+            newNodes = newNodes.map(node => {
+              if (groupChildIds.includes(node.id)) {
+                return {
+                  ...node,
+                  position: {
+                    x: node.position.x + dx,
+                    y: node.position.y + dy,
+                  },
+                };
+              }
+              return node;
+            });
+          }
+
+          set({ nodes: newNodes, isModified: true });
+          return;
+        }
+      }
+    }
+
+    const newNodes = applyNodeChanges(changes, oldNodes);
     // Only push history for drag-end and remove changes
     const shouldPushHistory = changes.some(c =>
       c.type === 'remove' || (c.type === 'position' && c.dragging)
@@ -147,6 +195,7 @@ export const useCanvasStore = create<CanvasState>((set, get) => ({
         width: type === 'group' ? 400 : type === 'text' ? 250 : 400,
         height: type === 'group' ? 300 : type === 'text' ? 60 : 200,
       },
+      zIndex: type === 'group' ? 0 : 1,
     };
 
     set({
@@ -321,6 +370,43 @@ export const useCanvasStore = create<CanvasState>((set, get) => ({
 
   canUndo: () => get().historyIndex > 0,
   canRedo: () => get().historyIndex < get().history.length - 1,
+
+  startGroupDrag: (groupId) => {
+    const { nodes } = get();
+    const groupNode = nodes.find(n => n.id === groupId);
+    if (!groupNode || groupNode.type !== 'groupNode') return;
+
+    const groupX = groupNode.position.x;
+    const groupY = groupNode.position.y;
+    const groupWidth = Number(groupNode.style?.width) || 400;
+    const groupHeight = Number(groupNode.style?.height) || 300;
+
+    // Find all nodes whose center is inside the group bounds
+    const childIds = nodes
+      .filter(n => {
+        if (n.id === groupId) return false;
+        if (n.type === 'groupNode') return false; // Don't include nested groups
+        const nodeX = n.position.x;
+        const nodeY = n.position.y;
+        const nodeWidth = Number(n.style?.width) || 400;
+        const nodeHeight = Number(n.style?.height) || 200;
+        const centerX = nodeX + nodeWidth / 2;
+        const centerY = nodeY + nodeHeight / 2;
+        return (
+          centerX >= groupX &&
+          centerX <= groupX + groupWidth &&
+          centerY >= groupY &&
+          centerY <= groupY + groupHeight
+        );
+      })
+      .map(n => n.id);
+
+    set({ draggedGroupId: groupId, groupChildIds: childIds });
+  },
+
+  stopGroupDrag: () => {
+    set({ draggedGroupId: null, groupChildIds: [] });
+  },
 }));
 
 // Auto-save with debounce

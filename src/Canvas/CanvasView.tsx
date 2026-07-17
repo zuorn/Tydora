@@ -166,7 +166,34 @@ export default function CanvasView({ onNodeClick }: CanvasViewProps) {
   const accumulatedDelta = useRef({ x: 0, y: 0 });
   const panRafId = useRef<number | null>(null);
 
-  // Manual right-click drag panning on nodes (React Flow's panOnDrag only pans on pane).
+  // Space key state for left-click panning
+  const isSpaceHeld = useRef(false);
+
+  // Track Space key press/release
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.code === 'Space' && !e.repeat) {
+        // Don't intercept Space when typing in input fields
+        const target = e.target as HTMLElement;
+        if (target.tagName === 'INPUT' || target.tagName === 'TEXTAREA' || target.isContentEditable) return;
+        e.preventDefault();
+        isSpaceHeld.current = true;
+      }
+    };
+    const handleKeyUp = (e: KeyboardEvent) => {
+      if (e.code === 'Space') {
+        isSpaceHeld.current = false;
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    window.addEventListener('keyup', handleKeyUp);
+    return () => {
+      window.removeEventListener('keydown', handleKeyDown);
+      window.removeEventListener('keyup', handleKeyUp);
+    };
+  }, []);
+
+  // Manual drag panning on nodes (right-click or Space+left-click).
   // Uses capture-phase mousedown to intercept before React Flow, and RAF-batched panBy
   // for smooth 60fps panning matching React Flow's native feel.
   useEffect(() => {
@@ -174,10 +201,21 @@ export default function CanvasView({ onNodeClick }: CanvasViewProps) {
     if (!wrapper) return;
 
     const handleMouseDown = (e: MouseEvent) => {
-      if (e.button !== 2) return;
+      // Right-click on nodes, or left-click on nodes when Space is held
+      const isRightClick = e.button === 2;
+      const isLeftClickWithSpace = e.button === 0 && isSpaceHeld.current;
+      if (!isRightClick && !isLeftClickWithSpace) return;
+
       const target = e.target as HTMLElement;
-      // Only intercept right-click on nodes — pane panning is handled by React Flow
+      // Only intercept on nodes — pane panning is handled by React Flow
       if (!target.closest('.react-flow__node')) return;
+
+      // Prevent node drag when Space+left-click
+      if (isLeftClickWithSpace) {
+        e.preventDefault();
+        e.stopPropagation();
+      }
+
       isRightDragging.current = true;
       lastRightMousePos.current = { x: e.clientX, y: e.clientY };
       accumulatedDelta.current = { x: 0, y: 0 };
@@ -200,7 +238,7 @@ export default function CanvasView({ onNodeClick }: CanvasViewProps) {
     };
 
     const handleMouseUp = (e: MouseEvent) => {
-      if (e.button === 2) {
+      if (e.button === 2 || (e.button === 0 && isRightDragging.current)) {
         isRightDragging.current = false;
         accumulatedDelta.current = { x: 0, y: 0 };
       }
@@ -345,6 +383,9 @@ export default function CanvasView({ onNodeClick }: CanvasViewProps) {
   // Handle node click - show toolbar
   const onNodeClickHandler = useCallback(
     (event: React.MouseEvent, node: Node) => {
+      // Don't show toolbar when Space is held (used for panning)
+      if (isSpaceHeld.current) return;
+
       // For file nodes, also open the file
       if (node.type === 'fileNode' && (node.data as any)?.file) {
         onNodeClick?.(node.id, (node.data as any).file);

@@ -208,6 +208,17 @@
   border-color: var(--accent);
 }
 
+/* Show scrollbar on right side when node is selected */
+.canvas-node.selected .canvas-text-editor-wrapper,
+.canvas-node.selected .canvas-note-content {
+  overflow-y: scroll;
+}
+
+/* Prevent React Flow from capturing wheel events on text content */
+.canvas-text-editor-wrapper.no-wheel {
+  pointer-events: auto;
+}
+
 .canvas-node:hover {
   border-color: var(--accent);
   opacity: 1 !important;

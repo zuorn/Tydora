@@ -113,6 +113,13 @@ export const useCanvasStore = create<CanvasState>((set, get) => ({
             });
           }
 
+          // Save OLD state before update for group drag
+          const shouldPushHistory = changes.some((c: any) =>
+            c.type === 'position' && c.dragging
+          );
+          if (shouldPushHistory) {
+            get().pushHistory();
+          }
           set({ nodes: newNodes, isModified: true });
           return;
         }
@@ -124,19 +131,21 @@ export const useCanvasStore = create<CanvasState>((set, get) => ({
     const shouldPushHistory = changes.some(c =>
       c.type === 'remove' || (c.type === 'position' && c.dragging)
     );
-    set({ nodes: newNodes, isModified: true });
+    // Save OLD state before update so undo can restore it
     if (shouldPushHistory) {
       get().pushHistory();
     }
+    set({ nodes: newNodes, isModified: true });
   },
 
   onEdgesChange: (changes) => {
     const newEdges = applyEdgeChanges(changes, get().edges);
     const shouldPushHistory = changes.some(c => c.type === 'remove');
-    set({ edges: newEdges, isModified: true });
+    // Save OLD state before update so undo can restore it
     if (shouldPushHistory) {
       get().pushHistory();
     }
+    set({ edges: newEdges, isModified: true });
   },
 
   loadCanvas: async (filePath, vaultPath) => {

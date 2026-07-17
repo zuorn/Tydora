@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback, memo } from 'react';
+import { useState, useEffect, useCallback, useRef, memo } from 'react';
 import { Handle, Position, NodeResizer, type NodeProps } from '@xyflow/react';
 import { useEditor, EditorContent } from '@tiptap/react';
 import StarterKit from '@tiptap/starter-kit';
@@ -14,6 +14,8 @@ function TextNode({ data, selected, id }: NodeProps) {
   const updateNodeData = useCanvasStore((s) => s.updateNodeData);
   const { nodeRef, activeEdge, handleMouseMove, handleMouseLeave } = useNearestEdge();
   const [isHovered, setIsHovered] = useState(false);
+  const [interactive, setInteractive] = useState(false);
+  const textContentRef = useRef<HTMLDivElement>(null);
   const handleNodeMouseEnter = useCallback(() => setIsHovered(true), []);
   const handleNodeMouseLeave = useCallback(() => { setIsHovered(false); handleMouseLeave(); }, [handleMouseLeave]);
   const { zoom, hideContentThreshold } = useCanvasZoom();
@@ -63,6 +65,34 @@ function TextNode({ data, selected, id }: NodeProps) {
       editor.commands.focus();
     }
   }, [editor]);
+
+  // Sync interactive mode with selection
+  useEffect(() => {
+    setInteractive(selected);
+  }, [selected]);
+
+  // Capture-phase wheel listener: prevent React Flow zoom when scrolling text content
+  useEffect(() => {
+    const el = textContentRef.current;
+    if (!el) return;
+
+    const handler = (e: WheelEvent) => {
+      if (!interactive) return;
+
+      const scrollable = el.scrollHeight > el.clientHeight;
+      if (!scrollable) return;
+
+      const atTop = el.scrollTop <= 0 && e.deltaY < 0;
+      const atBottom = el.scrollTop + el.clientHeight >= el.scrollHeight - 1 && e.deltaY > 0;
+
+      if (!atTop && !atBottom) {
+        e.stopPropagation();
+      }
+    };
+
+    el.addEventListener('wheel', handler, { capture: true });
+    return () => el.removeEventListener('wheel', handler, { capture: true });
+  }, [interactive]);
 
   const color = getCanvasColor((data as any)?.color);
 
@@ -123,7 +153,9 @@ function TextNode({ data, selected, id }: NodeProps) {
             </svg>
           </div>
         ) : editor ? (
-          <EditorContent editor={editor} className="canvas-text-editor-wrapper" />
+          <div ref={textContentRef} className="canvas-text-editor-wrapper no-wheel">
+            <EditorContent editor={editor} />
+          </div>
         ) : (
           <div className="canvas-text-preview">
             {text || <span className="canvas-placeholder">输入内容...</span>}

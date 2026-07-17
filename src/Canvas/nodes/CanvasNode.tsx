@@ -5,6 +5,7 @@ import { emit } from '@tauri-apps/api/event';
 import { getCanvasColor, resolveFilePath } from '../canvas-utils';
 import { CANVAS_COLORS } from '../canvas-utils';
 import { useNearestEdge } from '../useNearestEdge';
+import { useCanvasZoom, shouldHideContent } from '../CanvasZoomContext';
 
 interface CanvasData {
   nodes?: Array<{
@@ -27,6 +28,8 @@ function CanvasNode({ data, selected }: NodeProps) {
   const [isHovered, setIsHovered] = useState(false);
   const handleNodeMouseEnter = useCallback(() => setIsHovered(true), []);
   const handleNodeMouseLeave = useCallback(() => { setIsHovered(false); handleMouseLeave(); }, [handleMouseLeave]);
+  const { zoom, hideContentThreshold } = useCanvasZoom();
+  const hideContent = shouldHideContent(zoom, hideContentThreshold);
 
   const filePath = (data as any)?.file || '';
 
@@ -167,7 +170,22 @@ function CanvasNode({ data, selected }: NodeProps) {
       </div>
 
       <div className="canvas-embed-content" style={{ cursor: 'pointer' }}>
-        {preview ? (
+        {hideContent ? (
+          <div className="canvas-node-content-placeholder" style={{
+            width: '100%',
+            height: '100%',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            opacity: 0.5,
+          }}>
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
+              <rect x="3" y="3" width="18" height="18" rx="2" />
+              <line x1="3" y1="9" x2="21" y2="9" />
+              <line x1="9" y1="21" x2="9" y2="9" />
+            </svg>
+          </div>
+        ) : preview ? (
           <svg
             className="canvas-embed-preview"
             viewBox={`${preview.minX} ${preview.minY} ${preview.width} ${preview.height}`}
@@ -178,15 +196,15 @@ function CanvasNode({ data, selected }: NodeProps) {
               const fromIdx = preview.nodeIndexMap.get(edge.fromNode);
               const toIdx = preview.nodeIndexMap.get(edge.toNode);
               if (fromIdx === undefined || toIdx === undefined) return null;
-              
+
               const fromNode = preview.nodes[fromIdx];
               const toNode = preview.nodes[toIdx];
-              
+
               const fromX = fromNode.x + fromNode.width / 2;
               const fromY = fromNode.y + fromNode.height / 2;
               const toX = toNode.x + toNode.width / 2;
               const toY = toNode.y + toNode.height / 2;
-              
+
               return (
                 <line
                   key={`edge-${i}`}
@@ -200,7 +218,7 @@ function CanvasNode({ data, selected }: NodeProps) {
                 />
               );
             })}
-            
+
             {/* Render nodes */}
             {preview.nodes.map((node, i) => (
               <rect

@@ -3,6 +3,7 @@ import { Handle, Position, NodeResizer, type NodeProps } from '@xyflow/react';
 import { convertFileSrc } from '@tauri-apps/api/core';
 import { getCanvasColor, resolveFilePath } from '../canvas-utils';
 import { useNearestEdge } from '../useNearestEdge';
+import { useCanvasZoom, shouldHideContent } from '../CanvasZoomContext';
 
 const IMAGE_EXTENSIONS = new Set(['png', 'jpg', 'jpeg', 'gif', 'webp', 'bmp', 'svg', 'avif', 'ico']);
 const VIDEO_EXTENSIONS = new Set(['mp4', 'webm', 'ogg', 'mov', 'avi']);
@@ -16,6 +17,8 @@ function MediaNode({ data, selected }: NodeProps) {
   const [isHovered, setIsHovered] = useState(false);
   const handleNodeMouseEnter = useCallback(() => setIsHovered(true), []);
   const handleNodeMouseLeave = useCallback(() => { setIsHovered(false); handleMouseLeave(); }, [handleMouseLeave]);
+  const { zoom, hideContentThreshold } = useCanvasZoom();
+  const hideContent = shouldHideContent(zoom, hideContentThreshold);
 
   const filePath = (data as any)?.file || '';
 
@@ -153,7 +156,22 @@ function MediaNode({ data, selected }: NodeProps) {
       <Handle type="source" position={Position.Right} id="right" className={`canvas-handle ${activeEdge === 'right' ? 'visible' : ''}`} />
       <Handle type="source" position={Position.Bottom} id="bottom" className={`canvas-handle ${activeEdge === 'bottom' ? 'visible' : ''}`} />
 
-      {mediaSrc ? renderMedia() : (
+      {hideContent ? (
+        <div className="canvas-node-content-placeholder" style={{
+          width: '100%',
+          height: '100%',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          opacity: 0.5,
+        }}>
+          <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
+            <rect x="3" y="3" width="18" height="18" rx="2" ry="2" />
+            <circle cx="8.5" cy="8.5" r="1.5" />
+            <polyline points="21 15 16 10 5 21" />
+          </svg>
+        </div>
+      ) : mediaSrc ? renderMedia() : (
         <div className="canvas-media-placeholder">
           <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
             <rect x="3" y="3" width="18" height="18" rx="2" ry="2" />

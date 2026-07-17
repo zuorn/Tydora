@@ -5,6 +5,7 @@ import { readTextFile } from '@tauri-apps/plugin-fs';
 import { convertFileSrc } from '@tauri-apps/api/core';
 import { getCanvasColor, resolveFilePath } from '../canvas-utils';
 import { useNearestEdge } from '../useNearestEdge';
+import { useCanvasZoom, shouldHideContent } from '../CanvasZoomContext';
 
 const IMAGE_EXTENSIONS = new Set(['png', 'jpg', 'jpeg', 'gif', 'webp', 'bmp', 'svg', 'avif', 'ico']);
 
@@ -17,6 +18,8 @@ function FileNode({ data, selected }: NodeProps) {
   const [isHovered, setIsHovered] = useState(false);
   const handleNodeMouseEnter = useCallback(() => setIsHovered(true), []);
   const handleNodeMouseLeave = useCallback(() => { setIsHovered(false); handleMouseLeave(); }, [handleMouseLeave]);
+  const { zoom, hideContentThreshold } = useCanvasZoom();
+  const hideContent = shouldHideContent(zoom, hideContentThreshold);
 
   const filePath = (data as any)?.file || '';
   const subpath = (data as any)?.subpath || '';
@@ -142,7 +145,21 @@ function FileNode({ data, selected }: NodeProps) {
       )}
 
       <div className="canvas-node-content canvas-file-content">
-        {isImage && imageSrc ? (
+        {hideContent ? (
+          <div className="canvas-node-content-placeholder" style={{
+            width: '100%',
+            height: '100%',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            opacity: 0.5,
+          }}>
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
+              <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
+              <polyline points="14 2 14 8 20 8" />
+            </svg>
+          </div>
+        ) : isImage && imageSrc ? (
           <img
             src={imageSrc}
             alt={fileName}

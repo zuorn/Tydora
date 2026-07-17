@@ -2,6 +2,7 @@ import { memo, useState, useCallback, useRef, useEffect } from 'react';
 import { Handle, Position, NodeResizer, type NodeProps } from '@xyflow/react';
 import { getCanvasColor } from '../canvas-utils';
 import { useNearestEdge } from '../useNearestEdge';
+import { useCanvasZoom, shouldHideContent } from '../CanvasZoomContext';
 
 // Shared proxy server state
 let proxyServerUrl: string | null = null;
@@ -33,6 +34,8 @@ function UrlNode({ data, selected }: NodeProps) {
   const [isHovered, setIsHovered] = useState(false);
   const [retryCount, setRetryCount] = useState(0);
   const iframeRef = useRef<HTMLIFrameElement>(null);
+  const { zoom, hideContentThreshold } = useCanvasZoom();
+  const hideContent = shouldHideContent(zoom, hideContentThreshold);
 
   // Start proxy server and build proxy URL
   useEffect(() => {
@@ -220,7 +223,22 @@ function UrlNode({ data, selected }: NodeProps) {
       </div>
 
       <div className="canvas-url-content">
-        {url && !iframeFailed ? (
+        {hideContent ? (
+          <div className="canvas-node-content-placeholder" style={{
+            width: '100%',
+            height: '100%',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            opacity: 0.5,
+          }}>
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
+              <path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6" />
+              <polyline points="15 3 21 3 21 9" />
+              <line x1="10" y1="14" x2="21" y2="3" />
+            </svg>
+          </div>
+        ) : url && !iframeFailed ? (
           <div
             className="canvas-url-iframe-wrapper"
             onWheel={(e) => e.stopPropagation()}

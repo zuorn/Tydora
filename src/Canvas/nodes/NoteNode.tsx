@@ -7,6 +7,7 @@ import { readTextFile } from '@tauri-apps/plugin-fs';
 import { emit } from '@tauri-apps/api/event';
 import { getCanvasColor, resolveFilePath } from '../canvas-utils';
 import { useNearestEdge } from '../useNearestEdge';
+import { useCanvasZoom, shouldHideContent } from '../CanvasZoomContext';
 
 function NoteNode({ data, selected }: NodeProps) {
   const [title, setTitle] = useState('');
@@ -18,6 +19,8 @@ function NoteNode({ data, selected }: NodeProps) {
   const noteContentRef = useRef<HTMLDivElement>(null);
   const handleNodeMouseEnter = useCallback(() => setIsHovered(true), []);
   const handleNodeMouseLeave = useCallback(() => { setIsHovered(false); handleMouseLeave(); }, [handleMouseLeave]);
+  const { zoom, hideContentThreshold } = useCanvasZoom();
+  const hideContent = shouldHideContent(zoom, hideContentThreshold);
 
   const filePath = (data as any)?.file || '';
 
@@ -184,7 +187,23 @@ function NoteNode({ data, selected }: NodeProps) {
       </div>
 
       <div ref={noteContentRef} className="canvas-note-content no-wheel">
-        {isLoading ? (
+        {hideContent ? (
+          <div className="canvas-node-content-placeholder" style={{
+            width: '100%',
+            height: '100%',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            opacity: 0.5,
+          }}>
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
+              <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
+              <polyline points="14 2 14 8 20 8" />
+              <line x1="16" y1="13" x2="8" y2="13" />
+              <line x1="16" y1="17" x2="8" y2="17" />
+            </svg>
+          </div>
+        ) : isLoading ? (
           <span className="canvas-placeholder">加载中...</span>
         ) : editor ? (
           <EditorContent editor={editor} className="canvas-note-editor-wrapper" />

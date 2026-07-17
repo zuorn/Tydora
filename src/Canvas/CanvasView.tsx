@@ -12,6 +12,9 @@ import {
 } from '@xyflow/react';
 import '@xyflow/react/dist/style.css';
 
+import { CanvasZoomContext } from './CanvasZoomContext';
+import { getCanvasColor } from './canvas-utils';
+
 import TextNode from './nodes/TextNode';
 import { loadCanvasSettings } from './canvas-settings';
 import FileNode from './nodes/FileNode';
@@ -69,6 +72,9 @@ export default function CanvasView({ onNodeClick }: CanvasViewProps) {
   const { screenToFlowPosition, getNodes, getViewport, fitView } = useReactFlow();
   const [canvasSettings] = useState(loadCanvasSettings);
   const storeApi = useStoreApi();
+
+  // Track zoom level for content hiding
+  const [zoom, setZoom] = useState(1);
 
   const nodes = useCanvasStore((s) => s.nodes);
   const edges = useCanvasStore((s) => s.edges);
@@ -601,6 +607,7 @@ export default function CanvasView({ onNodeClick }: CanvasViewProps) {
   }, []);
 
   const onMoveEnd = useCallback((_: any, viewport: { x: number; y: number; zoom: number }) => {
+    setZoom(viewport.zoom);
     if (selectedNodeId) {
       const currentNode = nodes.find(n => n.id === selectedNodeId);
       if (currentNode) {
@@ -635,6 +642,7 @@ export default function CanvasView({ onNodeClick }: CanvasViewProps) {
         style={{ flex: 1, overflow: 'hidden', position: 'relative' }}
         className={connecting ? 'connecting' : ''}
       >
+        <CanvasZoomContext.Provider value={{ zoom, hideContentThreshold: canvasSettings.hideContentZoomThreshold }}>
         <ReactFlow
           nodes={nodes}
           edges={edges}
@@ -676,9 +684,18 @@ export default function CanvasView({ onNodeClick }: CanvasViewProps) {
             pannable
             zoomable
             nodeColor={(n) => {
+              // Use custom color if set on the node
+              const customColor = (n.data as any)?.color;
+              if (customColor) {
+                const resolved = getCanvasColor(customColor);
+                if (resolved) return resolved;
+              }
+              // Fall back to default color by node type
               switch (n.type) {
                 case 'textNode': return 'var(--accent)';
-                case 'fileNode': return 'var(--text-secondary)';
+                case 'fileNode':
+                case 'noteNode':
+                  return 'var(--text-secondary)';
                 case 'urlNode': return '#06b6d4';
                 case 'groupNode': return 'rgba(128,128,128,0.3)';
                 default: return 'var(--text-secondary)';
@@ -687,6 +704,7 @@ export default function CanvasView({ onNodeClick }: CanvasViewProps) {
           />
           <Background variant={BackgroundVariant.Dots} gap={15} size={1} />
         </ReactFlow>
+        </CanvasZoomContext.Provider>
 
         {/* Node toolbar */}
         {selectedNodeId && toolbarPosition && (

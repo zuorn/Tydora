@@ -1,13 +1,14 @@
 {
   "name": "tydora",
   "private": true,
-  "version": "0.1.0",
+  "version": "0.0.8",
   "type": "module",
   "scripts": {
     "dev": "vite",
     "build": "tsc && vite build",
     "preview": "vite preview",
     "tauri": "node scripts/run-tauri.mjs",
+    "sync-version": "node scripts/sync-version.mjs",
     "docs:build": "mkdocs build -f website/mkdocs.yml",
     "docs:serve": "mkdocs serve -f website/mkdocs.yml",
     "docs:clean": "rimraf website/site",

@@ -1,6 +1,6 @@
 [package]
 name = "tydora"
-version = "0.0.7"
+version = "0.0.8"
 description = "A modern Markdown editor built with Tauri"
 authors = ["you"]
 edition = "2021"

@@ -31,6 +31,9 @@ npm run preview
 # 启动 Tauri（桌面应用）— 通过 scripts/run-tauri.mjs 加载 .env 签名密钥
 npm run tauri
 
+# 同步版本号（从 VERSION 文件同步到 tauri.conf.json、Cargo.toml、package.json）
+npm run sync-version
+
 # 文档站点
 npm run docs:build    # 构建 MkDocs 文档站点
 npm run docs:serve    # 本地预览文档站点
@@ -38,6 +41,26 @@ npm run docs:clean    # 清理构建的文档
 ```
 
 **注意**：项目目前没有配置 test/lint/format 脚本。`npm run build` 内置了 `tsc` 类型检查。`scripts/run-tauri.mjs` 用于加载 `.env` 文件中的签名密钥环境变量，然后转发参数给 `npx tauri`。
+
+## 版本管理
+
+项目使用统一的版本管理方案，所有版本号从根目录的 `VERSION` 文件同步：
+
+```bash
+# 版本号源文件
+VERSION                    # 纯文本文件，只包含版本号（如 0.0.7）
+
+# 同步脚本
+npm run sync-version       # 将 VERSION 中的版本号同步到以下文件：
+                          # - src-tauri/tauri.conf.json
+                          # - src-tauri/Cargo.toml
+                          # - package.json
+```
+
+**发布流程**：
+1. 修改 `VERSION` 文件中的版本号
+2. 运行 `npm run sync-version` 同步所有配置
+3. 或直接构建（`npm run tauri`），构建前会自动同步版本
 
 ## 架构概览
 

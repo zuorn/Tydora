@@ -3,6 +3,7 @@ import { invoke } from "@tauri-apps/api/core";
 import { open } from "@tauri-apps/plugin-dialog";
 import { mkdir, exists } from "@tauri-apps/plugin-fs";
 import { emit } from "@tauri-apps/api/event";
+import appIcon from "../assets/icon.png";
 import "./VaultManager.css";
 
 interface VaultInfo {
@@ -292,7 +293,7 @@ export default function VaultManagerWindow() {
     // Home view
     return (
       <div className="vault-manager-content">
-        <img src="/icon.png" alt="Tydora" className="vault-manager-icon" />
+        <img src={appIcon} alt="Tydora" className="vault-manager-icon" />
         <h1 className="vault-manager-title">Tydora</h1>
         <p className="vault-manager-version">{version ? `版本 ${version}` : ""}</p>
 

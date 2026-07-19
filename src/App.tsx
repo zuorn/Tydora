@@ -261,6 +261,13 @@ function App({ initialFilePath, initialVaultPath }: { initialFilePath?: string |
   const [updateDownloading, setUpdateDownloading] = useState(false);
   const [updateProgress, setUpdateProgress] = useState<{ downloaded: number; total: number | null }>({ downloaded: 0, total: null });
 
+  // 文件导航历史（前进/后退）
+  const [fileHistory, setFileHistory] = useState<string[]>([]);
+  const [historyIndex, setHistoryIndex] = useState(-1);
+  const historyIndexRef = useRef(-1);
+  const [moreMenuOpen, setMoreMenuOpen] = useState(false);
+  const moreMenuRef = useRef<HTMLDivElement>(null);
+
   // 最近访问的文件列表（按仓库路径分组）
   const [recentFiles, setRecentFiles] = useState<Record<string, string[]>>(() => {
     try {
@@ -275,6 +282,18 @@ function App({ initialFilePath, initialVaultPath }: { initialFilePath?: string |
   useEffect(() => {
     localStorage.setItem(RECENT_FILES_KEY, JSON.stringify(recentFiles));
   }, [recentFiles]);
+
+  // 关闭"更多"菜单（点击外部）
+  useEffect(() => {
+    if (!moreMenuOpen) return;
+    const handleClickOutside = (e: MouseEvent) => {
+      if (moreMenuRef.current && !moreMenuRef.current.contains(e.target as Node)) {
+        setMoreMenuOpen(false);
+      }
+    };
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, [moreMenuOpen]);
 
   // Persist vaults
   useEffect(() => {
@@ -727,6 +746,7 @@ function App({ initialFilePath, initialVaultPath }: { initialFilePath?: string |
       setPreviewFilePath(null);
       setModified(false);
       setContent("");
+      pushToHistory(path);
       return;
     }
 
@@ -735,6 +755,7 @@ function App({ initialFilePath, initialVaultPath }: { initialFilePath?: string |
       setFileName(path);
       setPreviewFilePath(path);
       setCanvasFilePath(null);
+      pushToHistory(path);
       return;
     }
 
@@ -749,6 +770,22 @@ function App({ initialFilePath, initialVaultPath }: { initialFilePath?: string |
       openFile(path, line, query);
     }
   }, [modified]);
+
+  const isNavigatingHistoryRef = useRef(false);
+
+  const pushToHistory = useCallback((path: string) => {
+    if (isNavigatingHistoryRef.current) return;
+    setFileHistory((prev) => {
+      const newHistory = prev.slice(0, historyIndexRef.current + 1);
+      newHistory.push(path);
+      return newHistory;
+    });
+    setHistoryIndex((prev) => {
+      const next = prev + 1;
+      historyIndexRef.current = next;
+      return next;
+    });
+  }, []);
 
   const openFile = useCallback(async (path: string, line?: number, query?: string) => {
     const myGeneration = openFileGenerationRef.current;
@@ -781,6 +818,12 @@ function App({ initialFilePath, initialVaultPath }: { initialFilePath?: string |
         setTimeout(() => editorHandleRef.current?.scrollToHeading(heading, 0), 350);
       }
 
+      // 更新导航历史（前进/后退导航时不重复入栈）
+      if (!isNavigatingHistoryRef.current) {
+        pushToHistory(path);
+      }
+      isNavigatingHistoryRef.current = false;
+
       // 更新最近访问文件列表
       const activeVault = activeVaultIndex >= 0 ? vaults[activeVaultIndex] : null;
       if (activeVault) {
@@ -798,6 +841,51 @@ function App({ initialFilePath, initialVaultPath }: { initialFilePath?: string |
       console.error("打开文件失败:", e);
     }
   }, [activeVaultIndex, vaults]);
+
+  const openFileByType = useCallback((path: string) => {
+    const name = path.split(/[/\\]/).pop() || path;
+    if (name.endsWith('.canvas')) {
+      setCanvasFilePath(path);
+      setFileName(path);
+      setPreviewFilePath(null);
+      setModified(false);
+      setContent("");
+    } else if (!isEditableFile(name)) {
+      setFileName(path);
+      setPreviewFilePath(path);
+      setCanvasFilePath(null);
+    } else {
+      openFile(path);
+    }
+  }, [openFile]);
+
+  const navigateBack = useCallback(() => {
+    if (historyIndex <= 0) return;
+    const newIndex = historyIndex - 1;
+    setHistoryIndex(newIndex);
+    historyIndexRef.current = newIndex;
+    isNavigatingHistoryRef.current = true;
+    openFileByType(fileHistory[newIndex]);
+  }, [historyIndex, fileHistory, openFileByType]);
+
+  const navigateForward = useCallback(() => {
+    if (historyIndex >= fileHistory.length - 1) return;
+    const newIndex = historyIndex + 1;
+    setHistoryIndex(newIndex);
+    historyIndexRef.current = newIndex;
+    isNavigatingHistoryRef.current = true;
+    openFileByType(fileHistory[newIndex]);
+  }, [historyIndex, fileHistory, openFileByType]);
+
+  // 鼠标侧键前进/后退（button 3 = 后退, button 4 = 前进）
+  useEffect(() => {
+    const handleMouseUp = (e: MouseEvent) => {
+      if (e.button === 3) { e.preventDefault(); navigateBack(); }
+      if (e.button === 4) { e.preventDefault(); navigateForward(); }
+    };
+    document.addEventListener("mouseup", handleMouseUp);
+    return () => document.removeEventListener("mouseup", handleMouseUp);
+  }, [navigateBack, navigateForward]);
 
   const handleSaveConfirm = useCallback(async () => {
     setSaveConfirmOpen(false);
@@ -1274,6 +1362,37 @@ function App({ initialFilePath, initialVaultPath }: { initialFilePath?: string |
                   <line x1="9" y1="21" x2="9" y2="9" />
                 </svg>
               </button>
+              <div className="editor-topbar-more-wrapper" ref={moreMenuRef}>
+                <button className="window-control-btn" title="更多" onClick={() => setMoreMenuOpen((v) => !v)}>
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor">
+                    <circle cx="12" cy="5" r="2" />
+                    <circle cx="12" cy="12" r="2" />
+                    <circle cx="12" cy="19" r="2" />
+                  </svg>
+                </button>
+                {moreMenuOpen && (
+                  <div className="editor-topbar-more-menu">
+                    <div
+                      className={`editor-topbar-more-menu-item${historyIndex <= 0 ? ' disabled' : ''}`}
+                      onClick={() => { setMoreMenuOpen(false); navigateBack(); }}
+                    >
+                      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                        <polyline points="15 18 9 12 15 6" />
+                      </svg>
+                      后退
+                    </div>
+                    <div
+                      className={`editor-topbar-more-menu-item${historyIndex >= fileHistory.length - 1 ? ' disabled' : ''}`}
+                      onClick={() => { setMoreMenuOpen(false); navigateForward(); }}
+                    >
+                      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                        <polyline points="9 18 15 12 9 6" />
+                      </svg>
+                      前进
+                    </div>
+                  </div>
+                )}
+              </div>
               <div className="window-controls-divider" />
               <button className="window-control-btn" onClick={handleMinimize} title="最小化">
                 <svg width="10" height="10" viewBox="0 0 10 10">

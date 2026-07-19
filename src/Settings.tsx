@@ -14,6 +14,7 @@ import { parseCssVariables, extractPreviewColors, type ThemeVariable, type Theme
 import { getCustomThemeCss } from "./themes/CustomThemeManager";
 import { CODE_THEMES, type CustomCodeTheme } from "./themes";
 import hljs from "highlight.js";
+import appIcon from "./assets/icon.png";
 import "./Settings.css";
 
 // ── Types ────────────────────────────────────────────────────────────
@@ -1849,7 +1850,7 @@ function AboutSettingsContent() {
   return (
     <div className="settings-section">
       <div className="settings-about-header">
-        <img src="/icon.png" alt="Tydora" className="settings-about-icon" />
+        <img src={appIcon} alt="Tydora" className="settings-about-icon" />
         <h2 className="settings-about-title">Tydora</h2>
         <p className="settings-about-subtitle">一个现代化的 Markdown 编辑器</p>
       </div>

@@ -1843,4 +1843,44 @@ body {
   color: var(--text-primary);
 }
 
+/* ── More 下拉菜单 ── */
+.editor-topbar-more-wrapper {
+  position: relative;
+}
+
+.editor-topbar-more-menu {
+  position: absolute;
+  top: 100%;
+  right: 0;
+  margin-top: 4px;
+  background: var(--bg-secondary);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.3);
+  z-index: 100;
+  padding: 4px;
+  min-width: 140px;
+}
+
+.editor-topbar-more-menu-item {
+  padding: 6px 10px;
+  border-radius: 4px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  color: var(--text-primary);
+  font-size: 13px;
+  white-space: nowrap;
+}
+
+.editor-topbar-more-menu-item:hover {
+  background: rgba(137, 180, 250, 0.08);
+}
+
+.editor-topbar-more-menu-item.disabled {
+  opacity: 0.4;
+  pointer-events: none;
+}
+
 

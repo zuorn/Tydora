@@ -884,6 +884,13 @@ const TipTapEditor = forwardRef<EditorHandle, TipTapEditorProps>(
         // 文件切换或从 SV 切换回 IR 时强制更新内容
         isInternalRef.current = true;
         editor.commands.setContent(value);
+        // 文件切换时重置滚动位置到顶部
+        requestAnimationFrame(() => {
+          const scrollContainer = containerRef.current?.querySelector('.tiptap-editor');
+          if (scrollContainer) {
+            scrollContainer.scrollTop = 0;
+          }
+        });
       } else {
         const currentContent = (editor.storage as Record<string, any>).markdown.getMarkdown();
         if (value !== currentContent) {

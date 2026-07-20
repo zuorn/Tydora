@@ -224,6 +224,7 @@ const CodeMirrorEditor = forwardRef<CodeMirrorEditorHandle, CodeMirrorEditorProp
     const isInternalRef = useRef(false);
     const filePathRef = useRef(filePath);
     filePathRef.current = filePath;
+    const prevFilePathForScrollRef = useRef(filePath);
 
     onChangeRef.current = onChange;
     onWordCountRef.current = onWordCount;
@@ -323,6 +324,8 @@ const CodeMirrorEditor = forwardRef<CodeMirrorEditorHandle, CodeMirrorEditorProp
         isInternalRef.current = false;
         return;
       }
+      const fileChanged = prevFilePathForScrollRef.current !== filePath;
+      prevFilePathForScrollRef.current = filePath;
       const currentContent = viewRef.current.state.doc.toString();
       if (value !== currentContent) {
         isInternalRef.current = true;
@@ -333,8 +336,18 @@ const CodeMirrorEditor = forwardRef<CodeMirrorEditorHandle, CodeMirrorEditorProp
             insert: value,
           },
         });
+        // 文件切换时重置滚动位置到顶部
+        if (fileChanged) {
+          requestAnimationFrame(() => {
+            const scroller = viewRef.current?.scrollDOM;
+            if (scroller) {
+              scroller.scrollTop = 0;
+              scroller.scrollLeft = 0;
+            }
+          });
+        }
       }
-    }, [value]);
+    }, [value, filePath]);
 
     // 监听代码主题变化，通过 Compartment reconfigure 实时切换高亮
     useEffect(() => {

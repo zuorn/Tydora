@@ -9,6 +9,7 @@ import { useCanvasZoom, shouldHideContent } from '../CanvasZoomContext';
 
 interface CanvasData {
   nodes?: Array<{
+    id: string;
     x: number;
     y: number;
     width: number;
@@ -103,12 +104,36 @@ function CanvasNode({ data, selected }: NodeProps) {
     const height = maxY - minY;
 
     // Create a map of node id to index for edge lookup
-    const nodeIndexMap = new Map<string, number>();
-    nodes.forEach((_node, index) => {
-      nodeIndexMap.set(`node-${index}`, index);
+    const nodeIdToIndex = new Map<string, number>();
+    nodes.forEach((node, index) => {
+      nodeIdToIndex.set(node.id, index);
     });
 
-    return { nodes, edges, minX, minY, width, height, nodeIndexMap };
+    // Pre-compute resolved edges for rendering
+    const resolvedEdges: Array<{
+      fromX: number; fromY: number;
+      toX: number; toY: number;
+      fromNode: typeof nodes[0]; toNode: typeof nodes[0];
+    }> = [];
+
+    edges.forEach(edge => {
+      const fromIdx = nodeIdToIndex.get(edge.fromNode);
+      const toIdx = nodeIdToIndex.get(edge.toNode);
+      if (fromIdx === undefined || toIdx === undefined) return;
+
+      const fromNode = nodes[fromIdx];
+      const toNode = nodes[toIdx];
+      resolvedEdges.push({
+        fromX: fromNode.x + fromNode.width / 2,
+        fromY: fromNode.y + fromNode.height / 2,
+        toX: toNode.x + toNode.width / 2,
+        toY: toNode.y + toNode.height / 2,
+        fromNode,
+        toNode,
+      });
+    });
+
+    return { nodes, edges: resolvedEdges, minX, minY, width, height, edgeCount: edges.length, resolvedCount: resolvedEdges.length };
   }, [canvasData]);
 
   const handleDoubleClick = useCallback(() => {
@@ -191,30 +216,20 @@ function CanvasNode({ data, selected }: NodeProps) {
             viewBox={`${preview.minX} ${preview.minY} ${preview.width} ${preview.height}`}
             preserveAspectRatio="xMidYMid meet"
           >
-            {/* Render edges */}
+            {/* Render edges - pre-resolved */}
             {preview.edges.map((edge, i) => {
-              const fromIdx = preview.nodeIndexMap.get(edge.fromNode);
-              const toIdx = preview.nodeIndexMap.get(edge.toNode);
-              if (fromIdx === undefined || toIdx === undefined) return null;
-
-              const fromNode = preview.nodes[fromIdx];
-              const toNode = preview.nodes[toIdx];
-
-              const fromX = fromNode.x + fromNode.width / 2;
-              const fromY = fromNode.y + fromNode.height / 2;
-              const toX = toNode.x + toNode.width / 2;
-              const toY = toNode.y + toNode.height / 2;
+              const midX = (edge.fromX + edge.toX) / 2;
+              const midY = (edge.fromY + edge.toY) / 2;
+              const ctrlOffset = Math.min(Math.abs(edge.toX - edge.fromX), Math.abs(edge.toY - edge.fromY)) * 0.3;
 
               return (
-                <line
+                <path
                   key={`edge-${i}`}
-                  x1={fromX}
-                  y1={fromY}
-                  x2={toX}
-                  y2={toY}
-                  stroke="#999"
-                  strokeWidth={1}
-                  opacity={0.5}
+                  d={`M ${edge.fromX} ${edge.fromY} Q ${midX + ctrlOffset} ${midY - ctrlOffset} ${edge.toX} ${edge.toY}`}
+                  fill="none"
+                  stroke="#888"
+                  strokeWidth={2}
+                  opacity={0.8}
                 />
               );
             })}
@@ -227,12 +242,24 @@ function CanvasNode({ data, selected }: NodeProps) {
                 y={node.y}
                 width={node.width}
                 height={node.height}
-                fill={CANVAS_COLORS[node.color || ''] || '#e0e0e0'}
-                stroke="#ccc"
-                strokeWidth={0.5}
+                fill={node.color ? (CANVAS_COLORS[node.color] || '#e0e0e0') : '#ffffff'}
+                stroke={node.color ? (CANVAS_COLORS[node.color] || '#ccc') : '#ccc'}
+                strokeWidth={node.color ? 2 : 0.5}
                 rx={4}
+                opacity={0.95}
               />
             ))}
+
+            {/* Debug: edge count badge */}
+            <text
+              x={preview.minX + 5}
+              y={preview.minY + 14}
+              fontSize="10"
+              fill="red"
+              fontFamily="monospace"
+            >
+              {preview.resolvedCount}/{preview.edgeCount} edges
+            </text>
           </svg>
         ) : (
           <div className="canvas-embed-placeholder">

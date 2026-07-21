@@ -8,6 +8,23 @@ import CanvasWindow from "./Canvas/CanvasWindow";
 import { ThemeProvider } from "./themes";
 import "./themes.css";
 
+// 屏蔽 ResizeObserver 循环警告（调整窗口/侧栏宽度时的良性警告）
+// Chromium 的 ResizeObserver 错误走 window.onerror 和 console.error 两条路径
+const RESIZE_OBSERVER_MSG = "ResizeObserver loop completed with undelivered notifications";
+const prevOnError = window.onerror;
+window.onerror = (message) => {
+  if (typeof message === "string" && message.includes(RESIZE_OBSERVER_MSG)) return true;
+  if (prevOnError) return prevOnError(...arguments as any);
+  return false;
+};
+const _origConsoleError = console.error.bind(console);
+console.error = (...args: any[]) => {
+  const msg = args[0];
+  const text = msg instanceof Error ? msg.message : String(msg ?? "");
+  if (text.includes(RESIZE_OBSERVER_MSG)) return;
+  _origConsoleError(...args);
+};
+
 // 屏蔽 React DevTools 下载提示（Tauri 桌面应用无法使用浏览器扩展）
 if (import.meta.env.DEV) {
   const originalLog = console.log;

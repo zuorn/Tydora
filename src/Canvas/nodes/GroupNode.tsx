@@ -74,7 +74,15 @@ function GroupNode({ data, selected, id }: NodeProps) {
       <Handle type="source" position={Position.Bottom} id="bottom" className={`canvas-handle ${activeEdge === 'bottom' ? 'visible' : ''}`} />
 
       {(label || editing) && (
-        <div className="canvas-group-label" onDoubleClick={handleDoubleClick}>
+        <div
+          className="canvas-group-label"
+          onDoubleClick={handleDoubleClick}
+          style={color ? {
+            background: color,
+            color: '#fff',
+            borderColor: color,
+          } : undefined}
+        >
           {editing ? (
             <input
               ref={inputRef}

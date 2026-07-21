@@ -958,14 +958,19 @@
 
 .canvas-group-node .canvas-group-label {
   position: absolute;
-  top: -20px;
+  top: -22px;
   left: 12px;
-  font-size: 12px;
+  font-size: 13px;
   font-weight: 600;
-  color: var(--text-secondary);
+  color: var(--text-primary);
   cursor: text;
   user-select: none;
   white-space: nowrap;
+  background: var(--bg-primary);
+  padding: 3px 10px;
+  border-radius: 6px;
+  border: 1px solid var(--border);
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.12);
 }
 
 .canvas-group-label-input {

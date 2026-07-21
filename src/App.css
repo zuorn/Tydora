@@ -142,14 +142,6 @@ body {
   align-items: center;
 }
 
-.window-controls-divider {
-  width: 1px;
-  height: 16px;
-  background: var(--border);
-  margin: 0 4px;
-  flex-shrink: 0;
-}
-
 .window-control-btn {
   width: 32px;
   height: 28px;

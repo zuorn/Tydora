@@ -1,83 +1,81 @@
 ---
 name: commit-code
 description: |
-  Automatically stage, commit, and push code changes. Use when the user says
-  "提交代码", "commit code", "push code", "git push", "提交", "推送代码",
-  or any variation of committing and pushing changes. Analyzes git diff to
-  generate a semantic commit message (conventional commits format), stages all
-  changes, commits, and pushes to the current remote branch. Shows full
-  command output at each step so the user can see the complete process.
+  自动暂存、提交并推送代码变更。当用户说"提交代码"、"commit code"、"push code"、
+  "git push"、"提交"、"推送代码"等任何与提交推送相关的表述时使用。
+  分析 git diff 自动生成语义化 commit message（conventional commits 格式），
+  暂存所有变更，提交并推送到当前远程分支。每步都展示完整命令输出。
 ---
 
-# Commit Code
+# 提交代码
 
-Automatically analyze changes, generate a commit message, stage, commit, and push.
+自动分析变更、生成提交信息、暂存、提交并推送。
 
-## Workflow
+## 工作流程
 
-Execute each step in order. Print a step header before running each command, and show the full command output to the user.
+按顺序执行每个步骤。每步执行前输出步骤标题，执行命令后将完整输出展示给用户。
 
-### Step 1: Check Changes
+### 第 1 步：检查变更
 
-Run `git status` and `git diff --stat` to show what files have changed.
+运行 `git status` 和 `git diff --stat`，展示变更文件列表。
 
-If there are no changes, tell the user and stop.
+如果没有变更，告知用户并停止。
 
-### Step 2: View Diff
+### 第 2 步：查看差异
 
-Run `git diff` for unstaged changes and `git diff --cached` for staged changes.
+运行 `git diff`（未暂存）和 `git diff --cached`（已暂存）。
 
-Show the diff output so the user can see exactly what will be committed.
+展示 diff 输出，让用户看到具体改动内容。
 
-### Step 3: Generate Commit Message
+### 第 3 步：生成提交信息
 
-Analyze the changes and generate a commit message using [Conventional Commits](https://www.conventionalcommits.org/) format:
+分析变更内容，使用 [Conventional Commits](https://www.conventionalcommits.org/) 格式生成提交信息：
 
 ```
 <type>(<scope>): <description>
 ```
 
-Type rules:
-- `feat:` — new feature
-- `fix:` — bug fix
-- `refactor:` — code restructuring without behavior change
-- `docs:` — documentation only
-- `style:` — formatting, missing semicolons, etc.
-- `chore:` — build process, tooling, dependencies
+类型规则：
+- `feat:` — 新功能
+- `fix:` — Bug 修复
+- `refactor:` — 重构（不改变行为）
+- `docs:` — 仅文档变更
+- `style:` — 格式调整、缺少分号等
+- `chore:` — 构建流程、工具、依赖
 
-Scope is optional. Use the project context to pick a meaningful scope (e.g., `editor`, `sidebar`, `tauri`).
+scope 可选。根据项目上下文选择有意义的 scope（如 `editor`、`sidebar`、`tauri`）。
 
-Keep the description under 72 characters, imperative mood, no period.
+描述控制在 72 字符以内，使用祈使语气，不加句号。
 
-### Step 4: Stage
+### 第 4 步：暂存
 
-Run `git add -A` to stage all changes.
+运行 `git add -A` 暂存所有变更。
 
-Run `git status` to confirm what was staged.
+运行 `git status` 确认暂存结果。
 
-### Step 5: Commit
+### 第 5 步：提交
 
-Run `git commit -m "<message>"` with the generated message.
+运行 `git commit -m "<message>"` 提交。
 
-Show the commit output.
+展示提交输出。
 
-### Step 6: Push
+### 第 6 步：推送
 
-Run `git push` to push to the current remote branch.
+运行 `git push` 推送到当前远程分支。
 
-If push fails (e.g., needs pull), report the error and suggest the user handle it manually.
+如果推送失败（如需要先 pull），报告错误并建议用户手动处理。
 
-### Step 7: Summary
+### 第 7 步：摘要
 
-Output a summary:
-- Commit hash (short)
-- Commit message
-- Push status (success or failure)
-- Number of files changed
+输出最终结果：
+- Commit hash（短）
+- 提交信息
+- 推送状态（成功或失败）
+- 变更文件数量
 
-## Safety Rules
+## 安全规则
 
-- Never use `git push --force`
-- Never modify git config
-- If no changes exist, skip gracefully
-- If push fails, do not retry — report and stop
+- 绝不使用 `git push --force`
+- 绝不修改 git 配置
+- 如果没有变更，正常跳过
+- 如果推送失败，不要重试 — 报告并停止

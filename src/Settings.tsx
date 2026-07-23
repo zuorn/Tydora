@@ -127,6 +127,7 @@ const DEFAULT_MINDMAP: MindmapSettings = {
 };
 
 interface GraphSettings {
+  openInNewWindow: boolean;
   nodeSize: number;
   linkDistance: number;
   chargeStrength: number;
@@ -135,6 +136,7 @@ interface GraphSettings {
 }
 
 const DEFAULT_GRAPH: GraphSettings = {
+  openInNewWindow: false,
   nodeSize: 15,
   linkDistance: 160,
   chargeStrength: -200,
@@ -456,6 +458,18 @@ function GraphSettingsContent({
 }) {
   return (
     <div className="canvas-settings-page">
+      <div className="canvas-settings-card">
+        <div className="canvas-settings-row">
+          <div className="canvas-settings-row-label">
+            <span className="canvas-settings-row-title">在新窗口中打开</span>
+            <span className="canvas-settings-row-desc">开启后，Ctrl+G 和工具栏按钮将在独立窗口中打开关系图谱。</span>
+          </div>
+          <label className="settings-switch">
+            <input type="checkbox" checked={settings.openInNewWindow} onChange={(e) => onChange({ ...settings, openInNewWindow: e.target.checked })} />
+            <span className="settings-switch-slider" />
+          </label>
+        </div>
+      </div>
       <div className="canvas-settings-card">
         <div className="canvas-settings-row">
           <div className="canvas-settings-row-label">

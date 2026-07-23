@@ -75,7 +75,7 @@ function CanvasEdge({
             id={`arrowhead-${id}`}
             markerWidth="10"
             markerHeight="7"
-            refX="9"
+            refX="0"
             refY="3.5"
             orient="auto"
           >

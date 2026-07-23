@@ -14,10 +14,11 @@ import { useTheme } from "./themes";
 import { ConfirmDialog } from "./components";
 import { emit, listen } from "@tauri-apps/api/event";
 import { loadImageSettings, type ImageSettings } from "./services";
-import { loadEditorSettings, type EditorSettings, EDITOR_SETTINGS_KEY, SHORTCUTS_KEY } from "./Settings";
+import { loadEditorSettings, type EditorSettings, EDITOR_SETTINGS_KEY, SHORTCUTS_KEY, GRAPH_SETTINGS_KEY, DEFAULT_GRAPH } from "./Settings";
 import { checkForUpdate, downloadAndInstall, relaunchApp, type UpdateInfo } from "./services";
 import { LinkIndexService } from "./wikilink";
 import { WikiLinkAutocomplete } from "./wikilink";
+import { WikiLinkPreview } from "./wikilink";
 import { GraphView } from "./graph";
 import CanvasView from "./Canvas/CanvasView";
 import { ReactFlowProvider } from "@xyflow/react";
@@ -28,6 +29,7 @@ import { BookmarkDialog, BookmarksService } from "./Bookmarks";
 import "./App.css";
 import "./components/FilePreview.css";
 import "./wikilink/WikiLink.css";
+import "./wikilink/WikiLinkPreview.css";
 
 // 错误边界：防止编辑器错误导致整个页面空白
 class EditorErrorBoundary extends Component<
@@ -250,6 +252,13 @@ function App({ initialFilePath, initialVaultPath }: { initialFilePath?: string |
   const [wikiAutocompletePosition, setWikiAutocompletePosition] = useState<{ x: number; y: number } | null>(null);
   const wikiTriggerEditorPosRef = useRef<number | null>(null);
 
+  // WikiLink 悬停预览状态
+  const [wikiPreviewState, setWikiPreviewState] = useState<{
+    noteName: string;
+    heading: string | null;
+    anchorRect: DOMRect;
+  } | null>(null);
+
   // 知识图谱状态
   const [graphViewOpen, setGraphViewOpen] = useState(false);
 
@@ -344,7 +353,7 @@ function App({ initialFilePath, initialVaultPath }: { initialFilePath?: string |
   }, [activeVaultIndex, vaults]);
 
   // 文件监听：外部文件变化时自动更新索引
-  const [, forceIndexRerender] = useState(0);
+  const [graphRefreshKey, forceIndexRerender] = useState(0);
   const vaultPath = activeVaultIndex >= 0 ? vaults[activeVaultIndex]?.path : null;
   useVaultWatcher(vaultPath, useCallback(() => forceIndexRerender(n => n + 1), []));
 
@@ -710,17 +719,31 @@ function App({ initialFilePath, initialVaultPath }: { initialFilePath?: string |
     return () => window.removeEventListener("keydown", handler);
   }, []);
 
+  // 读取图谱设置
+  const getGraphSettings = useCallback(() => {
+    try {
+      const saved = localStorage.getItem(GRAPH_SETTINGS_KEY);
+      return saved ? { ...DEFAULT_GRAPH, ...JSON.parse(saved) } : DEFAULT_GRAPH;
+    } catch {
+      return DEFAULT_GRAPH;
+    }
+  }, []);
+
   // Ctrl+G 知识图谱
   useEffect(() => {
     const handler = (e: KeyboardEvent) => {
       if ((e.ctrlKey || e.metaKey) && e.key === "g") {
         e.preventDefault();
-        setGraphViewOpen(prev => !prev);
+        if (getGraphSettings().openInNewWindow) {
+          invoke("open_graph_window");
+        } else {
+          setGraphViewOpen(prev => !prev);
+        }
       }
     };
     window.addEventListener("keydown", handler);
     return () => window.removeEventListener("keydown", handler);
-  }, []);
+  }, [getGraphSettings]);
 
   // ── Vault callbacks ──
 
@@ -736,6 +759,9 @@ function App({ initialFilePath, initialVaultPath }: { initialFilePath?: string |
   // ── File tree callbacks ──
 
   const handleSelectFile = useCallback((path: string, line?: number, query?: string) => {
+    // 点击文件时关闭关系图谱
+    setGraphViewOpen(false);
+
     // 判断文件类型
     const fileName = path.split(/[/\\]/).pop() || path;
 
@@ -1107,6 +1133,87 @@ function App({ initialFilePath, initialVaultPath }: { initialFilePath?: string |
     return () => window.removeEventListener('wiki-link-click', handleWikiLinkClick);
   }, [activeVaultIndex, vaults, handleSelectFile]);
 
+  // 监听 wikilink 悬停预览
+  useEffect(() => {
+    // 触摸设备禁用悬停预览
+    if (!window.matchMedia('(hover: hover)').matches) return;
+
+    let showTimer: ReturnType<typeof setTimeout> | null = null;
+    let hideTimer: ReturnType<typeof setTimeout> | null = null;
+
+    const handleHover = (e: Event) => {
+      const { noteName, heading, element } = (e as CustomEvent).detail;
+      if (!noteName) return;
+
+      // 清除隐藏定时器
+      if (hideTimer) {
+        clearTimeout(hideTimer);
+        hideTimer = null;
+      }
+
+      // 检查目标笔记是否存在
+      const targetPath = LinkIndexService.findFileByNoteName(noteName);
+      if (!targetPath) return;
+
+      // 清除之前的显示定时器
+      if (showTimer) {
+        clearTimeout(showTimer);
+        showTimer = null;
+      }
+
+      // 延迟 300ms 显示
+      const rect = (element as HTMLElement).getBoundingClientRect();
+      showTimer = setTimeout(() => {
+        setWikiPreviewState({ noteName, heading: heading || null, anchorRect: rect });
+        showTimer = null;
+      }, 300);
+    };
+
+    const handleHoverEnd = () => {
+      // 清除显示定时器
+      if (showTimer) {
+        clearTimeout(showTimer);
+        showTimer = null;
+      }
+
+      // 延迟 350ms 隐藏
+      hideTimer = setTimeout(() => {
+        setWikiPreviewState(null);
+        hideTimer = null;
+      }, 350);
+    };
+
+    const handlePreviewEnter = () => {
+      if (hideTimer) {
+        clearTimeout(hideTimer);
+        hideTimer = null;
+      }
+    };
+
+    const handlePreviewLeave = () => {
+      hideTimer = setTimeout(() => {
+        setWikiPreviewState(null);
+        hideTimer = null;
+      }, 200);
+    };
+
+    // 将回调挂到 window 上供 WikiLinkPreview 组件使用
+    (window as any).__wikiPreviewEnter = handlePreviewEnter;
+    (window as any).__wikiPreviewLeave = handlePreviewLeave;
+
+    window.addEventListener("wiki-link-hover", handleHover);
+    window.addEventListener("wiki-link-hover-end", handleHoverEnd);
+
+    return () => {
+      window.removeEventListener("wiki-link-hover", handleHover);
+      window.removeEventListener("wiki-link-hover-end", handleHoverEnd);
+      if (showTimer) clearTimeout(showTimer);
+      if (hideTimer) clearTimeout(hideTimer);
+      delete (window as any).__wikiPreviewEnter;
+      delete (window as any).__wikiPreviewLeave;
+    };
+  }, []);
+
   // Ctrl+Click wiki-link 在新窗口打开
   useEffect(() => {
     const handleWikiLinkNewWindow = (e: Event) => {
@@ -1207,7 +1314,13 @@ function App({ initialFilePath, initialVaultPath }: { initialFilePath?: string |
       localStorage.setItem("zmd-mindmap-content", content);
       invoke("open_mindmap_window");
     }},
-    { id: "open-graph", label: "打开知识图谱", category: "视图", action: () => setGraphViewOpen(true) },
+    { id: "open-graph", label: "打开知识图谱", category: "视图", action: () => {
+      if (getGraphSettings().openInNewWindow) {
+        invoke("open_graph_window");
+      } else {
+        setGraphViewOpen(true);
+      }
+    }},
     { id: "publish", label: "发布为网站", category: "工具", action: () => setPublishOpen(true) },
 
     // 编辑模式
@@ -1345,7 +1458,13 @@ function App({ initialFilePath, initialVaultPath }: { initialFilePath?: string |
                   <path d="M20 4a1 1 0 0 1 0 2h-2.7a7.4 7.4 0 0 0-7.2 6H20a1 1 0 0 1 0 2h-9.9a7.4 7.4 0 0 0 7.2 6H20a1 1 0 0 1 0 2h-2.7a9.4 9.4 0 0 1-9.2-8H4a1 1 0 0 1 0-2h4.1a9.4 9.4 0 0 1 9.2-8H20z" />
                 </svg>
               </button>
-              <button className="window-control-btn" title="打开关系图谱" onClick={() => invoke("open_graph_window")}>
+              <button className="window-control-btn" title="打开关系图谱" onClick={() => {
+                if (getGraphSettings().openInNewWindow) {
+                  invoke("open_graph_window");
+                } else {
+                  setGraphViewOpen(prev => !prev);
+                }
+              }}>
                 <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                   <circle cx="12" cy="5" r="3" />
                   <circle cx="4" cy="19" r="3" />
@@ -1408,7 +1527,19 @@ function App({ initialFilePath, initialVaultPath }: { initialFilePath?: string |
 
           {/* 编辑器面板 */}
           <div className="editor-panel">
-            {previewFilePath ? (
+            {graphViewOpen ? (
+              <div className="graph-view-embedded">
+                <GraphView
+                  vaultPath={activeVaultIndex >= 0 ? vaults[activeVaultIndex]?.path : null}
+                  onSelectNote={(path) => {
+                    setGraphViewOpen(false);
+                    handleSelectFile(path);
+                  }}
+                  standalone
+                  refreshKey={graphRefreshKey}
+                />
+              </div>
+            ) : previewFilePath ? (
               <FilePreview
                 filePath={previewFilePath}
                 onBack={() => setPreviewFilePath(null)}
@@ -1449,7 +1580,7 @@ function App({ initialFilePath, initialVaultPath }: { initialFilePath?: string |
           </div>
 
           {/* 底部浮动控件 */}
-          {!canvasFilePath && isCurrentFileMarkdown && (
+          {!canvasFilePath && !graphViewOpen && isCurrentFileMarkdown && (
             <button
               className="editor-mode-toggle source-mode-toggle floating-mode-toggle"
               onClick={cycleMode}
@@ -1458,7 +1589,7 @@ function App({ initialFilePath, initialVaultPath }: { initialFilePath?: string |
               {MODE_LABELS[viewMode]}
             </button>
           )}
-          {!canvasFilePath && (
+          {!canvasFilePath && !graphViewOpen && (
           <div className="editor-bottom-controls editor-bottom-right">
             <button
               className={`typewriter-indicator ${typewriterMode ? 'active' : ''}`}
@@ -1543,12 +1674,16 @@ function App({ initialFilePath, initialVaultPath }: { initialFilePath?: string |
         />
       )}
 
-      {/* 知识图谱 */}
-      {graphViewOpen && (
-        <GraphView
-          vaultPath={activeVaultIndex >= 0 ? vaults[activeVaultIndex]?.path : null}
-          onSelectNote={handleSelectFile}
-          onClose={() => setGraphViewOpen(false)}
+      {/* WikiLink 悬停预览 */}
+      {wikiPreviewState && (
+        <WikiLinkPreview
+          noteName={wikiPreviewState.noteName}
+          heading={wikiPreviewState.heading}
+          anchorRect={wikiPreviewState.anchorRect}
+          vaultPath={activeVaultIndex >= 0 ? vaults[activeVaultIndex]?.path ?? "" : ""}
+          onMouseEnter={() => (window as any).__wikiPreviewEnter?.()}
+          onMouseLeave={() => (window as any).__wikiPreviewLeave?.()}
+          onClose={() => setWikiPreviewState(null)}
         />
       )}
 

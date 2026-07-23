@@ -29,7 +29,7 @@ class LinkIndexServiceImpl {
       fileByName: new Map(),
     };
 
-    const files = await this.getAllMarkdownFiles(vaultPath);
+    const files = await this.getAllIndexableFiles(vaultPath);
 
     // 第一遍：建立文件名索引
     for (const filePath of files) {
@@ -278,21 +278,21 @@ class LinkIndexServiceImpl {
   }
   
   /**
-   * 获取所有 markdown 文件
+   * 获取所有可索引的文件（.md 和 .canvas）
    */
-  private async getAllMarkdownFiles(dirPath: string): Promise<string[]> {
+  private async getAllIndexableFiles(dirPath: string): Promise<string[]> {
     const files: string[] = [];
     const entries = await readDir(dirPath);
-    
+
     for (const entry of entries) {
       const fullPath = `${dirPath}/${entry.name}`;
       if (entry.isDirectory) {
-        files.push(...await this.getAllMarkdownFiles(fullPath));
-      } else if (entry.name.endsWith('.md')) {
+        files.push(...await this.getAllIndexableFiles(fullPath));
+      } else if (entry.name.endsWith('.md') || entry.name.endsWith('.canvas')) {
         files.push(fullPath);
       }
     }
-    
+
     return files;
   }
 

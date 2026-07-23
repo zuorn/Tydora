@@ -248,6 +248,20 @@ export const WikiLink = Node.create({
         }));
       });
 
+      dom.addEventListener("mouseenter", () => {
+        window.dispatchEvent(new CustomEvent("wiki-link-hover", {
+          detail: {
+            noteName: node.attrs.note,
+            heading: node.attrs.heading,
+            element: dom,
+          }
+        }));
+      });
+
+      dom.addEventListener("mouseleave", () => {
+        window.dispatchEvent(new CustomEvent("wiki-link-hover-end"));
+      });
+
       return { dom };
     };
   },

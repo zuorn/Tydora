@@ -12,9 +12,9 @@ import "./themes.css";
 // Chromium 的 ResizeObserver 错误走 window.onerror 和 console.error 两条路径
 const RESIZE_OBSERVER_MSG = "ResizeObserver loop completed with undelivered notifications";
 const prevOnError = window.onerror;
-window.onerror = (message) => {
+window.onerror = function (message, source, lineno, colno, error) {
   if (typeof message === "string" && message.includes(RESIZE_OBSERVER_MSG)) return true;
-  if (prevOnError) return prevOnError(...arguments as any);
+  if (prevOnError) return prevOnError.call(window, message, source, lineno, colno, error);
   return false;
 };
 const _origConsoleError = console.error.bind(console);

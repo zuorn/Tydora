@@ -2091,21 +2091,6 @@ export default function Settings() {
     return () => window.removeEventListener("keydown", handler);
   }, [handleClose]);
 
-  const handleMinimize = useCallback(async () => {
-    const win = getCurrentWebviewWindow();
-    await win.minimize();
-  }, []);
-
-  const handleToggleMaximize = useCallback(async () => {
-    const win = getCurrentWebviewWindow();
-    const isMax = await win.isMaximized();
-    if (isMax) {
-      await win.unmaximize();
-    } else {
-      await win.maximize();
-    }
-  }, []);
-
   // Search state
   const [searchQuery, setSearchQuery] = useState('');
 
@@ -2282,24 +2267,6 @@ export default function Settings() {
           {/* 内容区域顶部栏 */}
           <div className="settings-main-topbar" data-tauri-drag-region>
             <div className="settings-titlebar-controls">
-              <button
-                className="settings-titlebar-btn"
-                onClick={handleMinimize}
-                title="最小化"
-              >
-                <svg width="10" height="10" viewBox="0 0 10 10">
-                  <line x1="1" y1="5" x2="9" y2="5" stroke="currentColor" strokeWidth="1.2" />
-                </svg>
-              </button>
-              <button
-                className="settings-titlebar-btn"
-                onClick={handleToggleMaximize}
-                title="最大化"
-              >
-                <svg width="10" height="10" viewBox="0 0 10 10">
-                  <rect x="1" y="1" width="8" height="8" rx="0.5" fill="none" stroke="currentColor" strokeWidth="1.2" />
-                </svg>
-              </button>
               <button
                 className="settings-titlebar-btn settings-titlebar-close"
                 onClick={handleClose}

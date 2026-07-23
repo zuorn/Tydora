@@ -1351,6 +1351,12 @@ interface OutlineItem {
   line: number;
 }
 
+interface OutlineNode {
+  item: OutlineItem;
+  children: OutlineNode[];
+  hasChildren: boolean;
+}
+
 function parseOutline(markdown: string): OutlineItem[] {
   const items: OutlineItem[] = [];
   const lines = markdown.split("\n");
@@ -1363,6 +1369,100 @@ function parseOutline(markdown: string): OutlineItem[] {
   return items;
 }
 
+function buildOutlineTree(items: OutlineItem[]): OutlineNode[] {
+  const root: OutlineNode[] = [];
+  const stack: { node: OutlineNode; level: number }[] = [];
+
+  for (const item of items) {
+    const node: OutlineNode = { item, children: [], hasChildren: false };
+
+    while (stack.length > 0 && stack[stack.length - 1].level >= item.level) {
+      stack.pop();
+    }
+
+    if (stack.length === 0) {
+      root.push(node);
+    } else {
+      const parent = stack[stack.length - 1].node;
+      parent.children.push(node);
+      parent.hasChildren = true;
+    }
+
+    stack.push({ node, level: item.level });
+  }
+
+  return root;
+}
+
+function OutlineNodeComp({
+  node,
+  depth,
+  collapsedLines,
+  activeLine,
+  onToggle,
+  onSelectHeading,
+}: {
+  node: OutlineNode;
+  depth: number;
+  collapsedLines: Set<number>;
+  activeLine: number;
+  onToggle: (line: number) => void;
+  onSelectHeading: (level: number, text: string, line: number) => void;
+}) {
+  const isCollapsed = collapsedLines.has(node.item.line);
+  const showChildren = node.hasChildren && !isCollapsed;
+  const isActive = activeLine === node.item.line;
+
+  return (
+    <div className="outline-branch">
+      <div
+        className={`outline-node${isActive ? " active" : ""}`}
+        style={{ paddingLeft: `${12 + depth * 20}px` }}
+        title={node.item.text}
+      >
+        {node.hasChildren ? (
+          <span
+            className={`outline-chevron${isCollapsed ? "" : " expanded"}`}
+            onClick={(e) => {
+              e.stopPropagation();
+              onToggle(node.item.line);
+            }}
+          >
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+              <polyline points="9 18 15 12 9 6"/>
+            </svg>
+          </span>
+        ) : (
+          <span className="outline-icon-spacer" />
+        )}
+        <span className="outline-level">H{node.item.level}</span>
+        <span
+          className="outline-text"
+          onClick={() => onSelectHeading(node.item.level, node.item.text, node.item.line)}
+        >
+          {node.item.text}
+        </span>
+      </div>
+
+      {showChildren && node.children.length > 0 && (
+        <div className="outline-children" style={{ '--outline-depth': depth } as React.CSSProperties}>
+          {node.children.map((child) => (
+            <OutlineNodeComp
+              key={child.item.line}
+              node={child}
+              depth={depth + 1}
+              collapsedLines={collapsedLines}
+              activeLine={activeLine}
+              onToggle={onToggle}
+              onSelectHeading={onSelectHeading}
+            />
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
 function Outline({
   content,
   onSelectHeading,
@@ -1371,6 +1471,25 @@ function Outline({
   onSelectHeading: (level: number, text: string, line: number) => void;
 }) {
   const items = parseOutline(content);
+  const [collapsedLines, setCollapsedLines] = useState<Set<number>>(new Set());
+  const [activeLine, setActiveLine] = useState<number>(0);
+
+  const handleToggle = useCallback((line: number) => {
+    setCollapsedLines((prev) => {
+      const next = new Set(prev);
+      if (next.has(line)) {
+        next.delete(line);
+      } else {
+        next.add(line);
+      }
+      return next;
+    });
+  }, []);
+
+  const handleSelectHeading = useCallback((level: number, text: string, line: number) => {
+    setActiveLine(line);
+    onSelectHeading(level, text, line);
+  }, [onSelectHeading]);
 
   if (items.length === 0) {
     return (
@@ -1381,19 +1500,20 @@ function Outline({
     );
   }
 
+  const tree = buildOutlineTree(items);
+
   return (
     <div className="sidebar-tree">
-      {items.map((item, i) => (
-        <div
-          key={i}
-          className="outline-item"
-          style={{ paddingLeft: `${12 + (item.level - 1) * 16}px` }}
-          title={item.text}
-          onClick={() => onSelectHeading(item.level, item.text, item.line)}
-        >
-          <span className="outline-level">H{item.level}</span>
-          <span className="outline-text">{item.text}</span>
-        </div>
+      {tree.map((node) => (
+        <OutlineNodeComp
+          key={node.item.line}
+          node={node}
+          depth={0}
+          collapsedLines={collapsedLines}
+          activeLine={activeLine}
+          onToggle={handleToggle}
+          onSelectHeading={handleSelectHeading}
+        />
       ))}
     </div>
   );

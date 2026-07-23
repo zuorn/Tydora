@@ -5,7 +5,7 @@ import { readTextFile } from "@tauri-apps/plugin-fs";
 import { LinkIndexService } from "./LinkIndexService";
 
 const md = new MarkdownIt({
-  html: false,
+  html: true,
   linkify: true,
   typographer: true,
   breaks: true,
@@ -16,7 +16,26 @@ const CACHE_MAX = 50;
 
 function renderMarkdown(text: string): string {
   const body = text.replace(/^---[\s\S]*?---\n?/, "");
-  return md.render(body);
+  // 预处理 WikiLink 语法，转换为 HTML
+  let processed = body.replace(
+    /\[\[([^\]|]+?)(?:#([^\]|]+?))?(?:\|([^\]]+?))?\]\]/g,
+    (_match, note, heading, display) => {
+      const label = display || note;
+      const headingAttr = heading ? ` data-heading="${heading}"` : '';
+      return `<a class="wiki-link" data-note="${note}"${headingAttr} href="#">${label}</a>`;
+    }
+  );
+  // 预处理任务列表：将 - [ ] / - [x] 转换为 HTML checkbox
+  processed = processed.replace(
+    /^(\s*)- \[([ x])\] (.+)$/gm,
+    (_match, indent, checked, content) => {
+      const isChecked = checked === 'x';
+      const checkedAttr = isChecked ? ' checked' : '';
+      const dataChecked = isChecked ? ' data-checked="true"' : '';
+      return `${indent}<ul data-type="taskList"><li${dataChecked}><label><input type="checkbox"${checkedAttr}></label><p>${content}</p></li></ul>`;
+    }
+  );
+  return md.render(processed);
 }
 
 function setCache(key: string, html: string) {
@@ -154,9 +173,10 @@ interface WikiLinkPreviewProps {
   noteName: string;
   heading: string | null;
   anchorRect: DOMRect;
+  depth: number;
   vaultPath: string;
   onMouseEnter: () => void;
-  onMouseLeave: () => void;
+  onMouseLeave: (e?: MouseEvent) => void;
   onClose: () => void;
 }
 
@@ -164,6 +184,7 @@ export function WikiLinkPreview({
   noteName,
   heading,
   anchorRect,
+  depth,
   vaultPath,
   onMouseEnter,
   onMouseLeave,
@@ -232,19 +253,53 @@ export function WikiLinkPreview({
     }
   }, [html, heading]);
 
-  // 阻止预览弹窗内链接的点击导航
+  // 阻止预览弹窗内链接的点击导航 + 支持 wiki link 悬停预览
   useEffect(() => {
     const el = bodyRef.current;
     if (!el) return;
-    const handler = (e: MouseEvent) => {
+
+    let currentLink: HTMLElement | null = null;
+
+    const clickHandler = (e: MouseEvent) => {
       const target = e.target as HTMLElement;
       if (target.closest("a")) {
         e.preventDefault();
         e.stopPropagation();
       }
     };
-    el.addEventListener("click", handler, true);
-    return () => el.removeEventListener("click", handler, true);
+
+    // 使用 mouseover/mouseout（会冒泡）代替 mouseenter/mouseleave（不冒泡）
+    const overHandler = (e: MouseEvent) => {
+      const target = e.target as HTMLElement;
+      const link = target.closest?.('a.wiki-link, a[data-note]') as HTMLElement | null;
+      if (link === currentLink) return;
+      currentLink = link;
+      if (!link) return;
+      const noteName = link.getAttribute('data-note');
+      if (!noteName) return;
+      const heading = link.getAttribute('data-heading') || null;
+      window.dispatchEvent(new CustomEvent("wiki-link-hover", {
+        detail: { noteName, heading, element: link, depth }
+      }));
+    };
+
+    const outHandler = (e: MouseEvent) => {
+      const target = e.target as HTMLElement;
+      const link = target.closest?.('a.wiki-link, a[data-note]') as HTMLElement | null;
+      if (!link) return;
+      if (link !== currentLink) return;
+      currentLink = null;
+      window.dispatchEvent(new CustomEvent("wiki-link-hover-end"));
+    };
+
+    el.addEventListener("click", clickHandler, true);
+    el.addEventListener("mouseover", overHandler, true);
+    el.addEventListener("mouseout", outHandler, true);
+    return () => {
+      el.removeEventListener("click", clickHandler, true);
+      el.removeEventListener("mouseover", overHandler, true);
+      el.removeEventListener("mouseout", outHandler, true);
+    };
   }, [html]);
 
   const handleOpenNote = () => {
@@ -259,7 +314,7 @@ export function WikiLinkPreview({
       className="wiki-link-preview visible"
       style={{ left: x, top: y }}
       onMouseEnter={onMouseEnter}
-      onMouseLeave={onMouseLeave}
+      onMouseLeave={(e) => onMouseLeave(e.nativeEvent)}
     >
       <button
         className="wiki-link-preview-open"

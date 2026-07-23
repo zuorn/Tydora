@@ -3,6 +3,7 @@ import { Handle, Position, NodeResizer, type NodeProps } from '@xyflow/react';
 import { useEditor, EditorContent } from '@tiptap/react';
 import StarterKit from '@tiptap/starter-kit';
 import { Markdown } from 'tiptap-markdown';
+import { WikiLink } from '../../Editor/extensions/wiki-link';
 import { readTextFile } from '@tauri-apps/plugin-fs';
 import { emit } from '@tauri-apps/api/event';
 import { getCanvasColor, resolveFilePath } from '../canvas-utils';
@@ -80,6 +81,7 @@ function NoteNode({ data, selected }: NodeProps) {
       StarterKit.configure({
         heading: { levels: [1, 2, 3, 4, 5, 6] },
       }),
+      WikiLink,
       Markdown.configure({
         html: true,
         breaks: true,
@@ -92,6 +94,25 @@ function NoteNode({ data, selected }: NodeProps) {
     editorProps: {
       attributes: {
         class: 'canvas-note-editor',
+      },
+      handleDOMEvents: {
+        mouseenter: (_view, event) => {
+          const link = (event.target as HTMLElement).closest('a.wiki-link, a[data-note]');
+          if (!link) return false;
+          const noteName = link.getAttribute('data-note');
+          if (!noteName) return false;
+          const heading = link.getAttribute('data-heading') || null;
+          window.dispatchEvent(new CustomEvent("wiki-link-hover", {
+            detail: { noteName, heading, element: link }
+          }));
+          return false;
+        },
+        mouseleave: (_view, event) => {
+          const link = (event.target as HTMLElement).closest('a.wiki-link, a[data-note]');
+          if (!link) return false;
+          window.dispatchEvent(new CustomEvent("wiki-link-hover-end"));
+          return false;
+        },
       },
     },
   });

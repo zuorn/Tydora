@@ -619,6 +619,19 @@ body {
   opacity: 0.6;
 }
 
+/* 嵌套有序列表缩进引导竖线 —— 画在嵌套 ol 上 */
+.live-block-view ol ol::before,
+.live-block-view ul ol::before {
+  content: '';
+  position: absolute;
+  left: -1em;
+  top: 0;
+  bottom: 0;
+  width: 1px;
+  background: var(--border);
+  opacity: 0.6;
+}
+
 .live-block-view ul:has(li input[type="checkbox"]) {
   list-style: none;
   padding-left: 8px;

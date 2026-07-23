@@ -56,6 +56,18 @@
   color: white;
 }
 
+.settings-titlebar-controls .settings-titlebar-close {
+  width: 46px;
+  height: 36px;
+  color: #666;
+}
+
+.settings-titlebar-controls .settings-titlebar-close svg {
+  width: 12px;
+  height: 12px;
+  opacity: 1;
+}
+
 /* ── Body (Nav + Main) ────────────────────────────────────────────── */
 
 .settings-body {

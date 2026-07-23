@@ -11,7 +11,7 @@
   display: flex;
   flex-direction: column;
   font-family: var(--editor-font);
-  font-size: 14px;
+  font-size: var(--editor-font-size, 15px);
   line-height: 1.6;
   color: var(--text-primary);
   opacity: 0;
@@ -63,93 +63,173 @@
 }
 
 .wiki-link-preview-content {
-  font-size: 0.9em;
+  font-size: 1em;
 }
 
+/* 标题 - 与 IR 模式一致 */
 .wiki-link-preview-content h1 {
-  font-size: 1.4em;
-  margin: 0.5em 0 0.3em;
-  padding-bottom: 0.2em;
-  border-bottom: 1px solid var(--border);
+  font-size: 2em;
+  margin: 1em 0 0.5em;
+  font-weight: 600;
 }
 
 .wiki-link-preview-content h2 {
-  font-size: 1.2em;
-  margin: 0.5em 0 0.3em;
+  font-size: 1.5em;
+  margin: 1em 0 0.5em;
+  font-weight: 600;
 }
 
 .wiki-link-preview-content h3 {
+  font-size: 1.25em;
+  margin: 1em 0 0.5em;
+  font-weight: 600;
+}
+
+.wiki-link-preview-content h4 {
   font-size: 1.1em;
-  margin: 0.4em 0 0.2em;
+  margin: 1em 0 0.5em;
+  font-weight: 600;
 }
 
-.wiki-link-preview-content h4,
-.wiki-link-preview-content h5,
-.wiki-link-preview-content h6 {
+.wiki-link-preview-content h5 {
   font-size: 1em;
-  margin: 0.4em 0 0.2em;
+  margin: 1em 0 0.5em;
+  font-weight: 600;
 }
 
+.wiki-link-preview-content h6 {
+  font-size: 0.9em;
+  margin: 1em 0 0.5em;
+  font-weight: 600;
+}
+
+/* 段落 - 与 IR 模式一致 */
 .wiki-link-preview-content p {
-  margin: 0.4em 0;
+  margin: 0.5em 0;
 }
 
+/* 列表 - 与 IR 模式一致 */
 .wiki-link-preview-content ul,
 .wiki-link-preview-content ol {
-  padding-left: 1.5em;
-  margin: 0.4em 0;
+  padding-left: 2em;
+  margin: 0.5em 0;
 }
 
 .wiki-link-preview-content li {
-  margin: 0.15em 0;
+  margin: 0.25em 0;
 }
 
+.wiki-link-preview-content li > p {
+  margin: 0;
+}
+
+/* 任务列表 - 与 IR 模式一致 */
+.wiki-link-preview-content ul[data-type="taskList"] {
+  list-style: none;
+  padding-left: 0;
+}
+
+.wiki-link-preview-content ul[data-type="taskList"] li {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.5em;
+}
+
+.wiki-link-preview-content ul[data-type="taskList"] li > label {
+  flex-shrink: 0;
+}
+
+.wiki-link-preview-content ul[data-type="taskList"] li > label input[type="checkbox"] {
+  width: 20px;
+  height: 20px;
+  margin: 0;
+  cursor: pointer;
+  vertical-align: middle;
+  margin-top: -2px;
+  -webkit-appearance: none;
+  border: 2px solid var(--border);
+  border-radius: 50%;
+  background: transparent;
+  position: relative;
+  flex-shrink: 0;
+}
+
+.wiki-link-preview-content ul[data-type="taskList"] li > label input[type="checkbox"]:checked {
+  background: var(--accent);
+  border-color: var(--accent);
+}
+
+.wiki-link-preview-content ul[data-type="taskList"] li > label input[type="checkbox"]:checked::after {
+  content: '';
+  position: absolute;
+  left: 5px;
+  top: 2px;
+  width: 5px;
+  height: 10px;
+  border: solid white;
+  border-width: 0 2.5px 2.5px 0;
+  transform: rotate(45deg);
+}
+
+.wiki-link-preview-content ul[data-type="taskList"] li[data-checked="true"] > p {
+  text-decoration: line-through;
+  color: var(--text-secondary);
+}
+
+/* 代码块 - 与 IR 模式一致 */
 .wiki-link-preview-content pre {
-  background: var(--bg-code);
-  border-radius: 4px;
-  padding: 8px 12px;
+  background: var(--bg-code, #f5f5f5);
+  border-radius: 6px;
+  padding: 1em;
   overflow-x: auto;
-  font-size: 0.85em;
+  font-family: var(--font-mono);
+  font-size: 0.9em;
+  line-height: 1.5;
   margin: 0.5em 0;
 }
 
 .wiki-link-preview-content code {
   font-family: var(--font-mono);
   font-size: 0.9em;
-  background: var(--bg-code-inline);
-  padding: 1px 4px;
-  border-radius: 3px;
+}
+
+/* 行内代码 - 与 IR 模式一致 */
+.wiki-link-preview-content :not(pre) > code {
+  background: var(--bg-code-inline, rgba(0, 0, 0, 0.06));
+  padding: 0.2em 0.4em;
+  border-radius: 4px;
+  font-family: var(--font-mono);
+  font-size: 0.9em;
+  color: var(--text-code, #e83e8c);
 }
 
 .wiki-link-preview-content pre code {
-  background: transparent;
+  background: none;
   padding: 0;
   border-radius: 0;
+  font-size: inherit;
+  color: inherit;
 }
 
+/* 引用 - 与 IR 模式一致 */
 .wiki-link-preview-content blockquote {
-  border-left: 3px solid var(--accent);
-  padding-left: 12px;
-  margin: 0.5em 0;
+  border-left: 3px solid var(--border);
+  padding-left: 1em;
+  margin: 1em 0;
   color: var(--text-secondary);
 }
 
-.wiki-link-preview-content img {
-  max-width: 100%;
-  border-radius: 4px;
-}
-
+/* 表格 - 与 IR 模式一致 */
 .wiki-link-preview-content table {
   border-collapse: collapse;
   width: 100%;
-  margin: 0.5em 0;
-  font-size: 0.9em;
+  margin: 1em 0;
 }
 
 .wiki-link-preview-content th,
 .wiki-link-preview-content td {
   border: 1px solid var(--border);
-  padding: 4px 8px;
+  padding: 0.5em 0.75em;
   text-align: left;
 }
 
@@ -158,17 +238,72 @@
   font-weight: 600;
 }
 
+/* 图片 - 与 IR 模式一致 */
+.wiki-link-preview-content img {
+  max-width: 100%;
+  height: auto;
+  border-radius: 4px;
+  margin: 0.5em 0;
+}
+
+/* 链接 - 与 IR 模式一致 */
 .wiki-link-preview-content a {
+  color: var(--text-link, #0969da);
+  text-decoration: none;
+  cursor: pointer;
+}
+
+.wiki-link-preview-content a:hover {
+  text-decoration: underline;
+}
+
+/* Wiki 链接 - 与 IR 模式一致 */
+.wiki-link-preview-content a.wiki-link {
   color: var(--accent);
+  background: rgba(var(--accent-rgb, 137, 180, 250), 0.15);
+  padding: 1px 4px;
+  border-radius: 3px;
+  cursor: pointer;
+  transition: all 0.15s ease;
   text-decoration: none;
 }
 
+.wiki-link-preview-content a.wiki-link:hover {
+  background: rgba(var(--accent-rgb, 137, 180, 250), 0.25);
+}
+
+/* 水平线 - 与 IR 模式一致 */
 .wiki-link-preview-content hr {
   border: none;
   border-top: 1px solid var(--border);
-  margin: 0.8em 0;
+  margin: 1.5em 0;
 }
 
+/* 加粗 - 与 IR 模式一致 */
+.wiki-link-preview-content strong {
+  font-weight: 700;
+  color: var(--text-strong, #e06c75);
+}
+
+/* 斜体 */
+.wiki-link-preview-content em {
+  font-style: italic;
+}
+
+/* 删除线 */
+.wiki-link-preview-content del {
+  text-decoration: line-through;
+  color: var(--text-secondary);
+}
+
+/* 高亮 - 与 IR 模式一致 */
+.wiki-link-preview-content mark {
+  background: var(--bg-highlight, #fff3b0);
+  padding: 0.1em 0.2em;
+  border-radius: 2px;
+}
+
+/* 白板预览缩略图 */
 .wiki-link-preview-canvas-empty {
   padding: 24px;
   text-align: center;
@@ -185,6 +320,7 @@
   display: block;
 }
 
+/* 加载状态 */
 .wiki-link-preview-loading {
   padding: 4px 0;
 }

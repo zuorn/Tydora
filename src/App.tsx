@@ -137,6 +137,9 @@ function App({ initialFilePath, initialVaultPath }: { initialFilePath?: string |
           if (settings.fontSize) {
             document.documentElement.style.setProperty("--editor-font-size", settings.fontSize + "px");
           }
+          if (typeof settings.autoHideTopbar === 'boolean') {
+            setAutoHideTopbar(settings.autoHideTopbar);
+          }
         }
       } catch {}
     };
@@ -207,6 +210,16 @@ function App({ initialFilePath, initialVaultPath }: { initialFilePath?: string |
     }
   });
   const [sidebarOpen, setSidebarOpen] = useState(!initialFilePath);
+  const [autoHideTopbar, setAutoHideTopbar] = useState(() => {
+    try {
+      const raw = localStorage.getItem("zmd-general-settings");
+      if (raw) {
+        const s = JSON.parse(raw);
+        return s.autoHideTopbar ?? true;
+      }
+    } catch {}
+    return true;
+  });
   const [sidebarWidth, setSidebarWidth] = useState<number>(() => {
     try {
       const saved = localStorage.getItem(SIDEBAR_WIDTH_KEY);
@@ -252,12 +265,16 @@ function App({ initialFilePath, initialVaultPath }: { initialFilePath?: string |
   const [wikiAutocompletePosition, setWikiAutocompletePosition] = useState<{ x: number; y: number } | null>(null);
   const wikiTriggerEditorPosRef = useRef<number | null>(null);
 
-  // WikiLink 悬停预览状态
-  const [wikiPreviewState, setWikiPreviewState] = useState<{
+  // WikiLink 悬停预览状态（栈，支持嵌套预览）
+  const [wikiPreviewStack, setWikiPreviewStack] = useState<Array<{
     noteName: string;
     heading: string | null;
     anchorRect: DOMRect;
-  } | null>(null);
+    depth: number;
+  }>>([]);
+  const wikiPreviewDepthRef = useRef(-1);
+  const wikiShowTimersRef = useRef<Map<number, ReturnType<typeof setTimeout>>>(new Map());
+  const wikiHideTimersRef = useRef<Map<number, ReturnType<typeof setTimeout>>>(new Map());
 
   // 知识图谱状态
   const [graphViewOpen, setGraphViewOpen] = useState(false);
@@ -1133,71 +1150,101 @@ function App({ initialFilePath, initialVaultPath }: { initialFilePath?: string |
     return () => window.removeEventListener('wiki-link-click', handleWikiLinkClick);
   }, [activeVaultIndex, vaults, handleSelectFile]);
 
-  // 监听 wikilink 悬停预览
+  // 监听 wikilink 悬停预览（栈式，支持嵌套）
   useEffect(() => {
-    // 触摸设备禁用悬停预览
     if (!window.matchMedia('(hover: hover)').matches) return;
 
-    let showTimer: ReturnType<typeof setTimeout> | null = null;
-    let hideTimer: ReturnType<typeof setTimeout> | null = null;
+    const showTimers = wikiShowTimersRef.current;
+    const hideTimers = wikiHideTimersRef.current;
+
+    // 计算事件来源的深度
+    const getDepthFromTarget = (target: HTMLElement | null | undefined): number => {
+      if (!target) return -1;
+      const link = target.closest?.('a.wiki-link, a[data-note]');
+      if (link) {
+        const inPreview = link.closest('.wiki-link-preview');
+        return inPreview ? 1 : 0;
+      }
+      // 检查是否在预览弹窗内
+      const preview = target.closest?.('.wiki-link-preview');
+      if (preview) return 1;
+      return -1;
+    };
 
     const handleHover = (e: Event) => {
-      const { noteName, heading, element } = (e as CustomEvent).detail;
+      const { noteName, heading, element, depth: eventDepth } = (e as CustomEvent).detail;
       if (!noteName) return;
 
-      // 清除隐藏定时器
-      if (hideTimer) {
-        clearTimeout(hideTimer);
-        hideTimer = null;
-      }
-
-      // 检查目标笔记是否存在
       const targetPath = LinkIndexService.findFileByNoteName(noteName);
       if (!targetPath) return;
 
-      // 清除之前的显示定时器
-      if (showTimer) {
-        clearTimeout(showTimer);
-        showTimer = null;
-      }
+      const depth = eventDepth ?? 0;
+      const showDepth = depth + 1;
 
-      // 延迟 300ms 显示
+      // 清除该深度及更深层次的定时器
+      for (const [d, t] of showTimers) { if (d >= showDepth) { clearTimeout(t); showTimers.delete(d); } }
+      for (const [d, t] of hideTimers) { if (d >= showDepth) { clearTimeout(t); hideTimers.delete(d); } }
+
+      // 清除更深层次的预览
+      setWikiPreviewStack(prev => prev.filter(p => p.depth < showDepth));
+
+      // 延迟显示
       const rect = (element as HTMLElement).getBoundingClientRect();
-      showTimer = setTimeout(() => {
-        setWikiPreviewState({ noteName, heading: heading || null, anchorRect: rect });
-        showTimer = null;
+      const timer = setTimeout(() => {
+        showTimers.delete(showDepth);
+        setWikiPreviewStack(prev => {
+          const filtered = prev.filter(p => p.depth < showDepth);
+          return [...filtered, { noteName, heading: heading || null, anchorRect: rect, depth: showDepth }];
+        });
       }, 300);
+      showTimers.set(showDepth, timer);
     };
 
-    const handleHoverEnd = () => {
+    const handleHoverEnd = (e: Event) => {
+      const target = (e as MouseEvent).relatedTarget as HTMLElement | null;
+      const leavingDepth = getDepthFromTarget(target);
+
+      // 鼠标仍在同一深度 → 不关闭
+      if (leavingDepth >= 0 && leavingDepth === wikiPreviewDepthRef.current) return;
+
+      const currentDepth = wikiPreviewDepthRef.current;
+      if (currentDepth < 0) return;
+
       // 清除显示定时器
-      if (showTimer) {
-        clearTimeout(showTimer);
-        showTimer = null;
-      }
+      const t = showTimers.get(currentDepth + 1);
+      if (t) { clearTimeout(t); showTimers.delete(currentDepth + 1); }
 
-      // 延迟 350ms 隐藏
-      hideTimer = setTimeout(() => {
-        setWikiPreviewState(null);
-        hideTimer = null;
+      // 延迟关闭当前及更深层次
+      const timer = setTimeout(() => {
+        hideTimers.delete(currentDepth);
+        setWikiPreviewStack(prev => prev.filter(p => p.depth <= currentDepth));
       }, 350);
+      hideTimers.set(currentDepth, timer);
     };
 
-    const handlePreviewEnter = () => {
-      if (hideTimer) {
-        clearTimeout(hideTimer);
-        hideTimer = null;
+    const handlePreviewEnter = (depth: number) => {
+      wikiPreviewDepthRef.current = depth;
+      const t = hideTimers.get(depth);
+      if (t) { clearTimeout(t); hideTimers.delete(depth); }
+    };
+
+    const handlePreviewLeave = (depth: number, e?: MouseEvent) => {
+      if (e) {
+        const target = e.relatedTarget as HTMLElement | null;
+        if (target) {
+          const enteringDepth = getDepthFromTarget(target);
+          if (enteringDepth >= 0 && enteringDepth === depth) return;
+        }
       }
-    };
 
-    const handlePreviewLeave = () => {
-      hideTimer = setTimeout(() => {
-        setWikiPreviewState(null);
-        hideTimer = null;
+      wikiPreviewDepthRef.current = -1;
+      const timer = setTimeout(() => {
+        hideTimers.delete(depth);
+        setWikiPreviewStack(prev => prev.filter(p => p.depth < depth));
       }, 200);
+      hideTimers.set(depth, timer);
     };
 
-    // 将回调挂到 window 上供 WikiLinkPreview 组件使用
     (window as any).__wikiPreviewEnter = handlePreviewEnter;
     (window as any).__wikiPreviewLeave = handlePreviewLeave;
 
@@ -1207,8 +1254,10 @@ function App({ initialFilePath, initialVaultPath }: { initialFilePath?: string |
     return () => {
       window.removeEventListener("wiki-link-hover", handleHover);
       window.removeEventListener("wiki-link-hover-end", handleHoverEnd);
-      if (showTimer) clearTimeout(showTimer);
-      if (hideTimer) clearTimeout(hideTimer);
+      showTimers.forEach(t => clearTimeout(t));
+      hideTimers.forEach(t => clearTimeout(t));
+      showTimers.clear();
+      hideTimers.clear();
       delete (window as any).__wikiPreviewEnter;
       delete (window as any).__wikiPreviewLeave;
     };
@@ -1400,7 +1449,7 @@ function App({ initialFilePath, initialVaultPath }: { initialFilePath?: string |
         />
 
         {/* 编辑区域 */}
-        <main className={`editor-container${!sidebarOpen ? ' sidebar-collapsed' : ''}`}>
+        <main className={`editor-container${(!sidebarOpen || autoHideTopbar) ? ' sidebar-collapsed' : ''}`}>
           <div className="editor-topbar-trigger" />
           {/* 顶部透明栏 */}
           <div className="editor-topbar">
@@ -1674,18 +1723,20 @@ function App({ initialFilePath, initialVaultPath }: { initialFilePath?: string |
         />
       )}
 
-      {/* WikiLink 悬停预览 */}
-      {wikiPreviewState && (
+      {/* WikiLink 悬停预览（栈式，支持嵌套） */}
+      {wikiPreviewStack.map((preview) => (
         <WikiLinkPreview
-          noteName={wikiPreviewState.noteName}
-          heading={wikiPreviewState.heading}
-          anchorRect={wikiPreviewState.anchorRect}
+          key={`${preview.depth}-${preview.noteName}`}
+          noteName={preview.noteName}
+          heading={preview.heading}
+          anchorRect={preview.anchorRect}
+          depth={preview.depth}
           vaultPath={activeVaultIndex >= 0 ? vaults[activeVaultIndex]?.path ?? "" : ""}
-          onMouseEnter={() => (window as any).__wikiPreviewEnter?.()}
-          onMouseLeave={() => (window as any).__wikiPreviewLeave?.()}
-          onClose={() => setWikiPreviewState(null)}
+          onMouseEnter={() => (window as any).__wikiPreviewEnter?.(preview.depth)}
+          onMouseLeave={(e) => (window as any).__wikiPreviewLeave?.(preview.depth, e)}
+          onClose={() => setWikiPreviewStack(prev => prev.filter(p => p.depth < preview.depth))}
         />
-      )}
+      ))}
 
       {/* 发布面板 */}
       {publishOpen && (

@@ -408,6 +408,19 @@
   opacity: 0.6;
 }
 
+/* 嵌套有序列表缩进引导竖线 —— 画在嵌套 ol 上 */
+.tiptap-editor ol ol::before,
+.tiptap-editor ul ol::before {
+  content: '';
+  position: absolute;
+  left: -1em;
+  top: 0;
+  bottom: 0;
+  width: 1px;
+  background: var(--border, #d9ede5);
+  opacity: 0.6;
+}
+
 /* 列表思维导图图标 — heading 绝对定位到右侧 */
 .tiptap-editor .bullet-list-mindmap-heading {
   position: relative;

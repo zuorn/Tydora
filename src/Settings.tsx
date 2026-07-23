@@ -88,6 +88,7 @@ interface GeneralSettings {
   fontSize: number;
   editorFont: string;
   autoSave: boolean;
+  autoHideTopbar: boolean;
 }
 
 interface ShortcutItem {
@@ -104,6 +105,7 @@ const DEFAULT_GENERAL: GeneralSettings = {
   fontSize: 14,
   editorFont: "-apple-system, BlinkMacSystemFont, \"Segoe UI\", Roboto, \"Helvetica Neue\", Arial, sans-serif",
   autoSave: true,
+  autoHideTopbar: true,
 };
 
 interface MindmapSettings {
@@ -299,6 +301,23 @@ function GeneralSettingsContent({
               type="checkbox"
               checked={settings.autoSave}
               onChange={(e) => onChange({ ...settings, autoSave: e.target.checked })}
+            />
+            <span className="settings-switch-slider" />
+          </label>
+        </div>
+      </div>
+
+      <div className="canvas-settings-card">
+        <div className="canvas-settings-row">
+          <div className="canvas-settings-row-label">
+            <span className="canvas-settings-row-title">展开侧栏时隐藏顶部栏</span>
+            <span className="canvas-settings-row-desc">开启后，侧栏展开时顶部栏也会自动隐藏，鼠标悬停顶部边缘可临时显示。</span>
+          </div>
+          <label className="settings-switch">
+            <input
+              type="checkbox"
+              checked={settings.autoHideTopbar}
+              onChange={(e) => onChange({ ...settings, autoHideTopbar: e.target.checked })}
             />
             <span className="settings-switch-slider" />
           </label>
@@ -2272,9 +2291,9 @@ export default function Settings() {
                 onClick={handleClose}
                 title="关闭"
               >
-                <svg width="10" height="10" viewBox="0 0 10 10">
-                  <line x1="1.5" y1="1.5" x2="8.5" y2="8.5" stroke="currentColor" strokeWidth="1.2" />
-                  <line x1="8.5" y1="1.5" x2="1.5" y2="8.5" stroke="currentColor" strokeWidth="1.2" />
+                <svg width="14" height="14" viewBox="0 0 10 10">
+                  <line x1="1.5" y1="1.5" x2="8.5" y2="8.5" stroke="currentColor" strokeWidth="1.4" />
+                  <line x1="8.5" y1="1.5" x2="1.5" y2="8.5" stroke="currentColor" strokeWidth="1.4" />
                 </svg>
               </button>
             </div>

@@ -258,7 +258,7 @@
 
 .settings-main {
   flex: 1;
-  padding: 0 32px 24px;
+  padding: 12px 32px 24px;
   overflow-y: auto;
   background: var(--bg-primary);
 }

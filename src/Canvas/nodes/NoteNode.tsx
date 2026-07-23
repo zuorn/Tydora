@@ -124,12 +124,12 @@ function NoteNode({ data, selected }: NodeProps) {
     const handler = (e: WheelEvent) => {
       if (!interactive) return;
 
-      const scrollable = el.scrollHeight > el.clientHeight;
-      if (!scrollable) return;
-
+      // Check if at scroll boundaries
       const atTop = el.scrollTop <= 0 && e.deltaY < 0;
       const atBottom = el.scrollTop + el.clientHeight >= el.scrollHeight - 1 && e.deltaY > 0;
 
+      // Always prevent zoom when node is selected and has scrollable content
+      // or is at a boundary (let it propagate for canvas zoom only at boundaries)
       if (!atTop && !atBottom) {
         e.stopPropagation();
       }

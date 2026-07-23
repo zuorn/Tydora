@@ -68,28 +68,30 @@ function CanvasEdge({
 
   return (
     <>
-      {/* SVG marker definitions for arrows */}
+      {/* SVG marker definitions for arrows — rendered inside a hidden SVG in the same document */}
       <svg style={{ position: 'absolute', width: 0, height: 0 }}>
         <defs>
           <marker
             id={`arrowhead-${id}`}
+            markerUnits="userSpaceOnUse"
             markerWidth="10"
-            markerHeight="7"
-            refX="0"
-            refY="3.5"
+            markerHeight="10"
+            refX="9"
+            refY="5"
             orient="auto"
           >
-            <polygon points="0 0, 10 3.5, 0 7" fill={edgeColor} />
+            <path d="M 0 0 L 10 5 L 0 10 Z" fill={edgeColor} />
           </marker>
           <marker
             id={`arrowhead-start-${id}`}
+            markerUnits="userSpaceOnUse"
             markerWidth="10"
-            markerHeight="7"
+            markerHeight="10"
             refX="1"
-            refY="3.5"
+            refY="5"
             orient="auto"
           >
-            <polygon points="10 0, 0 3.5, 10 7" fill={edgeColor} />
+            <path d="M 10 0 L 0 5 L 10 10 Z" fill={edgeColor} />
           </marker>
         </defs>
       </svg>

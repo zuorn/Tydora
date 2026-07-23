@@ -715,6 +715,7 @@ export default function CanvasView({ onNodeClick }: CanvasViewProps) {
           panOnDrag={[1, 2]} // Middle and right click
           panActivationKeyCode="Space"
           paneClickDistance={5}
+          noWheelClassName="no-wheel"
           minZoom={canvasSettings.minZoom}
           maxZoom={canvasSettings.maxZoom}
         >

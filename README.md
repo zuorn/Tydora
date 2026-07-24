@@ -1,6 +1,6 @@
 # Tydora
 
-> 指尖上的礼物 —— 一个现代的桌面 Markdown 编辑器
+> 一个现代的桌面 Markdown 编辑器
 
 [![GitHub Stars](https://img.shields.io/github/stars/zuorn/Tydora?style=flat-square)](https://github.com/zuorn/Tydora)
 [![Release](https://img.shields.io/github/v/release/zuorn/Tydora?style=flat-square)](https://github.com/zuorn/Tydora/releases)

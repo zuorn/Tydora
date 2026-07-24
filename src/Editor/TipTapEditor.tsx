@@ -38,6 +38,7 @@ import haskellLang from "highlight.js/lib/languages/haskell";
 import elixirLang from "highlight.js/lib/languages/elixir";
 import juliaLang from "highlight.js/lib/languages/julia";
 import tclLang from "highlight.js/lib/languages/tcl";
+import propertiesLang from "highlight.js/lib/languages/properties";
 import { Frontmatter } from "./extensions/frontmatter";
 import { Callout } from "./extensions/callout";
 import { Mermaid } from "./extensions/mermaid";
@@ -74,6 +75,7 @@ lowlight.register("haskell", haskellLang);
 lowlight.register("elixir", elixirLang);
 lowlight.register("julia", juliaLang);
 lowlight.register("tcl", tclLang);
+lowlight.register("properties", propertiesLang);
 lowlight.register("mermaid", mermaidHljsLang);
 
 interface TipTapEditorProps {

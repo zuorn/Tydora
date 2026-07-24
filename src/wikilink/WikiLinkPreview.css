@@ -26,9 +26,10 @@
 }
 
 .wiki-link-preview-open {
-  position: absolute;
-  top: 8px;
-  right: 8px;
+  position: sticky;
+  top: 0;
+  right: 0;
+  float: right;
   width: 26px;
   height: 26px;
   display: flex;
@@ -40,13 +41,17 @@
   color: var(--text-secondary);
   cursor: pointer;
   opacity: 0;
+  pointer-events: none;
   transition: opacity 0.15s ease, color 0.15s ease, background 0.15s ease;
   z-index: 1;
   padding: 0;
+  margin: 0 0 4px 4px;
+  flex-shrink: 0;
 }
 
 .wiki-link-preview:hover .wiki-link-preview-open {
   opacity: 1;
+  pointer-events: auto;
 }
 
 .wiki-link-preview-open:hover {

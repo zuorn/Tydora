@@ -1162,12 +1162,13 @@ function App({ initialFilePath, initialVaultPath }: { initialFilePath?: string |
       if (!target) return -1;
       const link = target.closest?.('a.wiki-link, a[data-note]');
       if (link) {
-        const inPreview = link.closest('.wiki-link-preview');
-        return inPreview ? 1 : 0;
+        const previewEl = link.closest('.wiki-link-preview') as HTMLElement | null;
+        if (!previewEl) return 0;
+        return parseInt(previewEl.dataset.depth || '0', 10);
       }
       // 检查是否在预览弹窗内
-      const preview = target.closest?.('.wiki-link-preview');
-      if (preview) return 1;
+      const preview = target.closest?.('.wiki-link-preview') as HTMLElement | null;
+      if (preview) return parseInt(preview.dataset.depth || '0', 10);
       return -1;
     };
 
@@ -1201,25 +1202,29 @@ function App({ initialFilePath, initialVaultPath }: { initialFilePath?: string |
     };
 
     const handleHoverEnd = (e: Event) => {
-      const target = (e as MouseEvent).relatedTarget as HTMLElement | null;
-      const leavingDepth = getDepthFromTarget(target);
+      // 优先从 CustomEvent detail 获取 relatedTarget（预览弹窗内链接），
+      // 其次从原生 MouseEvent 获取（handlePreviewLeave 传入）
+      const detail = (e as CustomEvent).detail;
+      const relatedTarget = (detail?.relatedTarget || (e as MouseEvent).relatedTarget) as HTMLElement | null;
+      const leavingDepth = getDepthFromTarget(relatedTarget);
 
-      // 鼠标仍在同一深度 → 不关闭
-      if (leavingDepth >= 0 && leavingDepth === wikiPreviewDepthRef.current) return;
+      // 鼠标仍在同一深度或更深的预览中 → 不关闭
+      if (leavingDepth >= 0 && leavingDepth >= wikiPreviewDepthRef.current) return;
 
       const currentDepth = wikiPreviewDepthRef.current;
       if (currentDepth < 0) return;
 
-      // 清除显示定时器
+      // 清除显示定时器（下一层预览的定时器）
       const t = showTimers.get(currentDepth + 1);
       if (t) { clearTimeout(t); showTimers.delete(currentDepth + 1); }
 
       // 延迟关闭当前及更深层次
+      const depth = currentDepth; // 捕获当前值，避免定时器回调时引用已变化的 ref
       const timer = setTimeout(() => {
-        hideTimers.delete(currentDepth);
-        setWikiPreviewStack(prev => prev.filter(p => p.depth <= currentDepth));
+        hideTimers.delete(depth);
+        setWikiPreviewStack(prev => prev.filter(p => p.depth < depth));
       }, 350);
-      hideTimers.set(currentDepth, timer);
+      hideTimers.set(depth, timer);
     };
 
     const handlePreviewEnter = (depth: number) => {
@@ -1233,7 +1238,8 @@ function App({ initialFilePath, initialVaultPath }: { initialFilePath?: string |
         const target = e.relatedTarget as HTMLElement | null;
         if (target) {
           const enteringDepth = getDepthFromTarget(target);
-          if (enteringDepth >= 0 && enteringDepth === depth) return;
+          // 不关闭：目标在同一深度或更深的预览中
+          if (enteringDepth >= 0 && enteringDepth >= depth) return;
         }
       }
 
@@ -1262,6 +1268,40 @@ function App({ initialFilePath, initialVaultPath }: { initialFilePath?: string |
       delete (window as any).__wikiPreviewLeave;
     };
   }, []);
+
+  // 滚动或点击外部时关闭预览弹窗
+  useEffect(() => {
+    const clearPreview = () => {
+      setWikiPreviewStack([]);
+      wikiPreviewDepthRef.current = -1;
+      wikiShowTimersRef.current.forEach(t => clearTimeout(t));
+      wikiShowTimersRef.current.clear();
+      wikiHideTimersRef.current.forEach(t => clearTimeout(t));
+      wikiHideTimersRef.current.clear();
+    };
+
+    const handleScroll = () => {
+      // 鼠标在预览弹窗上时不关闭
+      if (wikiPreviewDepthRef.current >= 0) return;
+      if (wikiPreviewStack.length > 0) clearPreview();
+    };
+
+    const handleClick = (e: MouseEvent) => {
+      const target = e.target as HTMLElement;
+      // 点击在预览弹窗内 → 不关闭
+      if (target.closest('.wiki-link-preview')) return;
+      // 点击在编辑器内的 wiki link 上 → 不关闭（由 hover 逻辑处理）
+      if (target.closest('a.wiki-link, a[data-note]')) return;
+      if (wikiPreviewStack.length > 0) clearPreview();
+    };
+
+    document.addEventListener('scroll', handleScroll, { capture: true, passive: true });
+    document.addEventListener('mousedown', handleClick, true);
+    return () => {
+      document.removeEventListener('scroll', handleScroll, { capture: true });
+      document.removeEventListener('mousedown', handleClick, true);
+    };
+  }, [wikiPreviewStack.length]);
 
   // Ctrl+Click wiki-link 在新窗口打开
   useEffect(() => {
@@ -1734,7 +1774,7 @@ function App({ initialFilePath, initialVaultPath }: { initialFilePath?: string |
           vaultPath={activeVaultIndex >= 0 ? vaults[activeVaultIndex]?.path ?? "" : ""}
           onMouseEnter={() => (window as any).__wikiPreviewEnter?.(preview.depth)}
           onMouseLeave={(e) => (window as any).__wikiPreviewLeave?.(preview.depth, e)}
-          onClose={() => setWikiPreviewStack(prev => prev.filter(p => p.depth < preview.depth))}
+          onClose={() => setWikiPreviewStack([])}
         />
       ))}
 

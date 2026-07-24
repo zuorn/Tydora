@@ -116,7 +116,7 @@ const markdownTheme = EditorView.theme({
     backgroundColor: "rgba(0, 122, 255, 0.2)",
   },
   ".cm-gutters": {
-    backgroundColor: "var(--bg-secondary, #f5f5f5)",
+    backgroundColor: "var(--bg-primary, #fff)",
     color: "var(--text-secondary, #999)",
     border: "none",
     borderRight: "1px solid var(--border, #e0e0e0)",

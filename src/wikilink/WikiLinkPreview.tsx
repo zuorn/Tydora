@@ -46,11 +46,15 @@ function setCache(key: string, html: string) {
   htmlCache.set(key, html);
 }
 
-function computePosition(anchorRect: DOMRect) {
+function computePosition(anchorRect: DOMRect, depth: number = 0) {
   const W = 460;
   const H = 320;
   const GAP = 8;
-  const x = Math.max(GAP, Math.min(anchorRect.left, window.innerWidth - W - GAP));
+  const CASCADE_OFFSET = 24;
+  const x = Math.max(GAP, Math.min(
+    anchorRect.left + depth * CASCADE_OFFSET,
+    window.innerWidth - W - GAP
+  ));
   const below = anchorRect.bottom + GAP + H <= window.innerHeight;
   const y = below
     ? anchorRect.bottom + GAP
@@ -194,7 +198,7 @@ export function WikiLinkPreview({
   const [loading, setLoading] = useState(true);
   const [notFound, setNotFound] = useState(false);
   const bodyRef = useRef<HTMLDivElement>(null);
-  const { x, y } = computePosition(anchorRect);
+  const { x, y } = computePosition(anchorRect, depth);
 
   useEffect(() => {
     let cancelled = false;
@@ -272,7 +276,9 @@ export function WikiLinkPreview({
     const overHandler = (e: MouseEvent) => {
       const target = e.target as HTMLElement;
       const link = target.closest?.('a.wiki-link, a[data-note]') as HTMLElement | null;
-      if (link === currentLink) return;
+      // 如果鼠标已经在同一个链接上（包括在父元素和子元素之间移动），不需要重新触发
+      if (link && link === currentLink) return;
+
       currentLink = link;
       if (!link) return;
       const noteName = link.getAttribute('data-note');
@@ -285,11 +291,19 @@ export function WikiLinkPreview({
 
     const outHandler = (e: MouseEvent) => {
       const target = e.target as HTMLElement;
+      const relatedTarget = e.relatedTarget as HTMLElement | null;
       const link = target.closest?.('a.wiki-link, a[data-note]') as HTMLElement | null;
       if (!link) return;
       if (link !== currentLink) return;
+
+      // 如果鼠标移动到了同一个链接的子元素中（如 <strong>、<em>），不要触发离开事件
+      if (relatedTarget && link.contains(relatedTarget)) return;
+
       currentLink = null;
-      window.dispatchEvent(new CustomEvent("wiki-link-hover-end"));
+      // 传递 relatedTarget 给 handleHoverEnd，以便正确判断鼠标去向
+      window.dispatchEvent(new CustomEvent("wiki-link-hover-end", {
+        detail: { relatedTarget }
+      }));
     };
 
     el.addEventListener("click", clickHandler, true);
@@ -312,21 +326,22 @@ export function WikiLinkPreview({
   return createPortal(
     <div
       className="wiki-link-preview visible"
-      style={{ left: x, top: y }}
+      style={{ left: x, top: y, zIndex: 9999 + depth }}
+      data-depth={depth}
       onMouseEnter={onMouseEnter}
       onMouseLeave={(e) => onMouseLeave(e.nativeEvent)}
     >
-      <button
-        className="wiki-link-preview-open"
-        onClick={handleOpenNote}
-        title="打开笔记"
-      >
-        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-          <path d="M7 17L17 7" />
-          <path d="M7 7h10v10" />
-        </svg>
-      </button>
       <div className="wiki-link-preview-body" ref={bodyRef}>
+        <button
+          className="wiki-link-preview-open"
+          onClick={handleOpenNote}
+          title="打开笔记"
+        >
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+            <path d="M7 17L17 7" />
+            <path d="M7 7h10v10" />
+          </svg>
+        </button>
         {loading && (
           <div className="wiki-link-preview-loading">
             <div className="skeleton-line" style={{ width: "80%" }} />

@@ -117,3 +117,93 @@ html.platform-macos .graph-window-titlebar,
 html.platform-macos .canvas-window-titlebar {
   padding-left: var(--mac-traffic-lights-width);
 }
+
+/* ========== 窗格内容容器（外部变更横幅 + 编辑器） ========== */
+/* 绝对铺满 .editor-split-pane，内部纵向排列横幅与编辑器，保证横幅不破坏编辑器高度 */
+.pane-content {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  min-height: 0;
+}
+.pane-editor-wrap {
+  flex: 1 1 0;
+  min-width: 0;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+}
+.pane-editor-wrap > * {
+  flex: 1 1 0;
+  min-width: 0;
+  min-height: 0;
+}
+
+/* 外部修改/删除提示横幅 */
+.external-change-banner {
+  flex: 0 0 auto;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 6px 30px 6px 12px;
+  font-size: 13px;
+  line-height: 1.4;
+  background: var(--bg-elevated);
+  color: var(--text-primary);
+  border-bottom: 1px solid var(--border);
+}
+.external-change-banner.ecb-deleted {
+  border-bottom-color: var(--danger);
+}
+.external-change-banner .ecb-text {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+.external-change-banner button {
+  flex: 0 0 auto;
+  border: 1px solid var(--border);
+  background: var(--bg-surface);
+  color: var(--text-primary);
+  border-radius: 6px;
+  padding: 3px 12px;
+  cursor: pointer;
+  font-size: 12px;
+  line-height: 1.6;
+}
+.external-change-banner button:hover {
+  background: var(--bg-hover);
+}
+.external-change-banner button.ecb-primary {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: #fff;
+}
+.external-change-banner button.ecb-primary:hover {
+  background: var(--accent-hover);
+}
+
+/* 轻量顶部居中提示气泡 */
+.app-toast {
+  position: fixed;
+  top: 16px;
+  left: 50%;
+  transform: translateX(-50%) translateY(-12px);
+  background: var(--bg-elevated);
+  color: var(--text-primary);
+  border: 1px solid var(--border);
+  padding: 8px 16px;
+  border-radius: 8px;
+  font-size: 13px;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.18);
+  opacity: 0;
+  transition: opacity 0.2s ease, transform 0.2s ease;
+  z-index: 9999;
+  pointer-events: none;
+  max-width: 80vw;
+}
+.app-toast.visible {
+  opacity: 1;
+  transform: translateX(-50%) translateY(0);
+}

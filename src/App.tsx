@@ -387,6 +387,12 @@ function App({ initialFilePath, initialVaultPath }: { initialFilePath?: string |
   const content = activeBuffer.content;
   const fileName = activeBuffer.fileName;
   const modified = activeBuffer.modified;
+
+  // 外部修改/删除待处理：bufferId -> 磁盘新内容（modify，用于提示用户重新加载）或 true（remove，提示已删除）
+  const [externalChangeMap, setExternalChangeMap] = useState<Record<string, string>>({});
+  const [externalDeleteMap, setExternalDeleteMap] = useState<Record<string, boolean>>({});
+  // 记录我们自己的写入时间戳，避免“自己的保存/自动保存”被误判为外部修改
+  const lastSelfWriteRef = useRef<Record<string, number>>({});
   const viewMode: EditorMode = activePane.mode ?? editorSettings.defaultMode;
   const effectiveMode: EditorMode = viewMode;
 
@@ -419,6 +425,100 @@ function App({ initialFilePath, initialVaultPath }: { initialFilePath?: string |
   const setModified = useCallback((v: boolean) => updateBuffer(activeBufferIdRef.current, { modified: v }), [updateBuffer]);
   // 切换激活窗格的编辑模式（per-pane mode 存于 pane.mode）
   const setViewMode = useCallback((m: EditorMode) => setPanes((ps) => ps.map((p) => (p.id === activePaneIdRef.current ? { ...p, mode: m } : p))), []);
+
+  // ── 外部文件变更（被其它软件修改/删除）处理 ──
+  // 记录“自己刚写入”的时间戳，供下方忽略自身保存事件使用
+  const markSelfWrite = useCallback((path: string) => {
+    lastSelfWriteRef.current[path] = Date.now();
+  }, []);
+
+  // 文件在外部被修改/删除时由文件监听器回调。
+  // 行为：
+  //   - 当前未打开该文件 → 忽略（索已由 useVaultWatcher 更新）
+  //   - 外部删除 → 仅提示，内存内容保留，用户保存即恢复
+  //   - 外部修改且无本地未保存改动 → 安全自动重新加载
+  //   - 外部修改但有本地未保存改动 → 提示用户选择是否重新加载
+  const handleExternalFileChange = useCallback(async (path: string, changeKind: 'modify' | 'remove') => {
+    const bufs = buffersRef.current.filter((b) => b.fileName === path);
+    if (bufs.length === 0) return;
+
+    // 文件被删除：仅提示，内存内容保留（用户保存即恢复）
+    if (changeKind === 'remove') {
+      setExternalDeleteMap((m) => {
+        const n = { ...m };
+        for (const b of bufs) n[b.id] = true;
+        return n;
+      });
+      // 同时清除该缓冲上可能残留的“修改提示”
+      setExternalChangeMap((m) => {
+        const n = { ...m };
+        for (const b of bufs) delete n[b.id];
+        return n;
+      });
+      return;
+    }
+
+    // 文件被修改：清除该缓冲上可能残留的“删除提示”
+    setExternalDeleteMap((m) => {
+      const n = { ...m };
+      for (const b of bufs) delete n[b.id];
+      return n;
+    });
+
+    // 忽略自己刚保存/自动保存触发的事件（2 秒宽限期）
+    const selfAt = lastSelfWriteRef.current[path] ?? 0;
+    if (Date.now() - selfAt < 2000) return;
+
+    let disk: string;
+    try {
+      disk = await readTextFile(path);
+    } catch {
+      // 文件可能正在被删除/重命名，交由 remove 分支或下次事件处理
+      return;
+    }
+
+    for (const buf of bufs) {
+      if (disk === buf.savedContent) continue; // 与已知磁盘内容一致（自己的保存等），跳过
+      if (!buf.modified) {
+        // 无本地未保存修改：安全自动重新加载
+        updateBuffer(buf.id, { content: disk, savedContent: disk, modified: false });
+        appToast(t("app.externalChange.autoReloaded"));
+      } else {
+        // 有本地未保存修改：提示用户选择
+        setExternalChangeMap((m) => ({ ...m, [buf.id]: disk }));
+      }
+    }
+  }, [t, updateBuffer]);
+
+  // 接受外部修改：用磁盘内容覆盖（丢弃本地未保存修改）
+  const reloadExternal = useCallback((bufId: string) => {
+    const disk = externalChangeMap[bufId];
+    if (disk === undefined) return;
+    updateBuffer(bufId, { content: disk, savedContent: disk, modified: false });
+    setExternalChangeMap((m) => {
+      const n = { ...m };
+      delete n[bufId];
+      return n;
+    });
+  }, [externalChangeMap, updateBuffer]);
+
+  // 忽略外部修改：保留本地内容，关闭提示
+  const dismissExternal = useCallback((bufId: string) => {
+    setExternalChangeMap((m) => {
+      const n = { ...m };
+      delete n[bufId];
+      return n;
+    });
+  }, []);
+
+  // 关闭“文件已在外部被删除”的提示（内存内容继续保留）
+  const dismissDeleted = useCallback((bufId: string) => {
+    setExternalDeleteMap((m) => {
+      const n = { ...m };
+      delete n[bufId];
+      return n;
+    });
+  }, []);
   // 合并读取：此前 7 个 useState 各自独立 localStorage.getItem + JSON.parse 同一个 key，
   // 现在只读一次、解析一次，复用于全部 useState 初始化。
   const generalSettingsRead = useRef(false);
@@ -1108,14 +1208,15 @@ function App({ initialFilePath, initialVaultPath }: { initialFilePath?: string |
     return () => window.clearTimeout(handle);
   }, [activeVaultIndex, vaults]);
 
-  // 文件监听：外部文件变化时自动更新索引，并刷新文件树（结构性变化）
+// 文件监听：外部文件变化时自动更新索引，刷新文件树（结构性变化），
+  // 并回调已打开文件的外部修改/删除提示。
   const [graphRefreshKey, forceIndexRerender] = useState(0);
   const vaultPath = activeVaultIndex >= 0 ? vaults[activeVaultIndex]?.path : null;
-  useVaultWatcher(
-    vaultPath,
-    useCallback(() => forceIndexRerender(n => n + 1), []),
-    useCallback(() => setTreeRefreshKey(k => k + 1), []),
-  );
+  useVaultWatcher(vaultPath, {
+    onIndexChange: useCallback(() => forceIndexRerender(n => n + 1), []),
+    onStructureChange: useCallback(() => setTreeRefreshKey(k => k + 1), []),
+    onFileExternallyChanged: handleExternalFileChange,
+  });
 
   useEffect(() => {
     localStorage.setItem(SIDEBAR_WIDTH_KEY, String(sidebarWidth));
@@ -1408,6 +1509,7 @@ function App({ initialFilePath, initialVaultPath }: { initialFilePath?: string |
       const latest = buffersRef.current.find((b) => b.id === bufId) ?? buf;
       const contentToWrite = latest.content;
       await writeTextFile(path, contentToWrite);
+      markSelfWrite(path);
       updateBuffer(bufId, { savedContent: contentToWrite, modified: false });
       if (bufId === activeBufferIdRef.current) setSaveStatus("saved");
       // 更新链接索引和标签索引
@@ -1461,6 +1563,7 @@ function App({ initialFilePath, initialVaultPath }: { initialFilePath?: string |
         for (const b of buffersRef.current) {
           if (!b.modified || !b.fileName) continue;
           await writeTextFile(b.fileName, b.content);
+          markSelfWrite(b.fileName);
           updateBuffer(b.id, { savedContent: b.content, modified: false });
           if (b.id === activeBufferIdRef.current) setSaveStatus("saved");
           if (activeVault) {
@@ -1885,6 +1988,7 @@ function App({ initialFilePath, initialVaultPath }: { initialFilePath?: string |
     if (fileName && content) {
       try {
         await writeTextFile(fileName, content);
+        markSelfWrite(fileName);
       } catch (e) {
         console.error(t("app.error.autoSaveFailed"), e);
       }
@@ -2348,16 +2452,20 @@ function App({ initialFilePath, initialVaultPath }: { initialFilePath?: string |
     // 终端面板：直接渲染 TerminalView，分屏/关闭由父级回调处理
     if (pane.kind === "terminal" && pane.terminalId) {
       return (
-        <Suspense fallback={<div className="editor-panel" />}>
-          <TerminalView
-            sessionId={pane.terminalId}
-            cwd={terminals[pane.terminalId]?.cwd ?? ""}
-            theme={theme}
-            onSplit={(dir) => handleSplitTerminalBeside(pane.id, dir)}
-            onClose={() => closePane(pane.id)}
-            onFontSizeChange={showFontSizeToast}
-          />
-        </Suspense>
+        <div className="pane-content">
+          <div className="pane-editor-wrap">
+            <Suspense fallback={<div className="editor-panel" />}>
+              <TerminalView
+                sessionId={pane.terminalId}
+                cwd={terminals[pane.terminalId]?.cwd ?? ""}
+                theme={theme}
+                onSplit={(dir) => handleSplitTerminalBeside(pane.id, dir)}
+                onClose={() => closePane(pane.id)}
+                onFontSizeChange={showFontSizeToast}
+              />
+            </Suspense>
+          </div>
+        </div>
       );
     }
     const buf = buffers.find((b) => b.id === pane.bufferId) ?? buffers[0];
@@ -2366,30 +2474,50 @@ function App({ initialFilePath, initialVaultPath }: { initialFilePath?: string |
       else delete paneHandlesRef.current[pane.id];
       if (pane.id === activePaneIdRef.current) editorHandleRef.current = h;
     };
+    // 外部变更横幅：删除提示 / 修改提示（重新加载或忽略）
+    const deleted = !!externalDeleteMap[buf.id];
+    const externalDisk = externalChangeMap[buf.id];
+    const banner = deleted ? (
+      <div className="external-change-banner ecb-deleted">
+        <span className="ecb-text">{t("app.externalChange.deleted")}</span>
+        <button onClick={() => dismissDeleted(buf.id)}>{t("app.externalChange.gotIt")}</button>
+      </div>
+    ) : externalDisk !== undefined ? (
+      <div className="external-change-banner">
+        <span className="ecb-text">{t("app.externalChange.prompt")}</span>
+        <button className="ecb-primary" onClick={() => reloadExternal(buf.id)}>{t("app.externalChange.reload")}</button>
+        <button onClick={() => dismissExternal(buf.id)}>{t("app.externalChange.ignore")}</button>
+      </div>
+    ) : null;
     return (
-      <EditorErrorBoundary>
-        <Suspense fallback={<div className="editor-panel" />}>
-          <Editor
-            ref={refCb}
-            value={buf.content}
-            onChange={(v) => handlePaneChange(pane.id, v)}
-            mode={pane.mode}
-            theme={theme}
-            typewriterMode={typewriterMode}
-            previewMaxWidth={previewMaxWidth}
-            lineHeight={lineHeight}
-            paragraphSpacing={paragraphSpacing}
-            codeLineHeight={codeLineHeight}
-            irLineNumbers={irLineNumbers}
-            editorSettings={editorSettings}
-            imageSettings={imageSettings}
-            currentFilePath={buf.fileName}
-            activeVaultPath={activeVaultIndex >= 0 ? vaults[activeVaultIndex]?.path : null}
-            onWordCount={(c) => { if (pane.id === activePaneIdRef.current) setWordCount(c); }}
-            active={pane.id === activePaneId}
-          />
-        </Suspense>
-      </EditorErrorBoundary>
+      <div className="pane-content">
+        {banner}
+        <div className="pane-editor-wrap">
+          <EditorErrorBoundary>
+            <Suspense fallback={<div className="editor-panel" />}>
+              <Editor
+                ref={refCb}
+                value={buf.content}
+                onChange={(v) => handlePaneChange(pane.id, v)}
+                mode={pane.mode}
+                theme={theme}
+                typewriterMode={typewriterMode}
+                previewMaxWidth={previewMaxWidth}
+                lineHeight={lineHeight}
+                paragraphSpacing={paragraphSpacing}
+                codeLineHeight={codeLineHeight}
+                irLineNumbers={irLineNumbers}
+                editorSettings={editorSettings}
+                imageSettings={imageSettings}
+                currentFilePath={buf.fileName}
+                activeVaultPath={activeVaultIndex >= 0 ? vaults[activeVaultIndex]?.path : null}
+                onWordCount={(c) => { if (pane.id === activePaneIdRef.current) setWordCount(c); }}
+                active={pane.id === activePaneId}
+              />
+            </Suspense>
+          </EditorErrorBoundary>
+        </div>
+      </div>
     );
   };
 
@@ -4504,6 +4632,21 @@ function App({ initialFilePath, initialVaultPath }: { initialFilePath?: string |
       {consentVisible && <ConsentDialog onDecide={handleConsentDecision} />}
     </div>
   );
+}
+
+// 轻量顶部居中提示气泡（外部修改自动重新加载等场景使用）
+function appToast(message: string) {
+  const existing = document.querySelector(".app-toast");
+  if (existing) existing.remove();
+  const toast = document.createElement("div");
+  toast.className = "app-toast";
+  toast.textContent = message;
+  document.body.appendChild(toast);
+  requestAnimationFrame(() => toast.classList.add("visible"));
+  setTimeout(() => {
+    toast.classList.remove("visible");
+    setTimeout(() => toast.remove(), 200);
+  }, 2200);
 }
 
 export default App;

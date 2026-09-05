@@ -2171,7 +2171,8 @@ function FileTree({
     const el = treeRef.current;
     if (!el) return;
     const onSelectStart = (e: Event) => {
-      // selectstart 的 target 可能是文本节点（无 closest 方法），先判 Element
+      // WebKit/macOS WKWebView 偶发把 e.target 设为非 Element（TextNode/Document/null），
+      // 直接 (e.target as HTMLElement).closest() 会 NPE。
       const t = e.target;
       if (t instanceof Element && t.closest(".tree-name-input")) return;
       e.preventDefault();

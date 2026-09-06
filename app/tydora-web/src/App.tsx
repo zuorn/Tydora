@@ -33,6 +33,7 @@ import { useTheme } from "./themes";
 import { ConfirmDialog } from "./components";
 import { buildExportArtifact, EXPORT_FORMATS, type ExportFormat, type BuiltArtifact } from "./export";
 import { ExportPreviewDialog } from "./components/ExportPreviewDialog";
+import { usePdfPrint } from "./export/pdfPrint/PdfPrintController";
 import { XhsPreviewPanel } from "./export/xiaohongshu";
 import { emit, listen } from "@tauri-apps/api/event";
 import i18n from "./i18n";
@@ -956,6 +957,7 @@ function App({ initialFilePath, initialVaultPath }: { initialFilePath?: string |
   const [exporting, setExporting] = useState(false);
   const [showExportFormatPicker, setShowExportFormatPicker] = useState(false);
   const [exportPreview, setExportPreview] = useState<{ format: ExportFormat; artifact: BuiltArtifact } | null>(null);
+  const { requestPdfPrint } = usePdfPrint();
   const [findReplaceDialogMode, setFindReplaceDialogMode] = useState<"find" | "replace" | null>(null);
 
   // 小红书图文导出分栏
@@ -3504,7 +3506,20 @@ function App({ initialFilePath, initialVaultPath }: { initialFilePath?: string |
         themeName: theme,
         title: title.replace(/\.[^.]+$/, ""),
       });
-      setExportPreview({ format, artifact });
+
+      if (format === "pdf" && artifact.printHtml) {
+        // 新版矢量 PDF：系统打印对话框
+        const result = await requestPdfPrint({
+          html: artifact.printHtml,
+          fileName: `${title.replace(/\.[^.]+$/, "")}.pdf`,
+          themeName: theme,
+        });
+        if (result?.status === "error" && result.error) {
+          alert(t("app.export.exportFailed") + result.error);
+        }
+      } else {
+        setExportPreview({ format, artifact });
+      }
     } catch (e) {
       const msg = e instanceof Error ? e.message : String(e);
       alert(t("app.export.exportFailed") + msg);

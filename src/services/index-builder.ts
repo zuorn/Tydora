@@ -9,11 +9,13 @@
 
 import { readTextFile } from "@tauri-apps/plugin-fs";
 import { scanVaultFiles, type VaultFileScan } from "./vault-file-scanner";
+import { normalizeVaultPath } from "../utils/vaultPath";
 import { LinkIndexService } from "../wikilink";
 import { TagIndexService } from "../tags";
 
 const TAG_INDEX_KEY = "zmd-tag-index";
 const LINK_INDEX_KEY = "zmd-link-index";
+const LINK_INDEX_VAULT_KEY = "zmd-link-index-vault";
 
 export interface IndexBuildOptions {
   /** 启动时是否先从 localStorage 反序列化恢复（默认 true）。
@@ -39,39 +41,68 @@ export interface IndexBuildResult {
   totalFileCount: number;
 }
 
-/** 策略 A：从 localStorage 反序列化恢复两个索引。返回是否恢复成功。 */
-export function restoreIndexesFromCache(): boolean {
+/** 策略 A：从 localStorage 反序列化恢复两个索引。仅当缓存属于同一仓库时恢复。 */
+export function restoreIndexesFromCache(vaultPath: string): boolean {
+  const normalizedVault = normalizeVaultPath(vaultPath);
   let ok = false;
   try {
+    const cachedVault = localStorage.getItem(LINK_INDEX_VAULT_KEY);
+    if (cachedVault !== normalizedVault) {
+      LinkIndexService.clear();
+      TagIndexService.clear();
+      return false;
+    }
     const linkRaw = localStorage.getItem(LINK_INDEX_KEY);
     if (linkRaw) {
       LinkIndexService.deserialize(linkRaw);
       if (!LinkIndexService.isEmpty()) ok = true;
     }
   } catch {
+    LinkIndexService.clear();
     /* ignore */
   }
   try {
+    const cachedVault = localStorage.getItem(LINK_INDEX_VAULT_KEY);
+    if (cachedVault !== normalizedVault) {
+      TagIndexService.clear();
+      return ok;
+    }
     const tagRaw = localStorage.getItem(TAG_INDEX_KEY);
     if (tagRaw) {
       TagIndexService.deserialize(tagRaw);
       if (!TagIndexService.isEmpty()) ok = true;
     }
   } catch {
+    TagIndexService.clear();
     /* ignore */
   }
   return ok;
 }
 
 /** 把两个索引持久化到 localStorage（刷新完成后统一写，避免启动时写操作阻塞）。 */
-export function persistIndexesToStorage(): void {
+export function persistIndexesToStorage(vaultPath: string): void {
+  const normalizedVault = normalizeVaultPath(vaultPath);
   try {
+    localStorage.setItem(LINK_INDEX_VAULT_KEY, normalizedVault);
     localStorage.setItem(LINK_INDEX_KEY, LinkIndexService.serialize());
   } catch {
     /* ignore */
   }
   try {
     localStorage.setItem(TAG_INDEX_KEY, TagIndexService.serialize());
+  } catch {
+    /* ignore */
+  }
+}
+
+/** 无激活仓库时清空索引与缓存。 */
+export function clearIndexesAndCache(): void {
+  LinkIndexService.clear();
+  TagIndexService.clear();
+  try {
+    localStorage.removeItem(LINK_INDEX_VAULT_KEY);
+    localStorage.removeItem(LINK_INDEX_KEY);
+    localStorage.removeItem(TAG_INDEX_KEY);
   } catch {
     /* ignore */
   }
@@ -92,7 +123,7 @@ export async function buildIndexesTogether(
 
   // ── 步骤 1：策略 A，先加载缓存（同步、毫秒级） ──
   // 若调用方已 restoreIndexesFromCache()，直接复用其结果，避免重复读取 localStorage
-  const fromCache = opts.fromCache ?? (useCache ? restoreIndexesFromCache() : false);
+  const fromCache = opts.fromCache ?? (useCache ? restoreIndexesFromCache(vaultPath) : false);
 
   // ── 步骤 2：策略 B，共享一次目录遍历 ──
   let scan: VaultFileScan;
@@ -105,7 +136,7 @@ export async function buildIndexesTogether(
       LinkIndexService.buildIndex(vaultPath),
       TagIndexService.buildIndex(vaultPath),
     ]);
-    persistIndexesToStorage();
+    persistIndexesToStorage(vaultPath);
     return {
       fromCache: false,
       refreshedFileCount: 0,
@@ -126,10 +157,7 @@ export async function buildIndexesTogether(
         needRefresh.push(path);
       }
     }
-    // （删除文件清理：当前 Service 未暴露遍历 outlinks/fileTags keys 的 API，
-    //  暂不主动清理。脏项仅影响反链查询的"来源列表"显示，
-    //  不会导致崩溃；下次切仓库时 Link.clear()/Tag.clear() 会整体重置。）
-    void cleanUpRemovedFiles; // 保留占位，避免 TS unused 警告
+    cleanUpRemovedFiles(new Set(mdFiles));
   } else {
     // 无缓存或非增量模式：全量重解析
     if (!fromCache) {
@@ -197,9 +225,16 @@ export async function buildIndexesTogether(
   };
 }
 
-/** 删除磁盘上已不存在的文件在 Link/Tag 两侧的索引记录（占位，暂未实现）。
- *  需 Service 暴露遍历 keys 的 API 后在此补齐。 */
-// eslint-disable-next-line @typescript-eslint/no-unused-vars
-function cleanUpRemovedFiles(_currentMdSet: Set<string>): void {
-  // no-op
+/** 清理磁盘上已不存在的文件在 Link/Tag 两侧的索引记录。 */
+function cleanUpRemovedFiles(currentMdSet: Set<string>): void {
+  for (const path of LinkIndexService.getIndexedFilePaths()) {
+    if (!currentMdSet.has(path)) {
+      LinkIndexService.removeFile(path);
+    }
+  }
+  for (const path of TagIndexService.getIndexedFilePaths()) {
+    if (!currentMdSet.has(path)) {
+      TagIndexService.removeFile(path);
+    }
+  }
 }

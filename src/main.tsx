@@ -15,20 +15,54 @@ bootStamp("i18n_imported_init_done");
 import "./themes.css";
 import "./global.css";
 import { applyMenuDensityFromStorage } from "./utils/menuDensity";
+import { applyFontSettingsFromStorage } from "./utils/systemFonts";
+import { initGlobalTooltip } from "./utils/globalTooltip";
 
-// 尽早应用菜单密度，保证各独立窗口（设置/白板/图谱等）启动即生效
+// 尽早应用菜单密度 / 字体，保证各独立窗口（设置/白板/图谱等）启动即生效
 applyMenuDensityFromStorage();
+applyFontSettingsFromStorage();
+initGlobalTooltip();
 window.addEventListener("storage", (e) => {
-  if (e.key === "zmd-general-settings") applyMenuDensityFromStorage();
+  if (e.key === "zmd-general-settings") {
+    applyMenuDensityFromStorage();
+    applyFontSettingsFromStorage();
+  }
 });
 
-// macOS Overlay 标题栏：给布局留出红绿灯空间，并隐藏自定义红黄绿按钮
-if (
-  typeof navigator !== "undefined" &&
-  (/Mac|iPhone|iPod|iPad/i.test(navigator.platform) ||
-    navigator.userAgent.includes("Mac OS"))
-) {
-  document.documentElement.classList.add("platform-macos");
+// 滚动条自动隐藏：滚动时立即显示，停止滚动 400ms 后淡出（所有窗口共用）
+{
+  let timer: ReturnType<typeof setTimeout>;
+  let currentTarget: HTMLElement | null = null;
+  const handleScroll = (e: Event) => {
+    const target = e.target as HTMLElement;
+    if (!(target instanceof HTMLElement)) return;
+    if (currentTarget && currentTarget !== target) {
+      currentTarget.removeAttribute("data-scrolling");
+    }
+    currentTarget = target;
+    target.setAttribute("data-scrolling", "");
+    clearTimeout(timer);
+    timer = setTimeout(() => {
+      if (currentTarget) {
+        currentTarget.removeAttribute("data-scrolling");
+        currentTarget = null;
+      }
+    }, 400);
+  };
+  document.addEventListener("scroll", handleScroll, { capture: true, passive: true });
+}
+
+// 平台 class：驱动各端窗口圆角策略（见 global.css）
+if (typeof navigator !== "undefined") {
+  const ua = navigator.userAgent;
+  const platform = navigator.platform || "";
+  if (/Mac|iPhone|iPod|iPad/i.test(platform) || ua.includes("Mac OS")) {
+    document.documentElement.classList.add("platform-macos");
+  } else if (/Win/i.test(platform) || ua.includes("Windows")) {
+    document.documentElement.classList.add("platform-windows");
+  } else {
+    document.documentElement.classList.add("platform-linux");
+  }
 }
 
 // 开始接收 Rust boot-timing 事件（异步：不阻塞当前模块解析）

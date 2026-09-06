@@ -5,11 +5,18 @@
     "noResults": "未找到匹配的设置",
     "close": "关闭",
     "appearance": {
+      "groupTitleInterface": "界面",
+      "groupInterface": "界面",
       "groupTitleAppearance": "外观",
+      "groupTitleEditor": "编辑器",
+      "groupTitleSave": "保存",
       "groupTitleBehavior": "行为",
       "groupTitleWindow": "窗口",
+      "groupTitleSidebar": "侧栏",
       "previewMaxWidth": "预览区域宽度",
       "previewMaxWidthDesc": "编辑器内容区域的最大宽度。",
+      "uiFont": "UI 字体",
+      "uiFontDesc": "侧栏、菜单、设置等界面元素使用的字体。",
       "editorFont": "编辑器字体",
       "editorFontDesc": "正文与 Markdown 源码的字体，可从系统已安装字体中选择。",
       "codeFont": "代码字体",
@@ -50,8 +57,23 @@
       "autoHideTopbarDesc": "开启后，侧栏展开时顶部栏也会自动隐藏，鼠标悬停顶部边缘可临时显示。",
       "autoHideTopbarOnCollapse": "折叠侧栏时隐藏顶部栏",
       "autoHideTopbarOnCollapseDesc": "开启后，折叠侧栏时顶部栏也会自动隐藏。关闭后，折叠侧栏时顶部栏保持可见。",
+      "autoHideVaultFooter": "自动隐藏仓库栏",
+      "autoHideVaultFooterDesc": "开启后，侧栏底部的仓库切换条仅在鼠标悬停侧栏时显示；关闭后始终可见。",
       "expandOutlineOnOpen": "启动时展开大纲",
       "expandOutlineOnOpenDesc": "开启后，双击 .md 文件用本应用打开时，侧栏自动展开并切换到大纲视图。关闭后保持折叠侧栏的原行为。",
+      "sidebarPanels": "侧栏面板",
+      "sidebarPanelsDesc": "选择每个面板显示在左侧栏或右侧栏。",
+      "formatOnSave": "保存时格式化",
+      "formatOnSaveDesc": "保存 Markdown 文件时按下方规则自动格式化。",
+      "groupTitleMarkdownFormat": "Markdown 格式化",
+      "formatCjkSpacing": "中英文之间加空格",
+      "formatCjkSpacingDesc": "在中文与英文、数字之间自动插入空格（跳过代码块、表格、链接；默认关闭）。",
+      "formatTrimTrailing": "去除行尾空格",
+      "formatTrimTrailingDesc": "去掉行末多余空白；保留 Markdown 硬换行所需的两个空格。",
+      "formatEnsureNewline": "文件末尾换行",
+      "formatEnsureNewlineDesc": "确保文件以单个换行符结尾。",
+      "formatNormalizeBlank": "折叠多余空行",
+      "formatNormalizeBlankDesc": "将连续 3 个及以上空行折叠为 1 个；不会在标题或列表前后自动插入空行。",
       "language": "语言",
       "languageDesc": "界面显示语言。",
       "analytics": "陪你走得更远 🌿",
@@ -85,6 +107,9 @@
     "tabs": {
       "groupGeneral": "通用",
       "general": "通用",
+      "editor": "编辑器",
+      "markdown": "Markdown",
+      "appearance": "外观",
       "theme": "主题",
       "shortcuts": "快捷键",
       "image": "图像",
@@ -97,6 +122,12 @@
       "vim": "Vim 模式",
       "groupAbout": "关于",
       "about": "关于"
+    },
+    "general": {
+      "groupLanguage": "语言"
+    },
+    "markdown": {
+      "groupFeatures": "语法扩展"
     },
     "terminal": {
       "colorScheme": "配色方案",
@@ -367,6 +398,7 @@
         "paddingCodeInlineY": "行内代码上下内边距",
         "paddingCodeInlineX": "行内代码左右内边距",
         "radiusMetadata": "Metadata 圆角",
+        "marginMetadataBottom": "Metadata 下方间距",
         "blockquoteBorderWidth": "引用左边色块宽度",
         "paddingBlockquoteY": "引用块上下内边距",
         "paddingBlockquoteX": "引用块左右内边距",
@@ -466,6 +498,7 @@
       "title": "侧栏设置",
       "desc": "配置每个侧栏标签页显示在左侧栏或右侧栏。",
       "files": "文件",
+      "openFiles": "已打开",
       "search": "搜索",
       "outline": "大纲",
       "bookmarks": "书签",
@@ -473,6 +506,8 @@
       "right": "右侧栏"
     },
     "editor": {
+      "groupExperience": "编辑体验",
+      "groupTypography": "排版与字体",
       "defaultMode": "默认编辑模式",
       "defaultModeDesc": "新建文件时使用的编辑模式。",
       "instantRender": "即时渲染",
@@ -598,6 +633,7 @@
       "forward": "前进",
       "find": "查找",
       "replace": "替换",
+      "formatDocument": "格式化当前文档",
       "favorite": "收藏",
       "splitLeftRight": "左右分屏",
       "splitTopBottom": "上下分屏",
@@ -622,6 +658,9 @@
       "disabled": "点击开启打字机模式"
     },
     "fontSizeToast": "字号",
+    "scrollJump": "滚动到边缘",
+    "scrollToTop": "到最顶端",
+    "scrollToBottom": "到最低端",
     "wordCount": "{{count}} 字",
     "vimMode": {
       "normal": "NORMAL 模式",
@@ -672,6 +711,7 @@
       "openFileFailedEvent": "通过事件打开文件失败:",
       "listenEventFailed": "监听 open-file 事件失败:",
       "saveFailed": "保存失败:",
+      "formatFailed": "格式化失败:",
       "autoSaveFailed": "自动保存失败:",
       "openNewWindowFailed": "打开新窗口失败:",
       "renameFailed": "重命名失败:",
@@ -694,6 +734,7 @@
       },
       "labels": {
         "saveFile": "保存文件",
+        "formatDocument": "格式化当前文档",
         "openFile": "打开文件",
         "openInNewWindow": "新窗口打开",
         "undo": "撤销",
@@ -742,6 +783,8 @@
         "insertFormula": "插入公式",
         "minimizeWindow": "最小化窗口",
         "maximizeWindow": "最大化窗口",
+        "closeFile": "关闭当前文件",
+        "closeAllFiles": "关闭所有文件",
         "closeWindow": "关闭窗口",
         "openSettings": "打开/关闭设置",
         "generalSettings": "通用设置",
@@ -918,7 +961,7 @@
       },
       "contextMenu": {
         "openInNewWindow": "在新窗口打开",
-        "editTitle": "修改标题",
+        "editBookmark": "编辑书签",
         "unfavorite": "取消收藏",
         "copyPath": "复制路径",
         "rename": "重命名",
@@ -970,6 +1013,16 @@
       "revealActiveFile": "定位当前文件"
     }
   },
+
+  "openFiles": {
+    "tabTitle": "已打开",
+    "empty": "暂无打开的文件",
+    "emptyHint": "在文件树中选择文件即可在此显示",
+    "close": "关闭",
+    "closeConfirmTitle": "保存更改？",
+    "closeConfirmMessage": "「{{name}}」有未保存的更改，关闭前是否保存？",
+    "closeAllConfirmMessage": "部分文件有未保存的更改，关闭全部前是否保存？"
+  },
   "editor": {
     "contextMenu": {
       "cut": "剪切",
@@ -997,6 +1050,7 @@
       "paragraph": "段落",
       "image": "图像",
       "horizontalRule": "水平分割线",
+      "moreTag": "摘要分割 (<!--more-->)",
       "table": "表格",
       "codeBlock": "代码块",
       "mathBlock": "公式块",

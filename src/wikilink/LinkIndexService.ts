@@ -184,6 +184,11 @@ class LinkIndexServiceImpl {
     return this.index.outlinks.has(filePath);
   }
 
+  /** 返回当前已建立出链索引的文件路径列表。 */
+  getIndexedFilePaths(): string[] {
+    return [...this.index.outlinks.keys()];
+  }
+
   /**
    * 幂等地把 noteName → filePath 写入 fileByName（同名取路径更短者）。
    * 供 index-builder 在"只补齐文件名索引、不想重读文件内容"场景下直接调用，

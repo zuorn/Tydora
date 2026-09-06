@@ -7,83 +7,6 @@
   overflow-anchor: none;
 }
 
-/* 编辑器滚动条：必须在同一元素上写全套伪元素，
-   否则 WebKit 不会套用全局 ::-webkit-scrollbar-thumb 规则 */
-.tiptap-editor::-webkit-scrollbar {
-  width: var(--scrollbar-size, 8px);
-  height: var(--scrollbar-size, 8px);
-}
-
-.tiptap-editor::-webkit-scrollbar-track {
-  background: var(--scrollbar-track, transparent);
-}
-
-.tiptap-editor::-webkit-scrollbar-thumb {
-  background-color: color-mix(in srgb, var(--scrollbar-thumb, var(--border)) 1%, transparent);
-  border-radius: var(--radius-scrollbar, 4px);
-  background-clip: padding-box;
-  border: 2px solid transparent;
-  transition: background-color 0.15s ease;
-}
-
-.tiptap-editor[data-scrolling]::-webkit-scrollbar-thumb,
-.tiptap-editor:hover::-webkit-scrollbar-thumb {
-  background-color: var(--scrollbar-thumb, var(--border));
-  transition: background-color 0s;
-}
-
-.tiptap-editor::-webkit-scrollbar-thumb:hover {
-  background-color: var(--scrollbar-thumb-hover, var(--text-secondary));
-}
-
-.tiptap-editor {
-  scrollbar-width: thin;
-  scrollbar-color: transparent transparent;
-}
-
-.tiptap-editor:hover,
-.tiptap-editor[data-scrolling] {
-  scrollbar-color: var(--scrollbar-thumb, var(--border)) var(--scrollbar-track, transparent);
-}
-
-/* 源码模式 CodeMirror 滚动条（同样需写全套） */
-.cm-editor .cm-scroller::-webkit-scrollbar {
-  width: var(--scrollbar-size, 8px);
-  height: var(--scrollbar-size, 8px);
-}
-
-.cm-editor .cm-scroller::-webkit-scrollbar-track {
-  background: var(--scrollbar-track, transparent);
-}
-
-.cm-editor .cm-scroller::-webkit-scrollbar-thumb {
-  background-color: color-mix(in srgb, var(--scrollbar-thumb, var(--border)) 1%, transparent);
-  border-radius: var(--radius-scrollbar, 4px);
-  background-clip: padding-box;
-  border: 2px solid transparent;
-  transition: background-color 0.15s ease;
-}
-
-.cm-editor .cm-scroller[data-scrolling]::-webkit-scrollbar-thumb,
-.cm-editor .cm-scroller:hover::-webkit-scrollbar-thumb {
-  background-color: var(--scrollbar-thumb, var(--border));
-  transition: background-color 0s;
-}
-
-.cm-editor .cm-scroller::-webkit-scrollbar-thumb:hover {
-  background-color: var(--scrollbar-thumb-hover, var(--text-secondary));
-}
-
-.cm-editor .cm-scroller {
-  scrollbar-width: thin;
-  scrollbar-color: transparent transparent;
-}
-
-.cm-editor .cm-scroller:hover,
-.cm-editor .cm-scroller[data-scrolling] {
-  scrollbar-color: var(--scrollbar-thumb, var(--border)) var(--scrollbar-track, transparent);
-}
-
 /* Source Editor with highlight.js */
 .source-editor-container {
   position: relative;
@@ -232,7 +155,7 @@
   font-family: var(--editor-font, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif);
   font-size: var(--editor-font-size, 16px);
   line-height: var(--editor-line-height, 1.6);
-  padding: 2rem 3rem;
+  padding: 2rem 5.5rem 2rem 3rem;
   /* 文末留白：允许滚动到文末后继续下滚，把最后一行放到窗口中间附近 */
   padding-bottom: calc(2rem + var(--editor-end-scroll-space, 0px));
   min-height: 100%;
@@ -249,6 +172,11 @@
   display: flex;
   flex-direction: column;
   gap: var(--editor-paragraph-spacing, 0.5em);
+}
+
+/* 不显示行号：左右 padding 对称，正文在内容区内居中 */
+.editor-wrapper.hide-ir-line-numbers .tiptap-editor .tiptap {
+  padding-right: 3rem;
 }
 
 /* 顶层块：清掉纵向 margin，间距交给父级 gap（避免选区横条） */
@@ -270,14 +198,14 @@ html.platform-macos .tiptap-editor .tiptap {
 /* ── IR 模式右侧行号 ── */
 
 /* 直接块级子元素 + 列表项，每个计为一行（ul/ol 容器本身不计） */
-.tiptap-editor .tiptap> :where(p, h1, h2, h3, h4, h5, h6, blockquote, pre, hr, table, .code-block-toolbar-wrapper, [data-type="frontmatter"]),
+.tiptap-editor .tiptap> :where(p, h1, h2, h3, h4, h5, h6, blockquote, pre, hr, table, .code-block-toolbar-wrapper, [data-type="frontmatter"], [data-type="more"]),
 .tiptap-editor .tiptap li {
   counter-increment: line;
   position: relative;
 }
 
 /* 行号统一用 rem，不受元素自身字号影响 */
-.tiptap-editor .tiptap> :where(p, h1, h2, h3, h4, h5, h6, blockquote, pre, hr, table, .code-block-toolbar-wrapper, [data-type="frontmatter"])::before,
+.tiptap-editor .tiptap> :where(p, h1, h2, h3, h4, h5, h6, blockquote, pre, hr, table, .code-block-toolbar-wrapper, [data-type="frontmatter"], [data-type="more"])::before,
 .tiptap-editor .tiptap li::before {
   content: counter(line);
   position: absolute;
@@ -295,7 +223,7 @@ html.platform-macos .tiptap-editor .tiptap {
 }
 
 /* 隐藏 IR 模式行号 */
-.hide-ir-line-numbers .tiptap> :where(p, h1, h2, h3, h4, h5, h6, blockquote, pre, hr, table, .code-block-toolbar-wrapper, [data-type="frontmatter"])::before,
+.hide-ir-line-numbers .tiptap> :where(p, h1, h2, h3, h4, h5, h6, blockquote, pre, hr, table, .code-block-toolbar-wrapper, [data-type="frontmatter"], [data-type="more"])::before,
 .hide-ir-line-numbers .tiptap li::before {
   content: none;
 }
@@ -1451,11 +1379,19 @@ html.platform-macos .tiptap-editor .tiptap {
   background: var(--metadata-bg, var(--bg-secondary, #f5f5f5));
   border: 1px solid var(--metadata-border, var(--border, #e0e0e0));
   border-radius: var(--radius-metadata, 8px);
-  margin: 0;
+  margin-top: 0;
+  /* 下方空隙必须用 margin：后继若是代码块等带边框元素，padding-top 会落在框内 */
+  margin-bottom: var(--margin-metadata-bottom, 16px);
   font-size: 0.85em;
   position: relative;
   overflow: visible;
   clip-path: none;
+}
+
+/* 覆盖 `.tiptap > * { margin-bottom: 0 }`，保证 metadata 下方间距生效 */
+.tiptap-editor .tiptap > [data-type="frontmatter"],
+.tiptap-editor .tiptap > .frontmatter-node {
+  margin-bottom: var(--margin-metadata-bottom, 16px);
 }
 
 html.platform-macos .tiptap-editor [data-type="frontmatter"],
@@ -1509,6 +1445,39 @@ html.platform-macos .tiptap-editor .frontmatter-node {
   border: none;
   border-top: 1px solid var(--border, #d9ede5);
   margin: 0;
+}
+
+/* Hexo / 博客摘要分割 <!--more--> */
+.tiptap-editor .more-separator,
+.tiptap-editor [data-type="more"] {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin: 0;
+  padding: 4px 0;
+  user-select: none;
+  cursor: default;
+}
+
+.tiptap-editor .more-separator-line {
+  flex: 1;
+  height: 0;
+  border-top: 1px dashed var(--border, #d9ede5);
+}
+
+.tiptap-editor .more-separator-label {
+  flex-shrink: 0;
+  font-size: 11px;
+  font-family: var(--code-font, "JetBrains Mono", "Fira Code", monospace);
+  color: var(--text-tertiary, #999);
+  letter-spacing: 0.04em;
+  padding: 0 2px;
+}
+
+.tiptap-editor .ProseMirror-selectednode.more-separator,
+.tiptap-editor .ProseMirror-selectednode[data-type="more"] {
+  outline: 1px solid var(--accent, #4a9eff);
+  border-radius: 4px;
 }
 
 /* Wiki 链接 */
@@ -2228,7 +2197,14 @@ html[data-code-block-toolbar="classic"] .code-block-content {
 }
 
 .context-menu-icon-btn:hover {
-  background: var(--bg-hover, #e8e8e8);
+  background: var(--bg-hover, rgba(255, 255, 255, 0.08));
+  color: var(--text-primary, #333);
+}
+
+.context-menu-icon-btn:active,
+.context-menu-icon-btn:focus-visible {
+  background: var(--bg-hover, rgba(255, 255, 255, 0.08));
+  color: var(--text-primary, #333);
 }
 
 .context-menu-icon-btn svg {
@@ -2248,29 +2224,33 @@ html[data-code-block-toolbar="classic"] .code-block-content {
   left: 50%;
   transform: translateX(-50%);
   margin-bottom: 6px;
-  padding: 5px 10px;
-  background: rgba(0, 0, 0, 0.8);
-  color: #fff;
+  padding: 6px 10px;
+  background: var(--bg-secondary);
+  border: 1px solid var(--border);
+  color: var(--text-primary);
   font-size: 12px;
   font-weight: 500;
-  border-radius: 4px;
+  border-radius: 8px;
   white-space: nowrap;
   pointer-events: none;
   opacity: 0;
   transition: opacity 0.15s;
+  transition-delay: 0s;
   z-index: 10001;
-  letter-spacing: 0.3px;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.35);
 }
 
 .context-menu-icon-btn-wrapper:hover::after {
   opacity: 1;
+  transition-delay: 0.45s;
 }
 
 .context-menu-item-wrapper {
   position: relative;
 }
 
-.context-menu-item {
+.editor-context-menu .context-menu-item,
+.context-menu-submenu .context-menu-item {
   display: flex;
   align-items: center;
   width: 100%;
@@ -2282,14 +2262,35 @@ html[data-code-block-toolbar="classic"] .code-block-content {
   font-size: 13px;
   line-height: var(--menu-item-line-height);
   text-align: left;
-  transition: background 0.1s;
+  transition: background 0.1s ease, color 0.1s ease;
 }
 
-.context-menu-item:hover {
-  background: var(--bg-hover, #e8e8e8);
+.editor-context-menu .context-menu-item:hover,
+.editor-context-menu .context-menu-item:active,
+.editor-context-menu .context-menu-item:focus-visible,
+.context-menu-submenu .context-menu-item:hover,
+.context-menu-submenu .context-menu-item:active,
+.context-menu-submenu .context-menu-item:focus-visible {
+  background: var(--bg-hover, rgba(255, 255, 255, 0.08));
+  color: var(--text-primary, #333);
 }
 
-.context-menu-icon {
+.editor-context-menu .context-menu-item:hover .context-menu-icon,
+.editor-context-menu .context-menu-item:active .context-menu-icon,
+.context-menu-submenu .context-menu-item:hover .context-menu-icon,
+.context-menu-submenu .context-menu-item:active .context-menu-icon {
+  color: var(--text-secondary, #666);
+}
+
+.editor-context-menu .context-menu-item:hover .context-menu-shortcut,
+.editor-context-menu .context-menu-item:active .context-menu-shortcut,
+.context-menu-submenu .context-menu-item:hover .context-menu-shortcut,
+.context-menu-submenu .context-menu-item:active .context-menu-shortcut {
+  color: var(--text-secondary, #999);
+}
+
+.editor-context-menu .context-menu-icon,
+.context-menu-submenu .context-menu-icon {
   width: 20px;
   height: 20px;
   display: flex;
@@ -2300,28 +2301,33 @@ html[data-code-block-toolbar="classic"] .code-block-content {
   flex-shrink: 0;
 }
 
-.context-menu-icon svg {
+.editor-context-menu .context-menu-icon svg,
+.context-menu-submenu .context-menu-icon svg {
   width: 16px;
   height: 16px;
 }
 
-.context-menu-label {
+.editor-context-menu .context-menu-label,
+.context-menu-submenu .context-menu-label {
   flex: 1;
 }
 
-.context-menu-shortcut {
+.editor-context-menu .context-menu-shortcut,
+.context-menu-submenu .context-menu-shortcut {
   color: var(--text-secondary, #999);
   font-size: 11px;
   margin-left: 16px;
 }
 
-.context-menu-arrow {
+.editor-context-menu .context-menu-arrow,
+.context-menu-submenu .context-menu-arrow {
   margin-left: 8px;
   font-size: 8px;
   color: var(--text-secondary, #999);
 }
 
-.context-menu-divider {
+.editor-context-menu .context-menu-divider,
+.context-menu-submenu .context-menu-divider {
   height: 1px;
   background: var(--border, #e0e0e0);
   margin: var(--menu-divider-margin-y) 0;

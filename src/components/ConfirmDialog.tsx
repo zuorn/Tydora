@@ -36,8 +36,8 @@ export function ConfirmDialog({
 }: ConfirmDialogProps) {
   const { t } = useTranslation();
   const dialogRef = useRef<HTMLDivElement>(null);
-  const resolvedConfirmText = confirmText ?? t("dialog.confirm");
-  const resolvedCancelText = cancelText ?? t("dialog.cancel");
+  const resolvedConfirmText = confirmText ?? t("sidebar.dialog.confirm");
+  const resolvedCancelText = cancelText ?? t("sidebar.dialog.cancel");
   const resolvedDiscardText = discardText ?? "";
   const hasDiscard = Boolean(onDiscard && resolvedDiscardText);
 

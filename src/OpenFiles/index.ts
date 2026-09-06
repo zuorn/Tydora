@@ -1,0 +1,1 @@
+export { OpenFilesPanel } from "./OpenFilesPanel";

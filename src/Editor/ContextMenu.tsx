@@ -200,6 +200,7 @@ function createSubmenuItems(t: (key: string) => string): SubmenuItem[] {
       submenu: [
         { name: "upload", label: t("editor.contextMenu.image"), shortcutId: null, icon: ICONS.image },
         { name: "hr", label: t("editor.contextMenu.horizontalRule"), shortcutId: "hr", icon: ICONS.minus },
+        { name: "more", label: t("editor.contextMenu.moreTag"), shortcutId: null, icon: ICONS.minus },
         { name: "table", label: t("editor.contextMenu.table"), shortcutId: "table", icon: ICONS.table },
         { name: "code", label: t("editor.contextMenu.codeBlock"), shortcutId: "code-block", icon: ICONS.codeBlock },
         { name: "math", label: t("editor.contextMenu.mathBlock"), shortcutId: null, icon: ICONS.math },

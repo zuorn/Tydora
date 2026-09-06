@@ -32,11 +32,17 @@ mod commands;
 #[cfg(target_os = "macos")]
 mod macos_chrome;
 
-/// macOS：应用原生 CALayer 圆角。其他平台无操作。
-fn finish_macos_window(window: &tauri::WebviewWindow) {
+/// 窗口创建后的平台收尾。
+/// - macOS：原生 chrome 相关收尾
+/// - Windows：确保无边框阴影开启（Win11 DWM 系统圆角依赖此路径）
+fn finish_platform_window(window: &tauri::WebviewWindow) {
     #[cfg(target_os = "macos")]
     macos_chrome::finish_macos_window(window);
-    #[cfg(not(target_os = "macos"))]
+    #[cfg(target_os = "windows")]
+    {
+        let _ = window.set_shadow(true);
+    }
+    #[cfg(not(any(target_os = "macos", target_os = "windows")))]
     let _ = window;
 }
 use commands::watcher_commands::{watch_vault, unwatch_vault, WatcherState};
@@ -78,12 +84,24 @@ fn is_main_window_alive(app: &tauri::AppHandle) -> bool {
     app.get_webview_window("main").is_some()
 }
 
+/// 销毁主窗口以外的常驻辅助窗口（设置、管理仓库等）。
+/// 设置窗口关闭时走 hide 复用 WebView，必须用 destroy 才能真正释放；
+/// 否则主窗口关闭后隐藏的设置窗仍会让进程无法退出。
+fn destroy_auxiliary_windows(app: &tauri::AppHandle) {
+    for label in ["settings", "vault-manager"] {
+        if let Some(win) = app.get_webview_window(label) {
+            let _ = win.destroy();
+        }
+    }
+}
+
 /// 前端关闭主窗口前调用，通知后端"主窗口即将销毁"。
 #[tauri::command]
 fn notify_main_closing(app: tauri::AppHandle) {
     if let Some(state) = app.try_state::<MainWindowClosing>() {
         state.0.store(true, std::sync::atomic::Ordering::SeqCst);
     }
+    destroy_auxiliary_windows(&app);
 }
 
 /// 过滤命令行参数中的 Markdown 文件路径
@@ -169,12 +187,22 @@ fn get_app_version(app: tauri::AppHandle) -> String {
     app.package_info().version.to_string()
 }
 
-/// 所有子窗口统一的背景色：纯白不透明。
-/// 原因：Windows WebView2 在首帧（HTML/CSS 真正 paint 之前）会先用"窗口背景色"
-/// 填充整个客户区。如果不设置，默认是黑色，就会出现用户截图里的"右下黑边"
-/// 无边框窗口背景：透明，配合 CSS border-radius 实现圆角（macOS 需 macOSPrivateApi）
+/// 是否使用透明窗口。
+/// - macOS / Linux：透明 + 前端 CSS 裁圆角（macOS 另需 macOSPrivateApi）
+/// - Windows：不透明，交给 Win11 DWM 做系统原生圆角（transparent 会破坏 DWM 圆角）
+fn window_transparent() -> bool {
+    !cfg!(target_os = "windows")
+}
+
+/// 窗口背景色。
+/// - 透明平台：全透明，配合 CSS 圆角
+/// - Windows：不透明（默认主题 mint 白底），避免 WebView2 首帧黑闪，并让 DWM 能裁系统圆角
 fn window_bg() -> tauri::utils::config::Color {
-    tauri::utils::config::Color(0, 0, 0, 0)
+    if cfg!(target_os = "windows") {
+        tauri::utils::config::Color(255, 255, 255, 255)
+    } else {
+        tauri::utils::config::Color(0, 0, 0, 0)
+    }
 }
 
 /// macOS Overlay 标题栏（隐藏标题文字 + Overlay + 红绿灯位置）。
@@ -221,7 +249,7 @@ async fn open_settings_window(app: tauri::AppHandle) -> Result<(), String> {
     .center()
     .visible(false)
     .decorations(cfg!(target_os = "macos"))
-    .transparent(true)
+    .transparent(window_transparent())
     .macos_overlay_chrome()
     .shadow(true)
     .background_color(window_bg());
@@ -230,7 +258,7 @@ async fn open_settings_window(app: tauri::AppHandle) -> Result<(), String> {
 
     match settings_window {
         Ok(win) => {
-            finish_macos_window(&win);
+            finish_platform_window(&win);
             Ok(())
         }
         Err(e) => Err(e.to_string()),
@@ -277,7 +305,7 @@ fn spawn_editor_window(
     .inner_size(width.unwrap_or(1200.0), height.unwrap_or(800.0))
     .min_inner_size(600.0, 400.0)
     .decorations(cfg!(target_os = "macos"))
-    .transparent(true)
+    .transparent(window_transparent())
     .macos_overlay_chrome()
     .shadow(true)
     .background_color(window_bg());
@@ -293,7 +321,7 @@ fn spawn_editor_window(
 
     match window {
         Ok(win) => {
-            finish_macos_window(&win);
+            finish_platform_window(&win);
             let app_handle = app.clone();
             let fp = file_path.to_string();
             let lbl = label.clone();
@@ -349,7 +377,7 @@ async fn open_mindmap_window(
     .min_inner_size(400.0, 300.0)
     .visible(false)
     .decorations(cfg!(target_os = "macos"))
-    .transparent(true)
+    .transparent(window_transparent())
     .macos_overlay_chrome()
     .shadow(true)
     .background_color(window_bg())
@@ -357,7 +385,7 @@ async fn open_mindmap_window(
 
     match window {
         Ok(win) => {
-            finish_macos_window(&win);
+            finish_platform_window(&win);
             Ok(())
         }
         Err(e) => Err(e.to_string()),
@@ -388,7 +416,7 @@ async fn open_graph_window(
     .min_inner_size(500.0, 400.0)
     .visible(false)
     .decorations(cfg!(target_os = "macos"))
-    .transparent(true)
+    .transparent(window_transparent())
     .macos_overlay_chrome()
     .shadow(true)
     .background_color(window_bg())
@@ -396,7 +424,7 @@ async fn open_graph_window(
 
     match window {
         Ok(win) => {
-            finish_macos_window(&win);
+            finish_platform_window(&win);
             Ok(())
         }
         Err(e) => Err(e.to_string()),
@@ -433,7 +461,7 @@ async fn open_canvas_window(
     .min_inner_size(500.0, 400.0)
     .visible(false)
     .decorations(cfg!(target_os = "macos"))
-    .transparent(true)
+    .transparent(window_transparent())
     .macos_overlay_chrome()
     .shadow(true)
     .background_color(window_bg())
@@ -441,7 +469,7 @@ async fn open_canvas_window(
 
     match window {
         Ok(win) => {
-            finish_macos_window(&win);
+            finish_platform_window(&win);
             Ok(())
         }
         Err(e) => Err(e.to_string()),
@@ -485,7 +513,7 @@ async fn open_canvas_in_new_window(
     .min_inner_size(500.0, 400.0)
     .center()
     .decorations(cfg!(target_os = "macos"))
-    .transparent(true)
+    .transparent(window_transparent())
     .macos_overlay_chrome()
     .shadow(true)
     .background_color(window_bg())
@@ -493,7 +521,7 @@ async fn open_canvas_in_new_window(
 
     match window {
         Ok(win) => {
-            finish_macos_window(&win);
+            finish_platform_window(&win);
             let app_handle = app.clone();
             let cp = canvas_path.clone();
             let lbl = label.clone();
@@ -533,7 +561,7 @@ async fn open_vault_manager_window(app: tauri::AppHandle) -> Result<(), String> 
     .center()
     .visible(false)
     .decorations(cfg!(target_os = "macos"))
-    .transparent(true)
+    .transparent(window_transparent())
     .macos_overlay_chrome()
     .shadow(true)
     .background_color(window_bg())
@@ -541,7 +569,7 @@ async fn open_vault_manager_window(app: tauri::AppHandle) -> Result<(), String> 
 
     match window {
         Ok(win) => {
-            finish_macos_window(&win);
+            finish_platform_window(&win);
             Ok(())
         }
         Err(e) => Err(e.to_string()),
@@ -603,7 +631,7 @@ async fn open_vault_in_new_window(app: tauri::AppHandle, vault_path: String, wid
     .min_inner_size(600.0, 400.0)
     .center()
     .decorations(cfg!(target_os = "macos"))
-    .transparent(true)
+    .transparent(window_transparent())
     .macos_overlay_chrome()
     .shadow(true)
     .background_color(window_bg())
@@ -611,7 +639,7 @@ async fn open_vault_in_new_window(app: tauri::AppHandle, vault_path: String, wid
 
     match window {
         Ok(win) => {
-            finish_macos_window(&win);
+            finish_platform_window(&win);
             Ok(())
         }
         Err(e) => Err(e.to_string()),
@@ -1904,14 +1932,32 @@ pub fn run() {
                     {
                         let _ = window.set_decorations(false);
                     }
+                    // 避免 decorations 切换后未装饰阴影丢失。
+                    #[cfg(target_os = "windows")]
+                    {
+                        let _ = window.set_shadow(true);
+                    }
                     // macOS：强制 Overlay 红绿灯（防止旧 window-state 或其它路径关掉 decorations）
                     #[cfg(target_os = "macos")]
                     {
                         let _ = window.set_decorations(true);
                         let _ = window.set_title_bar_style(tauri::TitleBarStyle::Overlay);
                     }
-                    finish_macos_window(&window);
+                    finish_platform_window(&window);
                     let _ = window.show();
+
+                    // 主窗口关闭时同步销毁隐藏的辅助窗口（设置窗 hide 复用场景）
+                    let app_handle = app.handle().clone();
+                    window.on_window_event(move |event| {
+                        if let tauri::WindowEvent::CloseRequested { .. } = event {
+                            if let Some(state) = app_handle.try_state::<MainWindowClosing>() {
+                                state
+                                    .0
+                                    .store(true, std::sync::atomic::Ordering::SeqCst);
+                            }
+                            destroy_auxiliary_windows(&app_handle);
+                        }
+                    });
                 }
                 emit_boot_timing(app, "main_window_shown");
             } else {

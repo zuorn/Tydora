@@ -5,11 +5,18 @@
     "noResults": "No matching settings found",
     "close": "Close",
     "appearance": {
+      "groupTitleInterface": "Interface",
+      "groupInterface": "Interface",
       "groupTitleAppearance": "Appearance",
+      "groupTitleEditor": "Editor",
+      "groupTitleSave": "Save",
       "groupTitleBehavior": "Behavior",
       "groupTitleWindow": "Window",
+      "groupTitleSidebar": "Sidebar",
       "previewMaxWidth": "Preview Area Width",
       "previewMaxWidthDesc": "Maximum width of the editor content area.",
+      "uiFont": "UI Font",
+      "uiFontDesc": "Font used by the sidebar, menus, settings, and other interface chrome.",
       "editorFont": "Editor Font",
       "editorFontDesc": "Font for body text and Markdown source. Pick from fonts installed on your system.",
       "codeFont": "Code Font",
@@ -50,8 +57,23 @@
       "autoHideTopbarDesc": "When enabled, the top bar auto-hides when the sidebar is expanded. Hover the top edge to show it temporarily.",
       "autoHideTopbarOnCollapse": "Auto-hide Top Bar When Sidebar Collapsed",
       "autoHideTopbarOnCollapseDesc": "When enabled, the top bar auto-hides when the sidebar is collapsed. When disabled, the top bar remains visible.",
+      "autoHideVaultFooter": "Auto-hide Vault Bar",
+      "autoHideVaultFooterDesc": "When enabled, the vault switcher at the bottom of the sidebar only appears on hover. When disabled, it stays visible.",
       "expandOutlineOnOpen": "Expand Outline on Launch",
       "expandOutlineOnOpenDesc": "When enabled, opening a .md file via OS file association expands the sidebar and switches to the Outline view. When disabled, the sidebar stays collapsed.",
+      "sidebarPanels": "Sidebar Panels",
+      "sidebarPanelsDesc": "Choose whether each panel appears in the left sidebar or right sidebar.",
+      "formatOnSave": "Format on Save",
+      "formatOnSaveDesc": "Automatically format Markdown files using the rules below when saving.",
+      "groupTitleMarkdownFormat": "Markdown Format",
+      "formatCjkSpacing": "Space between CJK and Latin",
+      "formatCjkSpacingDesc": "Insert spaces between CJK and Latin letters or digits (skips code, tables, links; off by default).",
+      "formatTrimTrailing": "Trim trailing whitespace",
+      "formatTrimTrailingDesc": "Remove trailing spaces; keep the two spaces used for Markdown hard line breaks.",
+      "formatEnsureNewline": "Final newline",
+      "formatEnsureNewlineDesc": "Ensure the file ends with a single newline.",
+      "formatNormalizeBlank": "Collapse extra blank lines",
+      "formatNormalizeBlankDesc": "Collapse 3+ consecutive blank lines into one. Does not insert blank lines around headings or lists.",
       "language": "Language",
       "languageDesc": "Interface display language.",
       "analytics": "Together, we'll go the distance 🌿",
@@ -85,6 +107,9 @@
     "tabs": {
       "groupGeneral": "General",
       "general": "General",
+      "editor": "Editor",
+      "markdown": "Markdown",
+      "appearance": "Appearance",
       "theme": "Theme",
       "shortcuts": "Shortcuts",
       "image": "Image",
@@ -97,6 +122,12 @@
       "vim": "Vim Mode",
       "groupAbout": "About",
       "about": "About"
+    },
+    "general": {
+      "groupLanguage": "Language"
+    },
+    "markdown": {
+      "groupFeatures": "Syntax Extensions"
     },
     "terminal": {
       "colorScheme": "Color Scheme",
@@ -367,6 +398,7 @@
         "paddingCodeInlineY": "Inline code padding (vertical)",
         "paddingCodeInlineX": "Inline code padding (horizontal)",
         "radiusMetadata": "Metadata radius",
+        "marginMetadataBottom": "Metadata bottom spacing",
         "blockquoteBorderWidth": "Blockquote bar width",
         "paddingBlockquoteY": "Blockquote padding (vertical)",
         "paddingBlockquoteX": "Blockquote padding (horizontal)",
@@ -466,6 +498,7 @@
       "title": "Sidebar",
       "desc": "Choose whether each sidebar tab appears on the left or right sidebar.",
       "files": "Files",
+      "openFiles": "Open Files",
       "search": "Search",
       "outline": "Outline",
       "bookmarks": "Bookmarks",
@@ -473,6 +506,8 @@
       "right": "Right Sidebar"
     },
     "editor": {
+      "groupExperience": "Editing",
+      "groupTypography": "Typography & Fonts",
       "defaultMode": "Default Edit Mode",
       "defaultModeDesc": "Edit mode used when creating new files.",
       "instantRender": "Instant Render",
@@ -598,6 +633,7 @@
       "forward": "Forward",
       "find": "Find",
       "replace": "Replace",
+      "formatDocument": "Format Document",
       "favorite": "Favorite",
       "splitLeftRight": "Split Left-Right",
       "splitTopBottom": "Split Top-Bottom",
@@ -622,6 +658,9 @@
       "disabled": "Click to enable typewriter mode"
     },
     "fontSizeToast": "Font size",
+    "scrollJump": "Scroll to edge",
+    "scrollToTop": "Scroll to top",
+    "scrollToBottom": "Scroll to bottom",
     "wordCount": "{{count}} words",
     "vimMode": {
       "normal": "NORMAL mode",
@@ -672,6 +711,7 @@
       "openFileFailedEvent": "Failed to open file via event:",
       "listenEventFailed": "Failed to listen for open-file event:",
       "saveFailed": "Save failed:",
+      "formatFailed": "Format failed:",
       "autoSaveFailed": "Auto-save failed:",
       "openNewWindowFailed": "Failed to open new window:",
       "renameFailed": "Rename failed:",
@@ -695,6 +735,7 @@
       },
       "labels": {
         "saveFile": "Save File",
+        "formatDocument": "Format Document",
         "openFile": "Open File",
         "openInNewWindow": "Open in New Window",
         "undo": "Undo",
@@ -743,6 +784,8 @@
         "insertFormula": "Insert Formula",
         "minimizeWindow": "Minimize Window",
         "maximizeWindow": "Maximize Window",
+        "closeFile": "Close Current File",
+        "closeAllFiles": "Close All Files",
         "closeWindow": "Close Window",
         "openSettings": "Toggle Settings",
         "generalSettings": "General Settings",
@@ -918,7 +961,7 @@
       },
       "contextMenu": {
         "openInNewWindow": "Open in New Window",
-        "editTitle": "Edit Title",
+        "editBookmark": "Edit Bookmark",
         "unfavorite": "Remove Bookmark",
         "copyPath": "Copy Path",
         "rename": "Rename",
@@ -970,6 +1013,16 @@
       "revealActiveFile": "Reveal Active File"
     }
   },
+
+  "openFiles": {
+    "tabTitle": "Open Files",
+    "empty": "No open files",
+    "emptyHint": "Select a file in the tree to open it here",
+    "close": "Close",
+    "closeConfirmTitle": "Save changes?",
+    "closeConfirmMessage": "\"{{name}}\" has unsaved changes. Save before closing?",
+    "closeAllConfirmMessage": "Some files have unsaved changes. Save before closing all?"
+  },
   "editor": {
     "contextMenu": {
       "cut": "Cut",
@@ -997,6 +1050,7 @@
       "paragraph": "Paragraph",
       "image": "Image",
       "horizontalRule": "Horizontal Rule",
+      "moreTag": "Excerpt Break (<!--more-->)",
       "table": "Table",
       "codeBlock": "Code Block",
       "mathBlock": "Math Block",

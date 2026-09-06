@@ -360,6 +360,7 @@ interface CodeMirrorEditorProps {
   filePath?: string | null;
   /** 选区（Markdown 源码偏移）变化时回调，用于跨模式保留光标位置 */
   onSelectionChange?: (selection: { anchor: number; head: number }) => void;
+  pendingViewRestoreRef?: React.MutableRefObject<import("./types").EditorViewState | null>;
 }
 
 export interface CodeMirrorEditorHandle {
@@ -368,6 +369,8 @@ export interface CodeMirrorEditorHandle {
   focus: () => void;
   /** 设置选区（Markdown 源码偏移）并将焦点移入编辑器 */
   setSelectionAndFocus: (anchor: number, head: number) => void;
+  getViewState: () => import("./types").EditorViewState | null;
+  restoreViewState: (state: import("./types").EditorViewState) => void;
 }
 
 const highlightCompartment = new Compartment();
@@ -655,7 +658,7 @@ function executeCMTableAction(view: EditorView, op: string): boolean {
 }
 
 const CodeMirrorEditor = forwardRef<CodeMirrorEditorHandle, CodeMirrorEditorProps>(
-  ({ value, onChange, onWordCount, filePath, onSelectionChange }, ref) => {
+  ({ value, onChange, onWordCount, filePath, onSelectionChange, pendingViewRestoreRef }, ref) => {
     const containerRef = useRef<HTMLDivElement>(null);
     const viewRef = useRef<EditorView | null>(null);
     const onChangeRef = useRef(onChange);
@@ -697,6 +700,31 @@ const CodeMirrorEditor = forwardRef<CodeMirrorEditorHandle, CodeMirrorEditorProp
         const h = Math.max(0, Math.min(head, len));
         view.dispatch({ selection: { anchor: a, head: h } });
         view.focus();
+      },
+      getViewState: () => {
+        const view = viewRef.current;
+        if (!view) return null;
+        const scroller = view.scrollDOM;
+        const { anchor, head } = view.state.selection.main;
+        return {
+          scrollTop: scroller.scrollTop,
+          scrollLeft: scroller.scrollLeft,
+          cursorOffset: anchor,
+          selectionHead: head,
+        };
+      },
+      restoreViewState: (state) => {
+        const view = viewRef.current;
+        if (!view) return;
+        const len = view.state.doc.length;
+        const anchor = Math.max(0, Math.min(state.cursorOffset, len));
+        const head = Math.max(0, Math.min(state.selectionHead, len));
+        view.dispatch({ selection: { anchor, head } });
+        requestAnimationFrame(() => {
+          const scroller = view.scrollDOM;
+          scroller.scrollTop = state.scrollTop;
+          scroller.scrollLeft = state.scrollLeft;
+        });
       },
     }));
 
@@ -906,8 +934,18 @@ const CodeMirrorEditor = forwardRef<CodeMirrorEditorHandle, CodeMirrorEditorProp
         // 文件切换时重置滚动位置到顶部
         if (fileChanged) {
           requestAnimationFrame(() => {
+            const restore = pendingViewRestoreRef?.current;
             const scroller = viewRef.current?.scrollDOM;
-            if (scroller) {
+            if (restore && scroller && viewRef.current) {
+              const view = viewRef.current;
+              const len = view.state.doc.length;
+              const anchor = Math.max(0, Math.min(restore.cursorOffset, len));
+              const head = Math.max(0, Math.min(restore.selectionHead, len));
+              view.dispatch({ selection: { anchor, head } });
+              scroller.scrollTop = restore.scrollTop;
+              scroller.scrollLeft = restore.scrollLeft;
+              if (pendingViewRestoreRef) pendingViewRestoreRef.current = null;
+            } else if (scroller) {
               scroller.scrollTop = 0;
               scroller.scrollLeft = 0;
             }

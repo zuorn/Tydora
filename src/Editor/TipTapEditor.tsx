@@ -33,6 +33,7 @@ import { common, createLowlight } from "lowlight";
 import { Frontmatter } from "./extensions/frontmatter";
 import { StripStyle } from "./extensions/strip-style";
 import { Callout } from "./extensions/callout";
+import { More } from "./extensions/more";
 import { Mermaid } from "./extensions/mermaid";
 import { WikiLink } from "./extensions/wiki-link";
 import { Tag } from "./extensions/tag";
@@ -65,7 +66,7 @@ import { MathDialog } from "./MathDialog";
 import type { ThemeName } from "../themes";
 import type { ImageSettings } from "../services";
 import type { EditorSettings } from "../Settings";
-import type { EditorHandle, EditorMode } from "./types";
+import type { EditorHandle, EditorMode, EditorViewState } from "./types";
 import "./theme.css";
 import "katex/dist/katex.min.css";
 import "../tags/Tag.css";
@@ -186,6 +187,7 @@ interface TipTapEditorProps {
   onWordCount?: (count: number) => void;
   /** 该编辑器是否为当前激活窗格（多窗格时只有激活窗格的 Leader 菜单才生效） */
   active?: boolean;
+  pendingViewRestoreRef?: React.MutableRefObject<EditorViewState | null>;
 }
 
 // ── Vim motions：vim-prose 未实现的补齐 ──────────────────────────────
@@ -348,7 +350,7 @@ function vimPageScrollCenterTipTap(
 }
 
 const TipTapEditor = forwardRef<EditorHandle, TipTapEditorProps>(
-  ({ value, onChange, mode, typewriterMode, previewMaxWidth, lineHeight, paragraphSpacing, codeLineHeight, irLineNumbers, editorSettings, imageSettings, currentFilePath, activeVaultPath, onWordCount, active = true }, ref) => {
+  ({ value, onChange, mode, typewriterMode, previewMaxWidth, lineHeight, paragraphSpacing, codeLineHeight, irLineNumbers, editorSettings, imageSettings, currentFilePath, activeVaultPath, onWordCount, active = true, pendingViewRestoreRef }, ref) => {
     const containerRef = useRef<HTMLDivElement>(null);
     const onChangeRef = useRef(onChange);
     const onWordCountRef = useRef(onWordCount);
@@ -1134,6 +1136,7 @@ const TipTapEditor = forwardRef<EditorHandle, TipTapEditorProps>(
         StripStyle,
         ...(editorSettings?.frontmatter !== false ? [Frontmatter] : []),
         ...(editorSettings?.callout !== false ? [Callout] : []),
+        More,
         ...(editorSettings?.mermaid !== false ? [Mermaid] : []),
         ...(editorSettings?.wikiLink !== false ? [WikiLink] : []),
         ...(editorSettings?.math !== false
@@ -2199,6 +2202,38 @@ const TipTapEditor = forwardRef<EditorHandle, TipTapEditorProps>(
         if (!editor) return;
         editor.chain().focus().setTextSelection({ from, to }).insertContent(replacement).run();
       },
+      getViewState: (): EditorViewState | null => {
+        if (mode === "sv") {
+          return sourceEditorRef.current?.getViewState() ?? null;
+        }
+        if (!editor) return null;
+        const scrollContainer = containerRef.current?.querySelector(".tiptap-editor") as HTMLElement | null;
+        const { from, to } = editor.state.selection;
+        return {
+          scrollTop: scrollContainer?.scrollTop ?? 0,
+          scrollLeft: scrollContainer?.scrollLeft ?? 0,
+          cursorOffset: from,
+          selectionHead: to,
+        };
+      },
+      restoreViewState: (state: EditorViewState) => {
+        if (mode === "sv") {
+          sourceEditorRef.current?.restoreViewState(state);
+          return;
+        }
+        if (!editor) return;
+        const len = editor.state.doc.content.size;
+        const from = Math.max(0, Math.min(state.cursorOffset, len));
+        const to = Math.max(0, Math.min(state.selectionHead, len));
+        editor.chain().setTextSelection({ from, to }).run();
+        requestAnimationFrame(() => {
+          const scrollContainer = containerRef.current?.querySelector(".tiptap-editor") as HTMLElement | null;
+          if (scrollContainer) {
+            scrollContainer.scrollTop = state.scrollTop;
+            scrollContainer.scrollLeft = state.scrollLeft;
+          }
+        });
+      },
     }));
 
     // 外部 value 同步
@@ -2226,15 +2261,24 @@ const TipTapEditor = forwardRef<EditorHandle, TipTapEditorProps>(
         // 文件切换或从 SV 切换回 IR 时强制更新内容
         isInternalRef.current = true;
         editor.commands.setContent(value);
-        // setContent 默认把选区放到文档末尾。后续 openFile 在 60ms 后调用 focus()，
-        // ProseMirror 会把当前选区滚动到视图中 → 光标在末尾就导致跳到底部。
-        // 重置光标到文档开头，使 focus() 不再向下滚动。
-        editor.commands.setTextSelection(1);
-        // 文件切换时重置滚动位置到顶部
         requestAnimationFrame(() => {
-          const scrollContainer = containerRef.current?.querySelector('.tiptap-editor');
-          if (scrollContainer) {
+          const restore = pendingViewRestoreRef?.current;
+          const scrollContainer = containerRef.current?.querySelector(".tiptap-editor") as HTMLElement | null;
+          if (restore && fileChanged && scrollContainer) {
+            const len = editor.state.doc.content.size;
+            const from = Math.max(0, Math.min(restore.cursorOffset, len));
+            const to = Math.max(0, Math.min(restore.selectionHead, len));
+            editor.chain().setTextSelection({ from, to }).run();
+            scrollContainer.scrollTop = restore.scrollTop;
+            scrollContainer.scrollLeft = restore.scrollLeft;
+            if (pendingViewRestoreRef) pendingViewRestoreRef.current = null;
+          } else if (scrollContainer && fileChanged) {
+            // setContent 默认把选区放到文档末尾。后续 openFile 在 60ms 后调用 focus()，
+            // ProseMirror 会把当前选区滚动到视图中 → 光标在末尾就导致跳到底部。
+            // 重置光标到文档开头，使 focus() 不再向下滚动。
+            editor.commands.setTextSelection(1);
             scrollContainer.scrollTop = 0;
+            scrollContainer.scrollLeft = 0;
           }
         });
       } else {
@@ -2332,6 +2376,7 @@ const TipTapEditor = forwardRef<EditorHandle, TipTapEditorProps>(
           onWordCount={onWordCount}
           filePath={currentFilePath}
           onSelectionChange={handleSourceSelectionChange}
+          pendingViewRestoreRef={pendingViewRestoreRef}
         />
       );
     }

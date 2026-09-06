@@ -13,6 +13,7 @@ import { LinkIndexService } from "./wikilink";
 import { resolveRelativePath } from "./services";
 import { relativePath as computeRelativePath } from "./services/ImageManager";
 import { BookmarksPanel } from "./Bookmarks";
+import { OpenFilesPanel } from "./OpenFiles";
 import { type SidebarTab } from "./Settings";
 import "./Sidebar.css";
 
@@ -89,10 +90,17 @@ interface SidebarProps {
   onWidthChange: (width: number) => void;
   onBookmark: (filePath: string, isDirectory: boolean) => void;
   outlineTrigger?: number;
+  openFiles?: string[];
+  activeOpenFilePath?: string | null;
+  modifiedOpenPaths?: Set<string>;
+  onSelectOpenFile?: (path: string) => void;
+  onCloseOpenFile?: (path: string) => void;
   /** 侧栏位于左/右；右栏会镜像边框与 resize 方向 */
   side?: "left" | "right";
-  /** 本侧栏渲染哪些 tab（顺序固定 files→search→outline→bookmarks）；空数组则显示空状态 */
+  /** 本侧栏渲染哪些 tab（顺序固定 files→openFiles→search→outline→bookmarks）；空数组则显示空状态 */
   tabs?: SidebarTab[];
+  /** 侧栏底部仓库切换条是否自动隐藏（仅左栏） */
+  autoHideVaultFooter?: boolean;
 }
 
 interface ContextMenuItem {
@@ -2893,6 +2901,8 @@ function VaultSwitcher({
 
 // ── Sidebar Main ─────────────────────────────────────────────────────
 
+type SidebarActiveTab = "files" | "openFiles" | "search" | "outline" | "bookmarks";
+
 export default function Sidebar({
   vaults,
   activeVaultIndex,
@@ -2912,19 +2922,25 @@ export default function Sidebar({
   onWidthChange,
   onBookmark,
   outlineTrigger,
+  openFiles = [],
+  activeOpenFilePath = null,
+  modifiedOpenPaths = new Set<string>(),
+  onSelectOpenFile = () => {},
+  onCloseOpenFile = () => {},
   side = "left",
   tabs,
+  autoHideVaultFooter = true,
 }: SidebarProps) {
   bootStart("sidebar_component_render");
   bootStamp("sidebar_component_entered");
   const activeVault = activeVaultIndex >= 0 ? vaults[activeVaultIndex] : null;
   const [isResizing, setIsResizing] = useState(false);
-  // 本侧栏可渲染的 tab 列表（默认全部 4 个，顺序固定 files→search→outline→bookmarks）
+  // 本侧栏可渲染的 tab 列表（默认全部 5 个，顺序固定 files→openFiles→search→outline→bookmarks）
   const visibleTabs = useMemo<SidebarTab[]>(
-    () => tabs ?? ["files", "search", "outline", "bookmarks"],
+    () => tabs ?? ["files", "openFiles", "search", "outline", "bookmarks"],
     [tabs],
   );
-  const [activeTab, setActiveTab] = useState<"files" | "search" | "outline" | "bookmarks">(
+  const [activeTab, setActiveTab] = useState<SidebarActiveTab>(
     visibleTabs[0] ?? "files",
   );
   const [searchQuery, setSearchQuery] = useState("");
@@ -2934,10 +2950,11 @@ export default function Sidebar({
   // ── 焦点管理：侧栏打开 / 切 Tab / 点击时，焦点自动落到当前 Tab 的可交互区域 ──
   const sidebarRef = useRef<HTMLDivElement>(null);
   const filesPanelRef = useRef<HTMLDivElement>(null);
+  const openFilesPanelRef = useRef<HTMLDivElement>(null);
   const outlinePanelRef = useRef<HTMLDivElement>(null);
   const bookmarksPanelRef = useRef<HTMLDivElement>(null);
 
-  const focusTabContent = useCallback((tab: "files" | "search" | "outline" | "bookmarks") => {
+  const focusTabContent = useCallback((tab: SidebarActiveTab) => {
     switch (tab) {
       case "files": {
         filesPanelRef.current?.focus();
@@ -2952,6 +2969,9 @@ export default function Sidebar({
         }
         break;
       }
+      case "openFiles":
+        openFilesPanelRef.current?.focus();
+        break;
       case "search": {
         const input =
           sidebarRef.current?.querySelector<HTMLInputElement>(".sidebar-search-input");
@@ -2973,7 +2993,7 @@ export default function Sidebar({
     [onSelectFile],
   );
 
-  const switchTab = useCallback((tab: "files" | "search" | "outline" | "bookmarks") => {
+  const switchTab = useCallback((tab: SidebarActiveTab) => {
     // 本侧栏不渲染该 tab 时忽略（避免 vim/快捷键切换把焦点设到不存在的面板）
     if (!visibleTabs.includes(tab)) return;
     setActiveTab(tab);
@@ -3032,7 +3052,7 @@ export default function Sidebar({
   useEffect(() => {
     const handler = (e: Event) => {
       const { tab } = (e as CustomEvent).detail;
-      if (tab === "search" || tab === "files" || tab === "outline" || tab === "bookmarks") {
+      if (tab === "search" || tab === "files" || tab === "openFiles" || tab === "outline" || tab === "bookmarks") {
         switchTab(tab);
       }
     };
@@ -3043,7 +3063,7 @@ export default function Sidebar({
   // Ctrl+h 到最左边界 / focusPane 跨界 → 把焦点交给侧栏当前 tab 的主内容区
   useEffect(() => {
     const handler = (e: Event) => {
-      const detail = (e as CustomEvent<{ tab?: "files" | "search" | "outline" | "bookmarks"; side?: "left" | "right" }>).detail ?? {};
+      const detail = (e as CustomEvent<{ tab?: SidebarActiveTab; side?: "left" | "right" }>).detail ?? {};
       // 只处理属于本侧栏的事件：未指定 side 时默认 left（兼容旧调用方）
       const targetSide = detail.side === "right" ? "right" : "left";
       if (targetSide !== side) return;
@@ -3064,6 +3084,62 @@ export default function Sidebar({
     prevOutlineTriggerRef.current = outlineTrigger;
     switchTab("outline");
   }, [outlineTrigger, switchTab]);
+
+  // Open Files 面板：Ctrl+Tab 在最近打开的文件间切换
+  const prevOpenFileRef = useRef<string | null>(null);
+  const lastActiveOpenFileRef = useRef<string | null>(null);
+  const ctrlTabPressCountRef = useRef(0);
+  const openFilesForTabRef = useRef(openFiles);
+  const activeOpenFilePathForTabRef = useRef(activeOpenFilePath);
+  openFilesForTabRef.current = openFiles;
+  activeOpenFilePathForTabRef.current = activeOpenFilePath;
+
+  useEffect(() => {
+    if (activeOpenFilePath !== lastActiveOpenFileRef.current) {
+      if (lastActiveOpenFileRef.current !== null) {
+        prevOpenFileRef.current = lastActiveOpenFileRef.current;
+      }
+      lastActiveOpenFileRef.current = activeOpenFilePath;
+    }
+  }, [activeOpenFilePath]);
+
+  useEffect(() => {
+    const onKeyDown = (e: KeyboardEvent) => {
+      if (activeTab !== "openFiles" || openFilesForTabRef.current.length === 0) return;
+      if (!(e.ctrlKey || e.metaKey) || e.altKey || e.key !== "Tab") return;
+      e.preventDefault();
+
+      const files = openFilesForTabRef.current;
+      const currentPath = activeOpenFilePathForTabRef.current;
+      const isFirstTabInSession = ctrlTabPressCountRef.current === 0;
+      ctrlTabPressCountRef.current += 1;
+
+      if (isFirstTabInSession) {
+        const prev = prevOpenFileRef.current;
+        if (prev && files.includes(prev) && prev !== currentPath) {
+          onSelectOpenFile(prev);
+          activeOpenFilePathForTabRef.current = prev;
+          return;
+        }
+      }
+
+      const currentIdx = currentPath ? files.indexOf(currentPath) : -1;
+      const nextIdx = e.shiftKey
+        ? (currentIdx <= 0 ? files.length - 1 : currentIdx - 1)
+        : (currentIdx < 0 || currentIdx >= files.length - 1 ? 0 : currentIdx + 1);
+      const nextPath = files[nextIdx];
+      if (nextPath) {
+        onSelectOpenFile(nextPath);
+        activeOpenFilePathForTabRef.current = nextPath;
+      }
+    };
+    window.addEventListener("keydown", onKeyDown);
+    return () => window.removeEventListener("keydown", onKeyDown);
+  }, [activeTab, onSelectOpenFile]);
+
+  useEffect(() => {
+    ctrlTabPressCountRef.current = 0;
+  }, [activeOpenFilePath]);
 
   // Resize logic
   const [startX, setStartX] = useState(0);
@@ -3100,7 +3176,7 @@ export default function Sidebar({
     <div
       ref={sidebarRef}
       tabIndex={-1}
-      className={`sidebar${collapsed ? " collapsed" : ""}${isResizing ? " resizing" : ""}${side === "right" ? " sidebar-right" : ""}`}
+      className={`sidebar${collapsed ? " collapsed" : ""}${isResizing ? " resizing" : ""}${side === "right" ? " sidebar-right" : ""}${side === "left" && !autoHideVaultFooter ? " sidebar--vault-footer-pinned" : ""}`}
       style={{ width: collapsed ? 0 : width }}
       onMouseDownCapture={(e) => {
         // 用户点击侧栏时：若点击的是「非可聚焦」元素，把焦点交给当前 Tab 的主内容容器。
@@ -3129,6 +3205,18 @@ export default function Sidebar({
             >
               <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                 <path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z" />
+              </svg>
+            </button>
+          )}
+          {visibleTabs.includes("openFiles") && (
+            <button
+              className={`sidebar-tab${activeTab === "openFiles" ? " active" : ""}`}
+              onClick={() => switchTab("openFiles")}
+              title={i18n.t("openFiles.tabTitle")}
+            >
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <rect x="3" y="3" width="7" height="18" rx="1" />
+                <rect x="14" y="3" width="7" height="18" rx="1" />
               </svg>
             </button>
           )}
@@ -3203,6 +3291,18 @@ export default function Sidebar({
                   <div className="tree-empty-hint">{i18n.t("sidebar.empty.openVaultHint")}</div>
                 </div>
               )}
+            </div>
+          )}
+
+          {activeTab === "openFiles" && (
+            <div ref={openFilesPanelRef} tabIndex={-1} style={{ outline: "none", flex: 1, minHeight: 0, display: "flex", flexDirection: "column" }}>
+              <OpenFilesPanel
+                openFiles={openFiles}
+                activeFilePath={activeOpenFilePath}
+                modifiedPaths={modifiedOpenPaths}
+                onSelectFile={onSelectOpenFile}
+                onCloseFile={onCloseOpenFile}
+              />
             </div>
           )}
 

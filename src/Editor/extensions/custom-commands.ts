@@ -154,6 +154,9 @@ export function executeCommand(name: string, editor: Editor | null) {
     case "hr":
       chain.setHorizontalRule().run();
       break;
+    case "more":
+      chain.setMore().run();
+      break;
 
     // 表格
     case "table":

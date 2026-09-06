@@ -75,6 +75,7 @@
   right: auto;
   left: auto;
   z-index: 10000;
+  font-family: var(--font-ui);
 }
 
 .settings-select-list {

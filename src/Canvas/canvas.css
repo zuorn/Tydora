@@ -892,7 +892,7 @@
   background: var(--metadata-bg, var(--bg-secondary, #f5f5f5));
   border: 1px solid var(--metadata-border, var(--border, #e0e0e0));
   border-radius: var(--radius-metadata, 8px);
-  margin: 0;
+  margin: 0 0 var(--margin-metadata-bottom, 16px);
   font-size: 0.85em;
   position: relative;
   overflow: visible;
@@ -1350,16 +1350,18 @@
   left: 50%;
   transform: translateX(-50%);
   margin-bottom: 8px;
-  padding: 6px 12px;
-  background: #1a1a1a;
-  color: #fff;
+  padding: 6px 10px;
+  background: var(--bg-secondary);
+  border: 1px solid var(--border);
+  color: var(--text-primary);
   font-size: 12px;
-  border-radius: 6px;
+  border-radius: 8px;
   white-space: nowrap;
   pointer-events: none;
   opacity: 0;
   transition: opacity 0.2s;
   transition-delay: 0s;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.35);
 }
 
 .canvas-toolbar:hover .canvas-toolbar-tooltip {
@@ -1374,7 +1376,7 @@
   left: 50%;
   transform: translateX(-50%);
   border: 5px solid transparent;
-  border-top-color: #1a1a1a;
+  border-top-color: var(--bg-secondary);
 }
 
 /* Individual button tooltip */
@@ -1389,17 +1391,19 @@
   left: 50%;
   transform: translateX(-50%);
   margin-bottom: 8px;
-  padding: 6px 12px;
-  background: #1a1a1a;
-  color: #fff;
+  padding: 6px 10px;
+  background: var(--bg-secondary);
+  border: 1px solid var(--border);
+  color: var(--text-primary);
   font-size: 12px;
-  border-radius: 6px;
+  border-radius: 8px;
   white-space: nowrap;
   pointer-events: none;
   opacity: 0;
   transition: opacity 0.2s;
   transition-delay: 0s;
   z-index: 100;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.35);
 }
 
 .canvas-toolbar-btn:hover::after {
@@ -1415,7 +1419,7 @@
   transform: translateX(-50%);
   margin-bottom: 3px;
   border: 5px solid transparent;
-  border-top-color: #1a1a1a;
+  border-top-color: var(--bg-secondary);
   opacity: 0;
   pointer-events: none;
   transition: opacity 0.2s;

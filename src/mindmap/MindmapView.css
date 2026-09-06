@@ -11,6 +11,32 @@
   outline: none;
 }
 
+/* 暗色外观：markmap 默认 #333 文字，改为主题亮色 */
+html[data-appearance="dark"] .mindmap-container.markmap-dark .markmap,
+html[data-appearance="dark"] .mindmap-container .markmap {
+  --markmap-text-color: var(--text-primary);
+  --markmap-code-color: var(--text-primary);
+  --markmap-code-bg: var(--bg-surface);
+  --markmap-circle-open-bg: var(--bg-surface);
+  --markmap-a-color: var(--accent);
+  --markmap-a-hover-color: var(--accent-hover);
+  --markmap-highlight-bg: color-mix(in srgb, var(--accent) 28%, transparent);
+  color: var(--text-primary);
+}
+
+html[data-appearance="dark"] .mindmap-container .markmap-foreign,
+html[data-appearance="dark"] .mindmap-container .markmap-foreign div,
+html[data-appearance="dark"] .mindmap-container .markmap-foreign p,
+html[data-appearance="dark"] .mindmap-container .markmap-foreign li,
+html[data-appearance="dark"] .mindmap-container .markmap-foreign span {
+  color: var(--text-primary);
+}
+
+html[data-appearance="dark"] .mindmap-container .markmap-foreign code {
+  color: var(--text-primary);
+  background-color: var(--bg-surface);
+}
+
 .markmap-node-selected circle {
   stroke: var(--accent) !important;
   stroke-width: 2.5 !important;

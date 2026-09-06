@@ -33,6 +33,31 @@ function loadEnv(envPath) {
 // Load .env for Tauri code signing keys
 loadEnv(resolve(projectRoot, ".env"));
 
+// Tauri bundler requires TAURI_SIGNING_PRIVATE_KEY (contents).
+// If only a path is set, resolve it so `npm run tauri -- build` works.
+if (!process.env.TAURI_SIGNING_PRIVATE_KEY && process.env.TAURI_SIGNING_PRIVATE_KEY_PATH) {
+  try {
+    process.env.TAURI_SIGNING_PRIVATE_KEY = readFileSync(
+      process.env.TAURI_SIGNING_PRIVATE_KEY_PATH,
+      "utf-8",
+    ).trim();
+  } catch (err) {
+    console.error(
+      `[run-tauri] Failed to read TAURI_SIGNING_PRIVATE_KEY_PATH: ${process.env.TAURI_SIGNING_PRIVATE_KEY_PATH}`,
+    );
+    console.error(err);
+  }
+}
+
+// Key generated with --ci / no password is still "encrypted" with an empty password.
+// Ensure the var exists so Tauri does not prompt interactively (and fail on a typed guess).
+if (
+  process.env.TAURI_SIGNING_PRIVATE_KEY &&
+  process.env.TAURI_SIGNING_PRIVATE_KEY_PASSWORD === undefined
+) {
+  process.env.TAURI_SIGNING_PRIVATE_KEY_PASSWORD = "";
+}
+
 const args = process.argv.slice(2);
 
 // 扩展命令：tauri build:msix → 调用 build-msix.ps1 打包 MSIX

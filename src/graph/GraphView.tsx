@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState, useMemo } from "react";
 import * as d3 from "d3";
 import { LinkIndexService } from "../wikilink";
+import { isPathInVault } from "../utils/vaultPath";
 import { GRAPH_SETTINGS_KEY, DEFAULT_GRAPH, type GraphSettings } from "../Settings";
 import "./GraphView.css";
 
@@ -51,7 +52,8 @@ export function GraphView({ vaultPath, onSelectNote, onClose, standalone = false
   const { nodes, edges } = useMemo(() => {
     if (!vaultPath) return { nodes: [], edges: [] };
 
-    const allNotes = LinkIndexService.searchNotes('');
+    const allNotes = LinkIndexService.searchNotes('')
+      .filter((note) => isPathInVault(note.path, vaultPath));
 
     // 建立路径 → basename 查找表（避免 O(N²) findFileByNoteName 调用）
     const pathByBasename = new Map<string, string>();

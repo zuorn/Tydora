@@ -4,8 +4,10 @@
  * 因此 html/body/#root 的全局样式必须放在这里，保证所有窗口
  * 在任何 chunk 加载完成前就有正确的背景色与重置样式。
  *
- * 窗口使用 transparent；非 macOS 由 #root 的 border-radius + overflow 裁剪圆角。
- * macOS：用 clip-path 做视觉圆角（不用 overflow，也不用原生 masksToBounds），
+ * 圆角策略：
+ * - Windows：窗口不透明 + shadow，由 Win11 DWM 裁系统原生圆角；#root 不再假圆角
+ * - Linux：透明窗口 + #root border-radius/overflow 裁剪
+ * - macOS：透明窗口 + clip-path 视觉圆角（不用 overflow，也不用原生 masksToBounds）
  * 禁止在 contenteditable 祖先上使用 overflow + border-radius（会触发 WKWebView 幽灵选区）。
  */
 
@@ -29,13 +31,27 @@ body {
   -webkit-font-smoothing: antialiased;
 }
 
+/* 表单控件默认不继承字体，需显式继承才能让 UI 字体设置生效 */
+button,
+input,
+select,
+textarea {
+  font-family: inherit;
+}
+
 #root {
   height: 100%;
+  background: var(--bg-primary);
+  /* Windows：交给 DWM；默认不加 CSS 圆角 */
+  border-radius: 0;
+  overflow: hidden;
+}
+
+/* Linux：无统一 DWM 圆角，继续用透明窗口 + CSS 裁剪 */
+html.platform-linux #root {
   border-radius: 12px;
-  /* Windows/Linux：用 overflow 裁剪圆角。勿在 macOS 对编辑器祖先恢复此组合。 */
   overflow: hidden;
   overflow: clip;
-  background: var(--bg-primary);
 }
 
 /* macOS：不用 overflow 裁剪（会幽灵选区）；用 clip-path 做视觉圆角。
@@ -44,6 +60,12 @@ html.platform-macos #root {
   border-radius: 12px;
   overflow: visible;
   clip-path: inset(0 round 12px);
+}
+
+/* Windows：窗口本身不透明，body 跟主题底色，避免 DWM 边缘露白/露黑 */
+html.platform-windows,
+html.platform-windows body {
+  background: var(--bg-primary);
 }
 
 /* macOS 原生红绿灯占位（与 trafficLightPosition y=11、约 36px 顶栏对齐） */
@@ -116,4 +138,242 @@ html.platform-macos .mindmap-window-titlebar,
 html.platform-macos .graph-window-titlebar,
 html.platform-macos .canvas-window-titlebar {
   padding-left: var(--mac-traffic-lights-width);
+}
+
+/* Windows 11 原生风格窗口控制按钮（矩形、贴右、无圆角） */
+html.platform-windows {
+  --win-caption-width: 46px;
+  --win-caption-height: 36px;
+  --win-caption-hover: color-mix(in srgb, var(--text-primary) 10%, transparent);
+  --win-caption-close-hover: #e81123;
+}
+
+html.platform-windows .editor-topbar,
+html.platform-windows .graph-window-titlebar,
+html.platform-windows .mindmap-window-titlebar,
+html.platform-windows .canvas-window-titlebar,
+html.platform-windows .vault-manager-titlebar,
+html.platform-windows .settings-main-topbar {
+  padding-right: 0;
+}
+
+html.platform-windows .window-caption-controls,
+html.platform-windows .graph-window-controls,
+html.platform-windows .vault-manager-window-controls {
+  display: flex;
+  align-items: stretch;
+  gap: 0;
+  height: var(--win-caption-height);
+  flex-shrink: 0;
+}
+
+html.platform-windows .window-caption-controls .window-control-btn,
+html.platform-windows .graph-window-controls .graph-window-btn,
+html.platform-windows .vault-manager-window-controls .vault-manager-window-btn,
+html.platform-windows .canvas-window-controls > .canvas-window-btn:nth-last-child(-n+3),
+html.platform-windows .mindmap-window-controls > .mindmap-window-btn:nth-last-child(-n+3),
+html.platform-windows .settings-titlebar-controls .settings-titlebar-btn {
+  width: var(--win-caption-width);
+  height: var(--win-caption-height);
+  border-radius: 0;
+  padding: 0;
+  transform: none;
+  transition: background 0.1s ease, color 0.1s ease;
+}
+
+html.platform-windows .window-caption-controls .window-control-btn:hover,
+html.platform-windows .graph-window-controls .graph-window-btn:hover,
+html.platform-windows .vault-manager-window-controls .vault-manager-window-btn:hover,
+html.platform-windows .canvas-window-controls > .canvas-window-btn:nth-last-child(-n+3):hover,
+html.platform-windows .mindmap-window-controls > .mindmap-window-btn:nth-last-child(-n+3):hover,
+html.platform-windows .settings-titlebar-controls .settings-titlebar-btn:hover {
+  background: var(--win-caption-hover);
+  color: var(--text-primary);
+}
+
+html.platform-windows .window-caption-controls .window-control-btn:active,
+html.platform-windows .graph-window-controls .graph-window-btn:active,
+html.platform-windows .vault-manager-window-controls .vault-manager-window-btn:active,
+html.platform-windows .canvas-window-controls > .canvas-window-btn:nth-last-child(-n+3):active,
+html.platform-windows .mindmap-window-controls > .mindmap-window-btn:nth-last-child(-n+3):active,
+html.platform-windows .settings-titlebar-controls .settings-titlebar-btn:active {
+  transform: none;
+  background: color-mix(in srgb, var(--text-primary) 16%, transparent);
+}
+
+html.platform-windows .window-caption-controls .window-control-close:hover,
+html.platform-windows .graph-window-controls .graph-window-close:hover,
+html.platform-windows .vault-manager-window-controls .vault-manager-window-close:hover,
+html.platform-windows .canvas-window-controls > .canvas-window-close:hover,
+html.platform-windows .mindmap-window-controls > .mindmap-window-close:hover,
+html.platform-windows .settings-titlebar-controls .settings-titlebar-close:hover {
+  background: var(--win-caption-close-hover);
+  color: #ffffff;
+}
+
+html.platform-windows .window-caption-controls .window-control-close:active,
+html.platform-windows .graph-window-controls .graph-window-close:active,
+html.platform-windows .vault-manager-window-controls .vault-manager-window-close:active,
+html.platform-windows .canvas-window-controls > .canvas-window-close:active,
+html.platform-windows .mindmap-window-controls > .mindmap-window-close:active,
+html.platform-windows .settings-titlebar-controls .settings-titlebar-close:active {
+  background: #c50f1f;
+  color: #ffffff;
+}
+
+#app-tooltip {
+  position: fixed;
+  z-index: 100000;
+  display: none;
+  max-width: 320px;
+  padding: 6px 10px;
+  background: var(--bg-secondary);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  color: var(--text-primary);
+  font-family: var(--font-ui);
+  font-size: 12px;
+  line-height: 1.4;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.35);
+  pointer-events: none;
+  word-break: break-word;
+}
+
+/* data-tooltip 伪元素 tooltip（白板工具栏、右键菜单图标等） */
+[data-tooltip] {
+  position: relative;
+}
+
+[data-tooltip]::after {
+  content: attr(data-tooltip);
+  position: absolute;
+  bottom: calc(100% + 6px);
+  left: 50%;
+  transform: translateX(-50%);
+  padding: 6px 10px;
+  background: var(--bg-secondary);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  color: var(--text-primary);
+  font-family: var(--font-ui);
+  font-size: 12px;
+  line-height: 1.4;
+  white-space: nowrap;
+  pointer-events: none;
+  opacity: 0;
+  transition: opacity 0.15s ease;
+  transition-delay: 0s;
+  z-index: 10001;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.35);
+}
+
+[data-tooltip]:hover::after {
+  opacity: 1;
+  transition-delay: 0.45s;
+}
+
+/* ========== 滚动条（全局：所有窗口、portal 下拉、侧栏、编辑器共用主题变量） ========== */
+::-webkit-scrollbar {
+  width: var(--scrollbar-size, 8px);
+  height: var(--scrollbar-size, 8px);
+}
+
+::-webkit-scrollbar-track {
+  background: var(--scrollbar-track, transparent);
+}
+
+::-webkit-scrollbar-thumb {
+  /* 极低透明度保证滚动条槽可命中；真正显色由 :hover / [data-scrolling] 控制 */
+  background-color: color-mix(in srgb, var(--scrollbar-thumb, var(--border)) 1%, transparent);
+  border-radius: var(--radius-scrollbar, 4px);
+  background-clip: padding-box;
+  border: 2px solid transparent;
+  transition: background-color 0.15s ease;
+}
+
+/* 滚动中，或鼠标悬停在可滚动容器上时显示滑块 */
+[data-scrolling]::-webkit-scrollbar-thumb,
+*:hover::-webkit-scrollbar-thumb {
+  background-color: var(--scrollbar-thumb, var(--border));
+  transition: background-color 0s;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background-color: var(--scrollbar-thumb-hover, var(--text-secondary));
+}
+
+/* Firefox */
+* {
+  scrollbar-width: thin;
+  scrollbar-color: transparent transparent;
+}
+
+*:hover,
+[data-scrolling] {
+  scrollbar-color: var(--scrollbar-thumb, var(--border)) var(--scrollbar-track, transparent);
+}
+
+/* WebKit 对部分编辑器/下拉列表不套用全局伪元素，需在同一元素上重复声明 */
+.tiptap-editor::-webkit-scrollbar,
+.cm-editor .cm-scroller::-webkit-scrollbar,
+.font-picker-list::-webkit-scrollbar,
+.settings-select-list::-webkit-scrollbar {
+  width: var(--scrollbar-size, 8px);
+  height: var(--scrollbar-size, 8px);
+}
+
+.tiptap-editor::-webkit-scrollbar-track,
+.cm-editor .cm-scroller::-webkit-scrollbar-track,
+.font-picker-list::-webkit-scrollbar-track,
+.settings-select-list::-webkit-scrollbar-track {
+  background: var(--scrollbar-track, transparent);
+}
+
+.tiptap-editor::-webkit-scrollbar-thumb,
+.cm-editor .cm-scroller::-webkit-scrollbar-thumb,
+.font-picker-list::-webkit-scrollbar-thumb,
+.settings-select-list::-webkit-scrollbar-thumb {
+  background-color: color-mix(in srgb, var(--scrollbar-thumb, var(--border)) 1%, transparent);
+  border-radius: var(--radius-scrollbar, 4px);
+  background-clip: padding-box;
+  border: 2px solid transparent;
+  transition: background-color 0.15s ease;
+}
+
+.tiptap-editor[data-scrolling]::-webkit-scrollbar-thumb,
+.tiptap-editor:hover::-webkit-scrollbar-thumb,
+.cm-editor .cm-scroller[data-scrolling]::-webkit-scrollbar-thumb,
+.cm-editor .cm-scroller:hover::-webkit-scrollbar-thumb,
+.font-picker-list[data-scrolling]::-webkit-scrollbar-thumb,
+.font-picker-list:hover::-webkit-scrollbar-thumb,
+.settings-select-list[data-scrolling]::-webkit-scrollbar-thumb,
+.settings-select-list:hover::-webkit-scrollbar-thumb {
+  background-color: var(--scrollbar-thumb, var(--border));
+  transition: background-color 0s;
+}
+
+.tiptap-editor::-webkit-scrollbar-thumb:hover,
+.cm-editor .cm-scroller::-webkit-scrollbar-thumb:hover,
+.font-picker-list::-webkit-scrollbar-thumb:hover,
+.settings-select-list::-webkit-scrollbar-thumb:hover {
+  background-color: var(--scrollbar-thumb-hover, var(--text-secondary));
+}
+
+.tiptap-editor,
+.cm-editor .cm-scroller,
+.font-picker-list,
+.settings-select-list {
+  scrollbar-width: thin;
+  scrollbar-color: transparent transparent;
+}
+
+.tiptap-editor:hover,
+.tiptap-editor[data-scrolling],
+.cm-editor .cm-scroller:hover,
+.cm-editor .cm-scroller[data-scrolling],
+.font-picker-list:hover,
+.font-picker-list[data-scrolling],
+.settings-select-list:hover,
+.settings-select-list[data-scrolling] {
+  scrollbar-color: var(--scrollbar-thumb, var(--border)) var(--scrollbar-track, transparent);
 }

@@ -6,7 +6,7 @@ import { getCurrentWindow } from "@tauri-apps/api/window";
 import { readTextFile, writeTextFile, rename, exists } from "@tauri-apps/plugin-fs";
 import { save } from "@tauri-apps/plugin-dialog";
 import { invoke } from "@tauri-apps/api/core";
-import type { EditorHandle, EditorMode } from "./Editor/types";
+import type { EditorHandle, EditorMode, EditorViewState } from "./Editor/types";
 import type { CodeMirrorEditorHandle } from "./Editor/CodeMirrorEditor";
 import { MODE_LABELS } from "./Editor/types";
 // lazy load：TipTap/CodeMirror/Terminal 是重型组件，首次渲染不一定需要
@@ -30,11 +30,11 @@ import { buildExportArtifact, EXPORT_FORMATS, type ExportFormat, type BuiltArtif
 import { ExportPreviewDialog } from "./components/ExportPreviewDialog";
 import { XhsPreviewPanel } from "./export/xiaohongshu";
 import { emit, listen } from "@tauri-apps/api/event";
-import { loadImageSettings, type ImageSettings } from "./services";
+import { loadImageSettings, type ImageSettings, formatMarkdown, readMarkdownFormatOptions } from "./services";
 import { loadEditorSettings, type EditorSettings, EDITOR_SETTINGS_KEY, SHORTCUTS_KEY, GRAPH_SETTINGS_KEY, DEFAULT_GRAPH, type SidebarTab, type SidebarTabPlacement, sidebarTabsForSide, DEFAULT_GENERAL } from "./Settings";
 import { applyFontSettings } from "./utils/systemFonts";
 import { applyMenuDensity, applyEditorSpacingFromSettings, normalizeMenuDensity } from "./utils/menuDensity";
-import { checkForUpdate, downloadAndInstall, relaunchApp, exitApp, isPortableVersion, type UpdateInfo } from "./services";
+import { checkForUpdateAndStore, startUpdateDownload, formatUpdateProgressPercent, useUpdateStore } from "./services";
 import { LinkIndexService } from "./wikilink";
 import { WikiLinkAutocomplete } from "./wikilink";
 import { WikiLinkPreview } from "./wikilink";
@@ -44,7 +44,7 @@ import { useVaultWatcher } from "./services";
 import PublishPanel from "./publish/PublishPanel";
 import PublishConfigDialog from "./publish/PublishConfigDialog";
 import { CONFIG_FILE } from "./publish/PublishService";
-import { buildIndexesTogether, persistIndexesToStorage, restoreIndexesFromCache } from "./services/index-builder";
+import { buildIndexesTogether, persistIndexesToStorage, restoreIndexesFromCache, clearIndexesAndCache } from "./services/index-builder";
 
 // 关系图谱 / 白板仅在打开时渲染，按需加载（避免 d3、@xyflow 进入首屏 bundle）
 const GraphView = lazy(() => import("./graph").then((m) => ({ default: m.GraphView })));
@@ -386,7 +386,6 @@ function App({ initialFilePath, initialVaultPath }: { initialFilePath?: string |
   const activeBuffer = buffers.find((b) => b.id === activePane.bufferId) ?? buffers[0] ?? ({ id: "", fileName: null, content: "", savedContent: "", modified: false } as FileBuffer);
   const content = activeBuffer.content;
   const fileName = activeBuffer.fileName;
-  const modified = activeBuffer.modified;
   const viewMode: EditorMode = activePane.mode ?? editorSettings.defaultMode;
   const effectiveMode: EditorMode = viewMode;
 
@@ -511,6 +510,7 @@ function App({ initialFilePath, initialVaultPath }: { initialFilePath?: string |
         const raw = localStorage.getItem("zmd-general-settings");
         const settings = raw ? JSON.parse(raw) : {};
         applyFontSettings({
+          uiFont: settings.uiFont ?? "system",
           editorFont: settings.editorFont ?? "system",
           codeFont: settings.codeFont ?? "system",
           codeFontSize:
@@ -524,6 +524,9 @@ function App({ initialFilePath, initialVaultPath }: { initialFilePath?: string |
         }
         if (typeof settings.autoHideTopbarOnCollapse === 'boolean') {
           setAutoHideTopbarOnCollapse(settings.autoHideTopbarOnCollapse);
+        }
+        if (typeof settings.autoHideVaultFooter === 'boolean') {
+          setAutoHideVaultFooter(settings.autoHideVaultFooter);
         }
         if (typeof settings.typewriterMode === 'boolean') {
           setTypewriterMode(settings.typewriterMode);
@@ -553,7 +556,7 @@ function App({ initialFilePath, initialVaultPath }: { initialFilePath?: string |
         // 侧栏 tab 分配变更后实时重算左/右栏可见 tab
         const placementSrc = settings.sidebarTabPlacement ?? {};
         const base = { ...DEFAULT_GENERAL.sidebarTabPlacement };
-        for (const tab of (["files","search","outline","bookmarks"] as SidebarTab[])) {
+        for (const tab of (["files", "openFiles", "search", "outline", "bookmarks"] as SidebarTab[])) {
           const v = placementSrc[tab];
           if (v === "left" || v === "right") base[tab] = v;
         }
@@ -680,35 +683,6 @@ function App({ initialFilePath, initialVaultPath }: { initialFilePath?: string |
     };
   }, []);
 
-  // 滚动条自动隐藏：滚动时立即显示，停止滚动 400ms 后快速隐藏
-  // 将 data-scrolling 设置在具体的滚动容器上，避免侧栏和编辑器滚动条互相干扰
-  useEffect(() => {
-    let timer: ReturnType<typeof setTimeout>;
-    let currentTarget: HTMLElement | null = null;
-
-    const handleScroll = (e: Event) => {
-      const target = e.target as HTMLElement;
-      // 如果滚动目标变了，清除旧目标的属性
-      if (currentTarget && currentTarget !== target) {
-        currentTarget.removeAttribute('data-scrolling');
-      }
-      currentTarget = target;
-      target.setAttribute('data-scrolling', '');
-      clearTimeout(timer);
-      timer = setTimeout(() => {
-        if (currentTarget) {
-          currentTarget.removeAttribute('data-scrolling');
-          currentTarget = null;
-        }
-      }, 400);
-    };
-    document.addEventListener('scroll', handleScroll, { capture: true, passive: true });
-    return () => {
-      document.removeEventListener('scroll', handleScroll, { capture: true });
-      clearTimeout(timer);
-    };
-  }, []);
-
   // 监听编辑器设置变化（设置窗口保存后实时生效）
   useEffect(() => {
     const handleEditorStorage = (e: StorageEvent) => {
@@ -744,6 +718,7 @@ function App({ initialFilePath, initialVaultPath }: { initialFilePath?: string |
   const [hasExternalFile, setHasExternalFile] = useState(false);
   const [autoHideTopbar, setAutoHideTopbar] = useState(() => s.autoHideTopbar ?? true);
   const [autoHideTopbarOnCollapse, setAutoHideTopbarOnCollapse] = useState(() => s.autoHideTopbarOnCollapse ?? true);
+  const [autoHideVaultFooter, setAutoHideVaultFooter] = useState(() => s.autoHideVaultFooter ?? true);
   const [sidebarWidth, setSidebarWidth] = useState<number>(() => {
     try {
       const saved = localStorage.getItem(SIDEBAR_WIDTH_KEY);
@@ -776,7 +751,7 @@ function App({ initialFilePath, initialVaultPath }: { initialFilePath?: string |
       const parsed = JSON.parse(raw);
       const base = { ...DEFAULT_GENERAL.sidebarTabPlacement };
       const src = parsed?.sidebarTabPlacement ?? {};
-      for (const tab of (["files","search","outline","bookmarks"] as SidebarTab[])) {
+      for (const tab of (["files", "openFiles", "search", "outline", "bookmarks"] as SidebarTab[])) {
         const v = src[tab];
         if (v === "left" || v === "right") base[tab] = v;
       }
@@ -805,6 +780,16 @@ function App({ initialFilePath, initialVaultPath }: { initialFilePath?: string |
 
   // 白板文件路径（在主区域显示白板时设置）
   const [canvasFilePath, setCanvasFilePath] = useState<string | null>(null);
+
+  // 已打开文件列表（按打开顺序，不自动重排）
+  const [openFiles, setOpenFiles] = useState<string[]>([]);
+  const openFilesRef = useRef<string[]>([]);
+  openFilesRef.current = openFiles;
+  const fileViewStatesRef = useRef<Map<string, EditorViewState>>(new Map());
+  const pendingViewRestoreRef = useRef<EditorViewState | null>(null);
+  const [closeFileConfirmOpen, setCloseFileConfirmOpen] = useState(false);
+  const [pendingClosePath, setPendingClosePath] = useState<string | null>(null);
+  const [pendingCloseAll, setPendingCloseAll] = useState(false);
 
   // 统计：进入白板视图（主窗口内嵌模式；仅 null → 有值 的转换，切换画布文件不重复上报）
   const prevCanvasPathRef = useRef<string | null>(null);
@@ -878,10 +863,8 @@ function App({ initialFilePath, initialVaultPath }: { initialFilePath?: string |
   const [publishOpen, setPublishOpen] = useState(false);
   const [publishConfigOpen, setPublishConfigOpen] = useState(false);
 
-  // 更新状态
-  const [updateInfo, setUpdateInfo] = useState<UpdateInfo | null>(null);
-  const [updateDownloading, setUpdateDownloading] = useState(false);
-  const [updateProgress, setUpdateProgress] = useState<{ downloaded: number; total: number | null }>({ downloaded: 0, total: null });
+  // 更新状态（主窗口与设置窗口共享）
+  const { updateInfo, downloading: updateDownloading, progress: updateProgress } = useUpdateStore();
 
   // 文件导航历史（前进/后退）
   const [fileHistory, setFileHistory] = useState<string[]>([]);
@@ -1058,15 +1041,18 @@ function App({ initialFilePath, initialVaultPath }: { initialFilePath?: string |
 
   // 构建链接索引和标签索引（优化版：先缓存恢复 UI → 后台联合构建 → 统一持久化）
   useEffect(() => {
-    if (activeVaultIndex < 0) return;
+    if (activeVaultIndex < 0) {
+      clearIndexesAndCache();
+      return;
+    }
     const vaultPath = vaults[activeVaultIndex]?.path;
     if (!vaultPath) return;
 
-    // 策略 A 第一步：同步加载 localStorage 缓存（毫秒级），让侧栏/反链/标签立即可用
+    // 策略 A 第一步：仅恢复当前仓库的 localStorage 缓存（毫秒级），让侧栏/反链/标签立即可用
     // 不关心是否成功：失败时 buildIndexesTogether 内部会降级全量构建
     bootStart("index_restore_and_build");
     bootStamp("index_restore_from_cache_start");
-    const fromCache = restoreIndexesFromCache();
+    const fromCache = restoreIndexesFromCache(vaultPath);
     bootStamp("index_restore_from_cache_done");
 
     // 放到下一个 tick 再跑重量级 I/O，让首帧 UI 先渲染完成
@@ -1090,7 +1076,7 @@ function App({ initialFilePath, initialVaultPath }: { initialFilePath?: string |
         bootStamp("index_build_failed_fallback_done");
       } finally {
         // 无论新老流程成功与否，最后统一持久化（让下次启动有缓存可用）
-        try { persistIndexesToStorage(); } catch { /* ignore */ }
+        try { persistIndexesToStorage(vaultPath); } catch { /* ignore */ }
         bootStamp("index_persist_done");
         bootEnd("index_restore_and_build");
         setTimeout(() => bootSummary(), 0);
@@ -1124,9 +1110,7 @@ function App({ initialFilePath, initialVaultPath }: { initialFilePath?: string |
   // 启动后延迟检查更新（不阻塞首屏渲染）
   useEffect(() => {
     const timer = setTimeout(() => {
-      checkForUpdate().then((info) => {
-        if (info) setUpdateInfo(info);
-      }).catch(() => {});
+      checkForUpdateAndStore().catch(() => {});
     }, 2000);
     return () => clearTimeout(timer);
   }, []);
@@ -1293,23 +1277,12 @@ function App({ initialFilePath, initialVaultPath }: { initialFilePath?: string |
 
   const handleUpdateDownload = useCallback(async () => {
     if (!updateInfo) return;
-    setUpdateDownloading(true);
-    setUpdateProgress({ downloaded: 0, total: null });
     try {
-      await downloadAndInstall((downloaded, contentLength) => {
-        setUpdateProgress({ downloaded, total: contentLength });
-      });
-      // 便携版：后台 cmd 脚本已替换 exe 并接管重启，这里只需退出
-      if (await isPortableVersion()) {
-        await exitApp();
-      } else {
-        await relaunchApp();
-      }
+      await startUpdateDownload();
     } catch (e) {
       console.error(t("settings.about.updateFailed"), e);
-      setUpdateDownloading(false);
     }
-  }, [updateInfo]);
+  }, [updateInfo, t]);
 
   // Debounced mindmap sync to avoid flooding IPC on every keystroke
   const mindmapSyncTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -1394,7 +1367,29 @@ function App({ initialFilePath, initialVaultPath }: { initialFilePath?: string |
       }
       // 对话框期间内容可能变化，重新读取最新内容
       const latest = buffersRef.current.find((b) => b.id === bufId) ?? buf;
-      const contentToWrite = latest.content;
+      let contentToWrite = latest.content;
+
+      // 保存时格式化（仅 Markdown）
+      if (path && isMarkdownFile(path)) {
+        try {
+          const raw = localStorage.getItem("zmd-general-settings");
+          const settings = raw ? JSON.parse(raw) : {};
+          const formatOpts = readMarkdownFormatOptions(settings);
+          if (formatOpts.formatOnSave) {
+            const formatted = formatMarkdown(contentToWrite, formatOpts);
+            if (formatted !== contentToWrite) {
+              contentToWrite = formatted;
+              updateBuffer(bufId, { content: formatted });
+              if (bufId === activeBufferIdRef.current) {
+                editorHandleRef.current?.setValue(formatted);
+              }
+            }
+          }
+        } catch (e) {
+          console.warn("format on save failed:", e);
+        }
+      }
+
       await writeTextFile(path, contentToWrite);
       updateBuffer(bufId, { savedContent: contentToWrite, modified: false });
       if (bufId === activeBufferIdRef.current) setSaveStatus("saved");
@@ -1403,7 +1398,7 @@ function App({ initialFilePath, initialVaultPath }: { initialFilePath?: string |
       if (activeVault) {
         LinkIndexService.updateFileLinks(path, activeVault.path);
         TagIndexService.updateFileTags(path, contentToWrite);
-        try { localStorage.setItem("zmd-link-index", LinkIndexService.serialize()); } catch {}
+        try { persistIndexesToStorage(activeVault.path); } catch {}
       }
       return true;
     } catch (e) {
@@ -1411,6 +1406,30 @@ function App({ initialFilePath, initialVaultPath }: { initialFilePath?: string |
       return false;
     }
   }, [activeVaultIndex, vaults, t, updateBuffer]);
+
+  /** 格式化当前 Markdown 文档（不保存） */
+  const handleFormatDocument = useCallback(() => {
+    const path = fileName;
+    if (path && !isMarkdownFile(path)) return;
+    if (!path && !isCurrentFileMarkdown) return;
+
+    const rawContent = editorHandleRef.current?.getValue() ?? content;
+    try {
+      const raw = localStorage.getItem("zmd-general-settings");
+      const settings = raw ? JSON.parse(raw) : {};
+      const formatOpts = readMarkdownFormatOptions(settings);
+      const formatted = formatMarkdown(rawContent, formatOpts);
+      if (formatted === rawContent) return;
+
+      updateBuffer(activeBufferIdRef.current, {
+        content: formatted,
+        modified: formatted !== (buffersRef.current.find((b) => b.id === activeBufferIdRef.current)?.savedContent ?? ""),
+      });
+      editorHandleRef.current?.setValue(formatted);
+    } catch (e) {
+      console.error(t("app.error.formatFailed"), e);
+    }
+  }, [fileName, isCurrentFileMarkdown, content, t, updateBuffer]);
 
   // 保存成功后绿灯闪烁效果
   useEffect(() => {
@@ -1444,19 +1463,33 @@ function App({ initialFilePath, initialVaultPath }: { initialFilePath?: string |
         if (!raw) return;
         const settings = JSON.parse(raw);
         if (!settings.autoSave) return;
+        const formatOpts = readMarkdownFormatOptions(settings);
         const activeVault = activeVaultIndex >= 0 ? vaults[activeVaultIndex] : null;
         for (const b of buffersRef.current) {
           if (!b.modified || !b.fileName) continue;
-          await writeTextFile(b.fileName, b.content);
-          updateBuffer(b.id, { savedContent: b.content, modified: false });
+          let contentToWrite = b.content;
+          if (isMarkdownFile(b.fileName)) {
+            if (formatOpts.formatOnSave) {
+              const formatted = formatMarkdown(contentToWrite, formatOpts);
+              if (formatted !== contentToWrite) {
+                contentToWrite = formatted;
+                updateBuffer(b.id, { content: formatted });
+                if (b.id === activeBufferIdRef.current) {
+                  editorHandleRef.current?.setValue(formatted);
+                }
+              }
+            }
+          }
+          await writeTextFile(b.fileName, contentToWrite);
+          updateBuffer(b.id, { savedContent: contentToWrite, modified: false });
           if (b.id === activeBufferIdRef.current) setSaveStatus("saved");
           if (activeVault) {
             LinkIndexService.updateFileLinks(b.fileName, activeVault.path);
-            TagIndexService.updateFileTags(b.fileName, b.content);
+            TagIndexService.updateFileTags(b.fileName, contentToWrite);
           }
         }
         if (activeVault) {
-          try { localStorage.setItem("zmd-link-index", LinkIndexService.serialize()); } catch {}
+          try { persistIndexesToStorage(activeVault.path); } catch {}
         }
       } catch (e) {
         console.error(t("app.error.autoSaveFailed"), e);
@@ -1540,8 +1573,122 @@ function App({ initialFilePath, initialVaultPath }: { initialFilePath?: string |
 
   // openFile 在下方声明，handleSelectFile 需在它之前定义；用 ref 转发以避免“先使用后声明”
   const openFileRef = useRef<(path: string, line?: number, query?: string) => Promise<void>>(async () => {});
+  const handleSelectFileRef = useRef<(path: string, line?: number, query?: string) => void>(() => {});
+
+  const getActiveOpenPath = useCallback((): string | null => {
+    return canvasFilePath ?? previewFilePath ?? (buffersRef.current.find((b) => b.id === activeBufferIdRef.current)?.fileName ?? null);
+  }, [canvasFilePath, previewFilePath]);
+
+  const saveCurrentViewState = useCallback(() => {
+    const path = getActiveOpenPath();
+    if (!path) return;
+    const name = path.split(/[/\\]/).pop() || path;
+    if (!isEditableFile(name)) return;
+    const state = editorHandleRef.current?.getViewState();
+    if (state) fileViewStatesRef.current.set(path, state);
+  }, [getActiveOpenPath]);
+
+  /** 首次打开时追加到列表末尾；已存在则保持原顺序 */
+  const registerOpenFile = useCallback((path: string) => {
+    setOpenFiles((prev) => (prev.includes(path) ? prev : [...prev, path]));
+  }, []);
+
+  const clearEditorToWelcome = useCallback(() => {
+    setPreviewFilePath(null);
+    setCanvasFilePath(null);
+    setGraphViewOpen(false);
+    updateBuffer(activeBufferIdRef.current, { fileName: null, content: "", savedContent: "", modified: false });
+    setSaveStatus("idle");
+  }, [updateBuffer]);
+
+  const isOpenFileModified = useCallback((path: string): boolean => {
+    if (canvasFilePath === path) return useCanvasStore.getState().isModified;
+    const buf = buffersRef.current.find((b) => b.fileName === path);
+    return buf?.modified ?? false;
+  }, [canvasFilePath]);
+
+  const performCloseOpenFile = useCallback((path: string) => {
+    const wasActive = getActiveOpenPath() === path;
+    const idx = openFilesRef.current.indexOf(path);
+    const nextOpenFiles = openFilesRef.current.filter((p) => p !== path);
+    fileViewStatesRef.current.delete(path);
+    setOpenFiles(nextOpenFiles);
+
+    const buf = buffersRef.current.find((b) => b.fileName === path);
+    if (buf) {
+      setBuffers((bs) => {
+        const remaining = bs.filter((b) => b.id !== buf.id);
+        const nextBuffers = remaining.length === 0
+          ? [{ id: bid(), fileName: null, content: "", savedContent: "", modified: false }]
+          : remaining;
+        const fallbackId = nextBuffers[0]?.id;
+        if (fallbackId) {
+          setPanes((ps) => ps.map((p) => (p.bufferId === buf.id ? { ...p, bufferId: fallbackId } : p)));
+        }
+        return nextBuffers;
+      });
+    }
+
+    if (canvasFilePath === path) setCanvasFilePath(null);
+    if (previewFilePath === path) setPreviewFilePath(null);
+
+    if (wasActive) {
+      if (nextOpenFiles.length === 0) {
+        clearEditorToWelcome();
+      } else {
+        const switchIdx = Math.min(idx, nextOpenFiles.length - 1);
+        const nextPath = nextOpenFiles[switchIdx];
+        pendingViewRestoreRef.current = fileViewStatesRef.current.get(nextPath) ?? null;
+        handleSelectFileRef.current(nextPath);
+      }
+    }
+  }, [getActiveOpenPath, canvasFilePath, previewFilePath, clearEditorToWelcome]);
+
+  const performCloseAllOpenFiles = useCallback(() => {
+    fileViewStatesRef.current.clear();
+    setOpenFiles([]);
+    setPreviewFilePath(null);
+    setCanvasFilePath(null);
+    setGraphViewOpen(false);
+    const emptyBuf: FileBuffer = { id: bid(), fileName: null, content: "", savedContent: "", modified: false };
+    setBuffers([emptyBuf]);
+    setPanes((ps) => ps.map((p) => (p.kind === "editor" ? { ...p, bufferId: emptyBuf.id } : p)));
+    setSaveStatus("idle");
+  }, []);
+
+  const closeOpenFile = useCallback((path: string) => {
+    if (isOpenFileModified(path)) {
+      setPendingClosePath(path);
+      setPendingCloseAll(false);
+      setCloseFileConfirmOpen(true);
+      return;
+    }
+    if (getActiveOpenPath() === path) saveCurrentViewState();
+    performCloseOpenFile(path);
+  }, [isOpenFileModified, getActiveOpenPath, saveCurrentViewState, performCloseOpenFile]);
+
+  const closeAllOpenFiles = useCallback(() => {
+    if (openFilesRef.current.some((p) => isOpenFileModified(p))) {
+      setPendingClosePath(null);
+      setPendingCloseAll(true);
+      setCloseFileConfirmOpen(true);
+      return;
+    }
+    saveCurrentViewState();
+    performCloseAllOpenFiles();
+  }, [isOpenFileModified, saveCurrentViewState, performCloseAllOpenFiles]);
 
   const handleSelectFile = useCallback((path: string, line?: number, query?: string) => {
+    const currentPath = getActiveOpenPath();
+    if (currentPath && currentPath !== path) {
+      saveCurrentViewState();
+    }
+    if (line == null && !query) {
+      pendingViewRestoreRef.current = fileViewStatesRef.current.get(path) ?? null;
+    } else {
+      pendingViewRestoreRef.current = null;
+    }
+
     // 点击文件时关闭关系图谱
     setGraphViewOpen(false);
 
@@ -1556,6 +1703,7 @@ function App({ initialFilePath, initialVaultPath }: { initialFilePath?: string |
       setModified(false);
       setContent("");
       pushToHistory(path);
+      registerOpenFile(path);
       // 打开白板/预览后：焦点回到主编辑器区域（优先激活的 editor pane，兜底 codeMirrorRef）
       setTimeout(() => {
         const editorPane = panesRef.current.find((p) => p.kind === "editor");
@@ -1574,6 +1722,7 @@ function App({ initialFilePath, initialVaultPath }: { initialFilePath?: string |
       setPreviewFilePath(path);
       setCanvasFilePath(null);
       pushToHistory(path);
+      registerOpenFile(path);
       // 非可编辑文件预览时：同上焦点回编辑器区域
       setTimeout(() => {
         const editorPane = panesRef.current.find((p) => p.kind === "editor");
@@ -1598,7 +1747,14 @@ function App({ initialFilePath, initialVaultPath }: { initialFilePath?: string |
       openFileGenerationRef.current++;
       openFileRef.current(path, line, query);
     }
-  }, [modified]);
+  }, [getActiveOpenPath, saveCurrentViewState, registerOpenFile]);
+
+  const handleSelectOpenFile = useCallback((path: string) => {
+    if (path === getActiveOpenPath()) return;
+    handleSelectFile(path);
+  }, [getActiveOpenPath, handleSelectFile]);
+
+  handleSelectFileRef.current = handleSelectFile;
 
   // 处理系统文件关联打开（双击 .md 文件）：
   // 默认折叠侧栏（与新窗口打开体验一致）；若开启"启动时展开大纲"，则展开侧栏并切到大纲
@@ -1788,6 +1944,7 @@ function App({ initialFilePath, initialVaultPath }: { initialFilePath?: string |
         pushToHistory(path);
       }
       isNavigatingHistoryRef.current = false;
+      registerOpenFile(path);
 
       // 更新最近访问文件列表
       const activeVault = activeVaultIndex >= 0 ? vaults[activeVaultIndex] : null;
@@ -1817,7 +1974,7 @@ function App({ initialFilePath, initialVaultPath }: { initialFilePath?: string |
     } catch (e) {
       console.error(t("app.error.openFileFailed"), e);
     }
-  }, [activeVaultIndex, vaults, t, updateBuffer]);
+  }, [activeVaultIndex, vaults, t, updateBuffer, registerOpenFile]);
   // 转发 openFile 给在上方定义的 handleSelectFile（避免“先使用后声明”）
   openFileRef.current = openFile;
 
@@ -1829,14 +1986,16 @@ function App({ initialFilePath, initialVaultPath }: { initialFilePath?: string |
       setPreviewFilePath(null);
       setModified(false);
       setContent("");
+      registerOpenFile(path);
     } else if (!isEditableFile(name)) {
       setFileName(path);
       setPreviewFilePath(path);
       setCanvasFilePath(null);
+      registerOpenFile(path);
     } else {
       openFile(path);
     }
-  }, [openFile]);
+  }, [openFile, registerOpenFile]);
 
   const navigateBack = useCallback(() => {
     if (historyIndex <= 0) return;
@@ -1898,6 +2057,61 @@ function App({ initialFilePath, initialVaultPath }: { initialFilePath?: string |
       setPendingFilePath(null);
     }
   }, [pendingFilePath, openFile]);
+
+  const handleCloseFileConfirmSave = useCallback(async () => {
+    setCloseFileConfirmOpen(false);
+    try {
+      if (pendingCloseAll) {
+        for (const path of openFilesRef.current) {
+          if (!isOpenFileModified(path)) continue;
+          if (canvasFilePath === path) {
+            await useCanvasStore.getState().saveCanvas();
+          } else {
+            const buf = buffersRef.current.find((b) => b.fileName === path);
+            if (buf?.fileName) {
+              await writeTextFile(buf.fileName, buf.content);
+              updateBuffer(buf.id, { savedContent: buf.content, modified: false });
+            }
+          }
+        }
+        performCloseAllOpenFiles();
+      } else if (pendingClosePath) {
+        const path = pendingClosePath;
+        if (canvasFilePath === path) {
+          await useCanvasStore.getState().saveCanvas();
+        } else {
+          const buf = buffersRef.current.find((b) => b.fileName === path);
+          if (buf?.fileName) {
+            await writeTextFile(buf.fileName, buf.content);
+            updateBuffer(buf.id, { savedContent: buf.content, modified: false });
+          }
+        }
+        performCloseOpenFile(path);
+      }
+    } catch (e) {
+      console.error(t("app.error.autoSaveFailed"), e);
+    } finally {
+      setPendingClosePath(null);
+      setPendingCloseAll(false);
+    }
+  }, [pendingCloseAll, pendingClosePath, isOpenFileModified, canvasFilePath, performCloseAllOpenFiles, performCloseOpenFile, updateBuffer, t]);
+
+  const handleCloseFileConfirmDiscard = useCallback(() => {
+    setCloseFileConfirmOpen(false);
+    if (pendingCloseAll) {
+      performCloseAllOpenFiles();
+    } else if (pendingClosePath) {
+      performCloseOpenFile(pendingClosePath);
+    }
+    setPendingClosePath(null);
+    setPendingCloseAll(false);
+  }, [pendingCloseAll, pendingClosePath, performCloseAllOpenFiles, performCloseOpenFile]);
+
+  const handleCloseFileConfirmCancel = useCallback(() => {
+    setCloseFileConfirmOpen(false);
+    setPendingClosePath(null);
+    setPendingCloseAll(false);
+  }, []);
 
   const handleSidebarToggle = useCallback(() => {
     setSidebarOpen((prev) => !prev);
@@ -2373,6 +2587,7 @@ function App({ initialFilePath, initialVaultPath }: { initialFilePath?: string |
             activeVaultPath={activeVaultIndex >= 0 ? vaults[activeVaultIndex]?.path : null}
             onWordCount={(c) => { if (pane.id === activePaneIdRef.current) setWordCount(c); }}
             active={pane.id === activePaneId}
+            pendingViewRestoreRef={pendingViewRestoreRef}
           />
         </Suspense>
       </EditorErrorBoundary>
@@ -2574,15 +2789,20 @@ function App({ initialFilePath, initialVaultPath }: { initialFilePath?: string |
         const label = win.label;
         if (label === "settings" || label === "mindmap") {
           win.close();
-        } else {
-          // 多面板时优先关闭当前激活面板，仅剩单面板时才走窗口关闭流程
-          const paneCount = collectPaneIds(splitLayoutRef.current).length;
-          if (paneCount > 1) {
-            closePane(activePaneIdRef.current);
-          } else {
-            handleClose();
-          }
+          return;
         }
+        const activePath = getActiveOpenPath();
+        if (activePath && openFilesRef.current.includes(activePath)) {
+          closeOpenFile(activePath);
+          return;
+        }
+        const paneCount = collectPaneIds(splitLayoutRef.current).length;
+        if (paneCount > 1) {
+          closePane(activePaneIdRef.current);
+          return;
+        }
+        handleClose();
+        return;
       }
       if (matchShortcut(e, shortcutsConfig.app["find"])) {
         e.preventDefault();
@@ -2595,7 +2815,7 @@ function App({ initialFilePath, initialVaultPath }: { initialFilePath?: string |
     };
     window.addEventListener("keydown", handler);
     return () => window.removeEventListener("keydown", handler);
-  }, [handleClose, closePane, vimShouldTakeOver]);
+  }, [handleClose, closeOpenFile, getActiveOpenPath, closePane, vimShouldTakeOver]);
 
   // Ctrl+,（macOS：⌘+,）切换设置窗口；可在设置-快捷键中自定义
   useEffect(() => {
@@ -2622,6 +2842,25 @@ function App({ initialFilePath, initialVaultPath }: { initialFilePath?: string |
 
   const toggleTypewriterMode = useCallback(() => {
     setTypewriterMode((prev: boolean) => !prev);
+  }, []);
+
+  /** 滚动当前激活窗格到顶部 / 底部 */
+  const scrollEditorToEdge = useCallback((edge: "top" | "bottom") => {
+    const paneId = activePaneIdRef.current;
+    const root =
+      (document.querySelector(
+        `[data-pane-id="${paneId}"] .tiptap-editor`
+      ) as HTMLElement | null) ??
+      (document.querySelector(
+        `[data-pane-id="${paneId}"] .cm-scroller`
+      ) as HTMLElement | null) ??
+      (document.querySelector(".tiptap-editor") as HTMLElement | null) ??
+      (document.querySelector(".cm-scroller") as HTMLElement | null);
+    if (!root) return;
+    root.scrollTo({
+      top: edge === "top" ? 0 : root.scrollHeight,
+      behavior: "smooth",
+    });
   }, []);
 
   // 打字机模式快捷键（配置见 src/config/shortcuts.json 的 app.typewriter）
@@ -2818,6 +3057,7 @@ function App({ initialFilePath, initialVaultPath }: { initialFilePath?: string |
   const vimAppHandlersRef = useRef<Record<string, () => void>>({});
   vimAppHandlersRef.current = {
     "save": handleSave,
+    "format-document": handleFormatDocument,
     "toggle-sidebar": () => {
       // Leader+E：打开文件树时切换到 files tab 并聚焦；关闭时仅收起
       if (!sidebarOpen) {
@@ -3329,6 +3569,7 @@ function App({ initialFilePath, initialVaultPath }: { initialFilePath?: string |
   const commands = useMemo(() => [
     // 文件操作
     { id: "save", label: t("app.command.labels.saveFile"), category: t("app.command.categories.file"), shortcut: getCommandShortcut("save"), action: handleSave },
+    { id: "format-document", label: t("app.command.labels.formatDocument"), category: t("app.command.categories.edit"), action: handleFormatDocument },
     { id: "open", label: t("app.command.labels.openFile"), category: t("app.command.categories.file"), shortcut: getCommandShortcut("open"), action: () => { if (activeVaultIndex >= 0) setQuickOpenOpen(true); } },
     { id: "new-window", label: t("app.command.labels.openInNewWindow"), category: t("app.command.categories.file"), action: () => { if (fileName) handleNewWindow(fileName); } },
 
@@ -3416,7 +3657,12 @@ function App({ initialFilePath, initialVaultPath }: { initialFilePath?: string |
     // 窗口操作
     { id: "minimize", label: t("app.command.labels.minimizeWindow"), category: t("app.command.categories.window"), action: handleMinimize },
     { id: "maximize", label: t("app.command.labels.maximizeWindow"), category: t("app.command.categories.window"), action: handleToggleMaximize },
-    { id: "close", label: t("app.command.labels.closeWindow"), category: t("app.command.categories.window"), action: handleClose },
+    { id: "close", label: t("app.command.labels.closeFile"), category: t("app.command.categories.file"), shortcut: getCommandShortcut("close-window"), action: () => {
+      const activePath = getActiveOpenPath();
+      if (activePath) closeOpenFile(activePath);
+    }},
+    { id: "close-all", label: t("app.command.labels.closeAllFiles"), category: t("app.command.categories.file"), action: closeAllOpenFiles },
+    { id: "close-window", label: t("app.command.labels.closeWindow"), category: t("app.command.categories.window"), action: handleClose },
 
     // 设置
     { id: "open-settings", label: t("app.command.labels.openSettings"), category: t("app.command.categories.settings"), shortcut: getCommandShortcut("open-settings"), action: async () => {
@@ -3430,14 +3676,31 @@ function App({ initialFilePath, initialVaultPath }: { initialFilePath?: string |
       }
     } },
     { id: "settings-general", label: t("app.command.labels.generalSettings"), category: t("app.command.categories.settings"), aliases: t("app.command.aliases.generalSettings").split(", "), action: () => { localStorage.setItem("zmd-settings-initial-tab", "general"); invoke("open_settings_window"); } },
+    { id: "settings-editor", label: t("settings.tabs.editor"), category: t("app.command.categories.settings"), aliases: ["编辑器", "editor", "打字机", "保存", "格式化"].flatMap((s) => s.split(", ")), action: () => { localStorage.setItem("zmd-settings-initial-tab", "editor"); invoke("open_settings_window"); } },
+    { id: "settings-markdown", label: t("settings.tabs.markdown"), category: t("app.command.categories.settings"), aliases: ["Markdown", "markdown", "WikiLink", "Mermaid", "Callout", "数学"].flatMap((s) => s.split(", ")), action: () => { localStorage.setItem("zmd-settings-initial-tab", "markdown"); invoke("open_settings_window"); } },
+    { id: "settings-appearance", label: t("settings.tabs.appearance"), category: t("app.command.categories.settings"), aliases: ["外观", "appearance", "界面", "侧栏", "顶栏"].flatMap((s) => s.split(", ")), action: () => { localStorage.setItem("zmd-settings-initial-tab", "appearance"); invoke("open_settings_window"); } },
     { id: "settings-theme", label: t("app.command.labels.themeSettings"), category: t("app.command.categories.settings"), aliases: t("app.command.aliases.themeSettings").split(", "), action: () => { localStorage.setItem("zmd-settings-initial-tab", "theme"); invoke("open_settings_window"); } },
     { id: "settings-shortcuts", label: t("app.command.labels.shortcutSettings"), category: t("app.command.categories.settings"), aliases: t("app.command.aliases.shortcutSettings").split(", "), action: () => { localStorage.setItem("zmd-settings-initial-tab", "shortcuts"); invoke("open_settings_window"); } },
     { id: "settings-mindmap", label: t("app.command.labels.mindmapSettings"), category: t("app.command.categories.settings"), aliases: t("app.command.aliases.mindmapSettings").split(", "), action: () => { localStorage.setItem("zmd-settings-initial-tab", "mindmap"); invoke("open_settings_window"); } },
     { id: "settings-graph", label: t("app.command.labels.graphSettings"), category: t("app.command.categories.settings"), aliases: t("app.command.aliases.graphSettings").split(", "), action: () => { localStorage.setItem("zmd-settings-initial-tab", "graph"); invoke("open_settings_window"); } },
     { id: "settings-image", label: t("app.command.labels.imageSettings"), category: t("app.command.categories.settings"), aliases: t("app.command.aliases.imageSettings").split(", "), action: () => { localStorage.setItem("zmd-settings-initial-tab", "image"); invoke("open_settings_window"); } },
     { id: "settings-canvas", label: t("app.command.labels.canvasSettings"), category: t("app.command.categories.settings"), aliases: t("app.command.aliases.canvasSettings").split(", "), action: () => { localStorage.setItem("zmd-settings-initial-tab", "canvas"); invoke("open_settings_window"); } },
+    { id: "settings-publish", label: t("settings.tabs.publish"), category: t("app.command.categories.settings"), aliases: ["发布", "publish", "网站", "部署"].flatMap((s) => s.split(", ")), action: () => { localStorage.setItem("zmd-settings-initial-tab", "publish"); invoke("open_settings_window"); } },
     { id: "settings-about", label: t("app.command.labels.about"), category: t("app.command.categories.settings"), aliases: t("app.command.aliases.about").split(", "), action: () => { localStorage.setItem("zmd-settings-initial-tab", "about"); invoke("open_settings_window"); } },
-  ], [t, handleSave, activeVaultIndex, fileName, handleNewWindow, handleSidebarToggle, cycleMode, toggleTypewriterMode, handleMinimize, handleToggleMaximize, handleClose, setViewMode, setActiveMode, viewMode, vaults, handleCopyAsMarkdown, content, getGraphSettings, handleOpenXhs, handlePublish]);
+  ], [t, handleSave, handleFormatDocument, activeVaultIndex, fileName, handleNewWindow, handleSidebarToggle, cycleMode, toggleTypewriterMode, handleMinimize, handleToggleMaximize, handleClose, closeOpenFile, closeAllOpenFiles, getActiveOpenPath, setViewMode, setActiveMode, viewMode, vaults, handleCopyAsMarkdown, content, getGraphSettings, handleOpenXhs, handlePublish]);
+
+  const modifiedOpenPaths = useMemo(() => {
+    const set = new Set<string>();
+    for (const b of buffers) {
+      if (b.modified && b.fileName) set.add(b.fileName);
+    }
+    if (canvasFilePath && useCanvasStore.getState().isModified) {
+      set.add(canvasFilePath);
+    }
+    return set;
+  }, [buffers, canvasFilePath, saveStatus]);
+
+  const activeOpenFilePath = canvasFilePath ?? previewFilePath ?? fileName;
 
   return (
     <div className="app">
@@ -3463,8 +3726,14 @@ function App({ initialFilePath, initialVaultPath }: { initialFilePath?: string |
           onWidthChange={setSidebarWidth}
           onBookmark={handleShowBookmarkDialog}
           outlineTrigger={outlineTrigger}
+          openFiles={openFiles}
+          activeOpenFilePath={activeOpenFilePath}
+          modifiedOpenPaths={modifiedOpenPaths}
+          onSelectOpenFile={handleSelectOpenFile}
+          onCloseOpenFile={closeOpenFile}
           side="left"
           tabs={leftTabs}
+          autoHideVaultFooter={autoHideVaultFooter}
         />
 
         {/* 编辑区域 */}
@@ -3502,7 +3771,7 @@ function App({ initialFilePath, initialVaultPath }: { initialFilePath?: string |
               {updateDownloading && (
                 <div className="update-progress">
                   <div className="update-progress-text">
-                    {t("app.update.downloading")}{updateProgress.total ? ` ${Math.round(updateProgress.downloaded / updateProgress.total * 100)}%` : ""}
+                    {t("app.update.downloading")}{formatUpdateProgressPercent(updateProgress)}
                   </div>
                   {updateProgress.total && (
                     <div className="update-progress-bar">
@@ -3646,6 +3915,22 @@ function App({ initialFilePath, initialVaultPath }: { initialFilePath?: string |
                         <polyline points="12 16 16 20 20 16"/>
                       </svg>
                       <span className="editor-topbar-more-menu-label">{t("app.menu.replace")}</span>
+                    </div>
+                    <div
+                      className={`editor-topbar-more-menu-item${!isCurrentFileMarkdown ? " disabled" : ""}`}
+                      onClick={() => {
+                        if (!isCurrentFileMarkdown) return;
+                        setMoreMenuOpen(false);
+                        handleFormatDocument();
+                      }}
+                    >
+                      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                        <line x1="21" y1="10" x2="7" y2="10" />
+                        <line x1="21" y1="6" x2="3" y2="6" />
+                        <line x1="21" y1="14" x2="3" y2="14" />
+                        <line x1="21" y1="18" x2="7" y2="18" />
+                      </svg>
+                      <span className="editor-topbar-more-menu-label">{t("app.menu.formatDocument")}</span>
                     </div>
                     <div className="editor-topbar-more-menu-divider" />
                     <div
@@ -3895,22 +4180,24 @@ function App({ initialFilePath, initialVaultPath }: { initialFilePath?: string |
                 </svg>
               </button>
               <div className="window-controls-divider window-controls-native" />
-              <button className="window-control-btn window-controls-native" onClick={handleMinimize} title={t("app.toolbar.minimize")}>
-                <svg width="10" height="10" viewBox="0 0 10 10">
-                  <line x1="1" y1="5" x2="9" y2="5" stroke="currentColor" strokeWidth="1.2" />
-                </svg>
-              </button>
-              <button className="window-control-btn window-controls-native" onClick={handleToggleMaximize} title={t("app.toolbar.maximize")}>
-                <svg width="10" height="10" viewBox="0 0 10 10">
-                  <rect x="1" y="1" width="8" height="8" rx="0.5" fill="none" stroke="currentColor" strokeWidth="1.2" />
-                </svg>
-              </button>
-              <button className="window-control-btn window-control-close window-controls-native" onClick={handleClose} title={t("app.toolbar.close")}>
-                <svg width="10" height="10" viewBox="0 0 10 10">
-                  <line x1="1.5" y1="1.5" x2="8.5" y2="8.5" stroke="currentColor" strokeWidth="1.2" />
-                  <line x1="8.5" y1="1.5" x2="1.5" y2="8.5" stroke="currentColor" strokeWidth="1.2" />
-                </svg>
-              </button>
+              <div className="window-caption-controls window-controls-native">
+                <button className="window-control-btn window-controls-native" onClick={handleMinimize} title={t("app.toolbar.minimize")}>
+                  <svg width="10" height="10" viewBox="0 0 10 10">
+                    <line x1="1" y1="5" x2="9" y2="5" stroke="currentColor" strokeWidth="1.2" />
+                  </svg>
+                </button>
+                <button className="window-control-btn window-controls-native" onClick={handleToggleMaximize} title={t("app.toolbar.maximize")}>
+                  <svg width="10" height="10" viewBox="0 0 10 10">
+                    <rect x="1" y="1" width="8" height="8" rx="0.5" fill="none" stroke="currentColor" strokeWidth="1.2" />
+                  </svg>
+                </button>
+                <button className="window-control-btn window-control-close window-controls-native" onClick={handleClose} title={t("app.toolbar.close")}>
+                  <svg width="10" height="10" viewBox="0 0 10 10">
+                    <line x1="1.5" y1="1.5" x2="8.5" y2="8.5" stroke="currentColor" strokeWidth="1.2" />
+                    <line x1="8.5" y1="1.5" x2="1.5" y2="8.5" stroke="currentColor" strokeWidth="1.2" />
+                  </svg>
+                </button>
+              </div>
             </div>
           </div>
 
@@ -4105,6 +4392,32 @@ function App({ initialFilePath, initialVaultPath }: { initialFilePath?: string |
               )}
             </div>
           )}
+          {!canvasFilePath && !graphViewOpen && isCurrentFileMarkdown && (
+            <div className="editor-scroll-jump" role="group" aria-label={t("app.scrollJump")}>
+              <button
+                type="button"
+                className="editor-scroll-jump-btn"
+                onClick={() => scrollEditorToEdge("top")}
+                title={t("app.scrollToTop")}
+                aria-label={t("app.scrollToTop")}
+              >
+                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+                  <polyline points="18 15 12 9 6 15" />
+                </svg>
+              </button>
+              <button
+                type="button"
+                className="editor-scroll-jump-btn"
+                onClick={() => scrollEditorToEdge("bottom")}
+                title={t("app.scrollToBottom")}
+                aria-label={t("app.scrollToBottom")}
+              >
+                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+                  <polyline points="6 9 12 15 18 9" />
+                </svg>
+              </button>
+            </div>
+          )}
           {!canvasFilePath && !graphViewOpen && (
           <div className="editor-bottom-controls editor-bottom-right">
             <button
@@ -4158,6 +4471,11 @@ function App({ initialFilePath, initialVaultPath }: { initialFilePath?: string |
             onWidthChange={setRightSidebarWidth}
             onBookmark={handleShowBookmarkDialog}
             outlineTrigger={outlineTrigger}
+            openFiles={openFiles}
+            activeOpenFilePath={activeOpenFilePath}
+            modifiedOpenPaths={modifiedOpenPaths}
+            onSelectOpenFile={handleSelectOpenFile}
+            onCloseOpenFile={closeOpenFile}
             side="right"
             tabs={rightTabs}
           />
@@ -4214,6 +4532,23 @@ function App({ initialFilePath, initialVaultPath }: { initialFilePath?: string |
         cancelText={t("app.dialog.dontSave")}
         onConfirm={handleSaveConfirm}
         onCancel={handleSaveCancel}
+      />
+
+      <ConfirmDialog
+        isOpen={closeFileConfirmOpen}
+        title={t("openFiles.closeConfirmTitle")}
+        message={
+          pendingCloseAll
+            ? t("openFiles.closeAllConfirmMessage")
+            : t("openFiles.closeConfirmMessage", { name: pendingClosePath?.split(/[/\\]/).pop() || "" })
+        }
+        type="warning"
+        confirmText={t("app.dialog.save")}
+        cancelText={t("app.dialog.cancel")}
+        discardText={t("app.dialog.dontSave")}
+        onConfirm={handleCloseFileConfirmSave}
+        onCancel={handleCloseFileConfirmCancel}
+        onDiscard={handleCloseFileConfirmDiscard}
       />
 
       <ConfirmDialog

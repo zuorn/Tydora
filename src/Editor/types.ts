@@ -1,6 +1,14 @@
+import type { MutableRefObject } from "react";
 import type { ThemeName } from "../themes";
 import type { ImageSettings } from "../services";
 import type { EditorSettings } from "../Settings";
+
+export interface EditorViewState {
+  scrollTop: number;
+  scrollLeft: number;
+  cursorOffset: number;
+  selectionHead: number;
+}
 
 export interface EditorHandle {
   getValue: () => string;
@@ -28,6 +36,8 @@ export interface EditorHandle {
   selectAndScroll: (from: number, to: number) => void;
   /** 替换指定范围内容 */
   replaceAt: (from: number, to: number, replacement: string) => void;
+  getViewState: () => EditorViewState | null;
+  restoreViewState: (state: EditorViewState) => void;
 }
 
 export type EditorMode = "ir" | "sv";
@@ -55,4 +65,5 @@ export interface EditorProps {
   onWordCount?: (count: number) => void;
   /** 该编辑器是否为当前激活窗格（多窗格时只有激活窗格的 Leader 菜单才生效，避免重复触发） */
   active?: boolean;
+  pendingViewRestoreRef?: MutableRefObject<EditorViewState | null>;
 }

@@ -1,8 +1,9 @@
 import { useState, useCallback, useRef, useEffect, useLayoutEffect } from "react";
 import { useTranslation } from "react-i18next";
 import { createPortal } from "react-dom";
-import type { BookmarkGroup } from "./BookmarksService";
+import type { Bookmark, BookmarkGroup } from "./BookmarksService";
 import * as BookmarksService from "./BookmarksService";
+import { BookmarkDialog } from "./BookmarkDialog";
 import type { VaultInfo } from "../Sidebar";
 import "./BookmarksPanel.css";
 
@@ -43,6 +44,7 @@ export function BookmarksPanel({
     groupId: string;
     index: number;
   } | null>(null);
+  const [editingBookmark, setEditingBookmark] = useState<Bookmark | null>(null);
 
   const loadGroups = useCallback(() => {
     if (!vaultPath) {
@@ -94,17 +96,23 @@ export function BookmarksPanel({
 
   const handleCopyPath = useCallback((path: string) => {
     navigator.clipboard.writeText(path).then(() => {
-      showToast(t("toast.pathCopied"));
+      showToast(t("sidebar.toast.pathCopied"));
     }).catch(() => {});
+  }, [t]);
+
+  const handleEditBookmark = useCallback((bookmark: Bookmark) => {
+    setEditingBookmark(bookmark);
   }, []);
 
-  const handleEditTitle = useCallback((bookmarkId: string, currentTitle: string) => {
-    const newTitle = prompt(t("bookmarks.editTitlePrompt"), currentTitle);
-    if (newTitle !== null && vaultPath) {
-      BookmarksService.updateBookmark(vaultPath, bookmarkId, { title: newTitle });
+  const handleEditBookmarkSave = useCallback(
+    (title: string, groupId: string) => {
+      if (!vaultPath || !editingBookmark) return;
+      BookmarksService.updateBookmark(vaultPath, editingBookmark.id, { title, groupId });
+      setEditingBookmark(null);
       loadGroups();
-    }
-  }, [vaultPath, loadGroups, t]);
+    },
+    [vaultPath, editingBookmark, loadGroups],
+  );
 
   const handleDeleteGroup = useCallback(
     (groupId: string) => {
@@ -117,7 +125,7 @@ export function BookmarksPanel({
 
   const handleRenameGroupStart = useCallback((groupId: string, currentName: string) => {
     setEditingGroupId(groupId);
-    setEditingGroupName(currentName);
+    setEditingGroupName(BookmarksService.resolveBookmarkGroupName(currentName));
   }, []);
 
   const handleRenameGroupConfirm = useCallback(() => {
@@ -206,26 +214,16 @@ export function BookmarksPanel({
   if (!vaultPath) {
     return (
       <div className="bookmarks-panel">
-        <div className="bookmarks-empty">{t("bookmarks.panel.noVault")}</div>
+        <div className="bookmarks-empty">{t("sidebar.bookmarks.panel.noVault")}</div>
       </div>
     );
   }
 
-  if (groups.length === 0 && groups.every((g) => g.bookmarks.length === 0)) {
+  if (groups.length === 0) {
     return (
       <div className="bookmarks-panel">
-        <div className="bookmarks-empty">{t("bookmarks.panel.empty")}</div>
-        <div className="bookmarks-empty-hint">{t("bookmarks.panel.emptyHint")}</div>
-      </div>
-    );
-  }
-
-  const allBookmarksEmpty = groups.every((g) => g.bookmarks.length === 0);
-  if (allBookmarksEmpty) {
-    return (
-      <div className="bookmarks-panel">
-        <div className="bookmarks-empty">{t("bookmarks.panel.empty")}</div>
-        <div className="bookmarks-empty-hint">{t("bookmarks.panel.emptyHint")}</div>
+        <div className="bookmarks-empty">{t("sidebar.bookmarks.panel.empty")}</div>
+        <div className="bookmarks-empty-hint">{t("sidebar.bookmarks.panel.emptyHint")}</div>
       </div>
     );
   }
@@ -233,7 +231,6 @@ export function BookmarksPanel({
   return (
     <div className="bookmarks-panel">
       {groups.map((group) => {
-        if (group.bookmarks.length === 0 && !group.expanded) return null;
         return (
           <div key={group.id} className="bookmark-group">
             <div
@@ -269,7 +266,7 @@ export function BookmarksPanel({
                 />
               ) : (
                 <>
-                  <span className="bookmark-group-name">{group.name}</span>
+                  <span className="bookmark-group-name">{BookmarksService.resolveBookmarkGroupName(group.name)}</span>
                   <span className="bookmark-group-count">{group.bookmarks.length}</span>
                 </>
               )}
@@ -307,9 +304,6 @@ export function BookmarksPanel({
                     </div>
                   );
                 })}
-                {group.bookmarks.length === 0 && (
-                  <div className="bookmarks-empty-small">{t("bookmarks.panel.dropHere")}</div>
-                )}
               </div>
             )}
           </div>
@@ -330,7 +324,21 @@ export function BookmarksPanel({
           onDeleteGroup={handleDeleteGroup}
           onRenameGroup={handleRenameGroupStart}
           onNewWindow={onNewWindow}
-          onEditTitle={handleEditTitle}
+          onEditBookmark={handleEditBookmark}
+        />
+      )}
+
+      {editingBookmark && vaultPath && (
+        <BookmarkDialog
+          isOpen
+          filePath={editingBookmark.path}
+          fileName={editingBookmark.path.split(/[/\\]/).pop() || editingBookmark.path}
+          isDirectory={false}
+          vaultPath={vaultPath}
+          existingGroups={BookmarksService.getGroupsForVault(vaultPath)}
+          editingBookmark={editingBookmark}
+          onSave={handleEditBookmarkSave}
+          onCancel={() => setEditingBookmark(null)}
         />
       )}
     </div>
@@ -352,7 +360,7 @@ function BookmarkContextMenu({
   onDeleteGroup,
   onRenameGroup,
   onNewWindow,
-  onEditTitle,
+  onEditBookmark,
 }: {
   x: number;
   y: number;
@@ -366,7 +374,7 @@ function BookmarkContextMenu({
   onDeleteGroup: (id: string) => void;
   onRenameGroup: (id: string, name: string) => void;
   onNewWindow: (filePath: string) => void;
-  onEditTitle: (bookmarkId: string, currentTitle: string) => void;
+  onEditBookmark: (bookmark: Bookmark) => void;
 }) {
   const { t } = useTranslation();
   const menuRef = useRef<HTMLDivElement>(null);
@@ -400,15 +408,15 @@ function BookmarkContextMenu({
 
   if (type === "bookmark" && bookmark) {
     items.push(
-      { label: t("bookmarks.contextMenu.openInNewWindow"), onClick: () => { onNewWindow(bookmark.path); onClose(); } },
-      { label: t("bookmarks.contextMenu.editTitle"), onClick: () => { onEditTitle(bookmarkId!, bookmark.title); onClose(); } },
-      { label: t("bookmarks.contextMenu.unfavorite"), onClick: () => { onDeleteBookmark(bookmarkId!); onClose(); }, danger: true, separator: true },
-      { label: t("bookmarks.contextMenu.copyPath"), onClick: () => { onCopyPath(bookmark.path); onClose(); } },
+      { label: t("sidebar.bookmarks.contextMenu.openInNewWindow"), onClick: () => { onNewWindow(bookmark.path); onClose(); } },
+      { label: t("sidebar.bookmarks.contextMenu.editBookmark"), onClick: () => { onEditBookmark(bookmark); onClose(); } },
+      { label: t("sidebar.bookmarks.contextMenu.unfavorite"), onClick: () => { onDeleteBookmark(bookmarkId!); onClose(); }, danger: true, separator: true },
+      { label: t("sidebar.bookmarks.contextMenu.copyPath"), onClick: () => { onCopyPath(bookmark.path); onClose(); } },
     );
   } else if (type === "group" && group) {
     items.push(
-      { label: t("bookmarks.contextMenu.rename"), onClick: () => { onRenameGroup(groupId!, group.name); onClose(); } },
-      { label: t("bookmarks.contextMenu.deleteGroup"), onClick: () => { onDeleteGroup(groupId!); onClose(); }, danger: true },
+      { label: t("sidebar.bookmarks.contextMenu.rename"), onClick: () => { onRenameGroup(groupId!, group.name); onClose(); } },
+      { label: t("sidebar.bookmarks.contextMenu.deleteGroup"), onClick: () => { onDeleteGroup(groupId!); onClose(); }, danger: true },
     );
   }
 

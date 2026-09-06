@@ -1,4 +1,4 @@
-import { useRef, useEffect, useCallback, useImperativeHandle } from "react";
+import { useRef, useEffect, useCallback, useImperativeHandle, useState } from "react";
 import { Transformer } from "markmap-lib";
 import { Markmap, loadCSS, loadJS } from "markmap-view";
 import { save } from "@tauri-apps/plugin-dialog";
@@ -38,6 +38,10 @@ function getMindmapSettings(): MindmapSettings {
   }
 }
 
+function readAppearanceIsDark(): boolean {
+  return document.documentElement.dataset.appearance === "dark";
+}
+
 export default function MindmapView({ content, expandLevel, onExpandLevelChange, ref }: MindmapViewProps) {
   const svgRef = useRef<SVGSVGElement>(null);
   const mmRef = useRef<Markmap | null>(null);
@@ -46,6 +50,17 @@ export default function MindmapView({ content, expandLevel, onExpandLevelChange,
   const dragRef = useRef<{ startX: number; startY: number; startTx: number; startTy: number } | null>(null);
   const effectiveExpandLevelRef = useRef<number>(getMindmapSettings().initialExpandLevel);
   const selectedNodeRef = useRef<any>(null);
+  const [appearanceDark, setAppearanceDark] = useState(readAppearanceIsDark);
+
+  useEffect(() => {
+    const syncAppearance = () => setAppearanceDark(readAppearanceIsDark());
+    const observer = new MutationObserver(syncAppearance);
+    observer.observe(document.documentElement, {
+      attributes: true,
+      attributeFilter: ["data-appearance"],
+    });
+    return () => observer.disconnect();
+  }, []);
 
   // Expose toolbar handlers to parent (MindmapWindow)
   useImperativeHandle(ref, () => ({
@@ -158,7 +173,7 @@ export default function MindmapView({ content, expandLevel, onExpandLevelChange,
     return () => {
       if (debounceRef.current) clearTimeout(debounceRef.current);
     };
-  }, [content, renderMindmap]);
+  }, [content, appearanceDark, renderMindmap]);
 
   useEffect(() => {
     const handleResize = () => {
@@ -717,7 +732,10 @@ export default function MindmapView({ content, expandLevel, onExpandLevelChange,
   }, [buildStandaloneSvg]);
 
   return (
-    <div className="mindmap-container" ref={containerRef}>
+    <div
+      className={`mindmap-container${appearanceDark ? " markmap-dark" : ""}`}
+      ref={containerRef}
+    >
       <svg
         ref={svgRef}
         className="mindmap-svg"

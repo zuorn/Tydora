@@ -222,6 +222,11 @@ class TagIndexServiceImpl {
     this.removeFileTagsInternal(filePath);
   }
 
+  /** 返回当前已建立标签索引的文件路径列表。 */
+  getIndexedFilePaths(): string[] {
+    return [...this.index.fileTags.keys()];
+  }
+
   /** 获取所有标签，按使用次数排序 */
   getAllTags(): string[] {
     return Array.from(this.index.tagCount.entries())

@@ -253,6 +253,52 @@
   -webkit-user-select: none;
 }
 
+/* ── Open files panel ── */
+.open-files-panel .tree-node {
+  padding-right: 4px;
+}
+
+.open-file-modified-dot {
+  flex-shrink: 0;
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--accent);
+  margin-right: 4px;
+}
+
+.open-file-close-btn {
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 20px;
+  height: 20px;
+  padding: 0;
+  margin-left: auto;
+  border: none;
+  border-radius: 4px;
+  background: transparent;
+  color: var(--text-secondary);
+  cursor: pointer;
+  opacity: 0;
+  transition: opacity 0.12s ease, background 0.12s ease, color 0.12s ease;
+}
+
+.open-files-panel .tree-node:hover .open-file-close-btn,
+.open-files-panel .tree-node.active .open-file-close-btn {
+  opacity: 1;
+}
+
+.open-file-close-btn:hover {
+  background: rgba(255, 255, 255, 0.12);
+  color: var(--text-primary);
+}
+
+.open-file-close-btn:active {
+  transform: scale(0.92);
+}
+
 /* ── Tree children ── */
 .tree-children {
   position: relative;
@@ -282,6 +328,12 @@
 }
 
 .sidebar:hover .sidebar-footer {
+  opacity: 1;
+  pointer-events: auto;
+}
+
+/* 关闭「自动隐藏仓库栏」时始终显示 */
+.sidebar--vault-footer-pinned .sidebar-footer {
   opacity: 1;
   pointer-events: auto;
 }
@@ -551,7 +603,7 @@
   font-size: 13px;
   line-height: var(--menu-item-line-height);
   color: var(--text-primary);
-  transition: background 0.1s ease;
+  transition: background 0.1s ease, color 0.1s ease;
   white-space: nowrap;
   gap: 8px;
 }
@@ -564,13 +616,18 @@
   color: var(--text-secondary);
 }
 
-.context-menu-item:hover {
-  background: var(--accent);
-  color: var(--bg-primary);
+.context-menu .context-menu-item:hover,
+.context-submenu .context-menu-item:hover,
+.context-menu .context-menu-item:active,
+.context-submenu .context-menu-item:active {
+  background: var(--bg-hover);
+  color: var(--text-primary);
 }
 
-.context-menu-item.danger:hover {
-  background: var(--danger);
+.context-menu .context-menu-item.danger:hover,
+.context-submenu .context-menu-item.danger:hover {
+  background: color-mix(in srgb, var(--danger) 18%, transparent);
+  color: var(--danger);
 }
 
 .context-menu-item.disabled {
@@ -604,14 +661,17 @@
   opacity: 0.6;
 }
 
-.context-menu-item.has-submenu.open {
-  background: var(--accent);
-  color: var(--bg-primary);
+.context-menu .context-menu-item.has-submenu.open,
+.context-submenu .context-menu-item.has-submenu.open {
+  background: var(--bg-hover);
+  color: var(--text-primary);
 }
 
-.context-menu-item.has-submenu.open .context-menu-icon,
-.context-menu-item.has-submenu.open .context-menu-chevron {
-  color: var(--bg-primary);
+.context-menu .context-menu-item.has-submenu.open .context-menu-icon,
+.context-menu .context-menu-item.has-submenu.open .context-menu-chevron,
+.context-submenu .context-menu-item.has-submenu.open .context-menu-icon,
+.context-submenu .context-menu-item.has-submenu.open .context-menu-chevron {
+  color: var(--text-secondary);
   opacity: 0.8;
 }
 

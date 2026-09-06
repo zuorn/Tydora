@@ -45,6 +45,7 @@ const SIZE_PATTERNS = [
   /^--sidebar-chrome-opacity$/,
   /^--radius/,
   /^--padding-/,
+  /^--margin-/,
   /^--scrollbar-size$/,
   /^--blockquote-border-width$/,
 ];

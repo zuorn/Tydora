@@ -3,6 +3,7 @@ import { getCurrentWindow } from "@tauri-apps/api/window";
 import { emit } from "@tauri-apps/api/event";
 import { LinkIndexService } from "../wikilink";
 import { useVaultWatcher } from "../services";
+import { buildIndexesTogether, persistIndexesToStorage, restoreIndexesFromCache } from "../services/index-builder";
 import { track, trackPageview, ANALYTICS_EVENTS } from "../analytics";
 import { GraphView } from "./GraphView";
 import { matchShortcut } from "../Editor/shortcuts";
@@ -46,23 +47,36 @@ export default function GraphWindow() {
 
   const vaultPath = activeVaultIndex >= 0 ? vaults[activeVaultIndex]?.path : null;
 
-  // 同步加载：优先从 localStorage 读取索引（~1ms），立即可用
+  // 同步加载当前仓库缓存，后台联合构建刷新
   useEffect(() => {
     if (!vaultPath) return;
 
-    const cached = localStorage.getItem("zmd-link-index");
-    if (cached) {
-      LinkIndexService.deserialize(cached);
+    const fromCache = restoreIndexesFromCache(vaultPath);
+    if (fromCache) {
       setRefreshKey(n => n + 1);
     }
 
-    // 后台异步刷新索引（确保数据最新）
-    LinkIndexService.buildIndex(vaultPath).then(() => {
-      setRefreshKey(n => n + 1);
-      try {
-        localStorage.setItem("zmd-link-index", LinkIndexService.serialize());
-      } catch {}
-    });
+    let cancelled = false;
+    buildIndexesTogether(vaultPath, { useCache: false, incremental: true, fromCache })
+      .then(() => {
+        if (cancelled) return;
+        setRefreshKey(n => n + 1);
+        try {
+          persistIndexesToStorage(vaultPath);
+        } catch {}
+      })
+      .catch(() => {
+        if (cancelled) return;
+        LinkIndexService.buildIndex(vaultPath).then(() => {
+          if (cancelled) return;
+          setRefreshKey(n => n + 1);
+          try {
+            persistIndexesToStorage(vaultPath);
+          } catch {}
+        });
+      });
+
+    return () => { cancelled = true; };
   }, [vaultPath]);
 
   useVaultWatcher(vaultPath, useCallback(() => setRefreshKey(n => n + 1), []));

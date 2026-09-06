@@ -117,20 +117,3 @@
   color: var(--accent, #8fa9f2);
 }
 
-/* 滚动条样式 */
-.tag-autocomplete::-webkit-scrollbar {
-  width: 6px;
-}
-
-.tag-autocomplete::-webkit-scrollbar-track {
-  background: transparent;
-}
-
-.tag-autocomplete::-webkit-scrollbar-thumb {
-  background: var(--border, #e5e7eb);
-  border-radius: 3px;
-}
-
-.tag-autocomplete::-webkit-scrollbar-thumb:hover {
-  background: var(--text-tertiary, #9ca3af);
-}

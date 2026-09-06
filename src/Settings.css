@@ -6,6 +6,7 @@
   height: 100%;
   background: var(--bg-primary);
   color: var(--text-primary);
+  font-family: var(--font-ui);
   overflow: hidden;
   /* 设置页默认禁选（标签/说明），避免点开关时误选文字 */
   user-select: none;
@@ -374,6 +375,12 @@
 
 .settings-section-title:first-child {
   margin-top: 0;
+}
+
+.settings-section-title--theme {
+  margin-top: 28px;
+  padding-top: 8px;
+  border-top: 1px solid color-mix(in srgb, var(--border) 55%, transparent);
 }
 
 /* ── Settings Item ────────────────────────────────────────────────── */
@@ -1732,25 +1739,6 @@
   text-decoration: underline;
 }
 
-/* ── Scrollbar ─────────────────────────────────────────────────────── */
-
-.settings-window ::-webkit-scrollbar {
-  width: var(--scrollbar-size, 8px);
-}
-
-.settings-window ::-webkit-scrollbar-track {
-  background: var(--scrollbar-track, transparent);
-}
-
-.settings-window ::-webkit-scrollbar-thumb {
-  background: var(--scrollbar-thumb, color-mix(in srgb, var(--text-secondary) 30%, transparent));
-  border-radius: var(--radius-scrollbar, 4px);
-}
-
-.settings-window ::-webkit-scrollbar-thumb:hover {
-  background: var(--scrollbar-thumb-hover, color-mix(in srgb, var(--text-secondary) 50%, transparent));
-}
-
 /* ── Path Input ──────────────────────────────────────────────────── */
 
 .settings-path-wrapper {
@@ -2698,6 +2686,7 @@
   right: auto;
   left: auto;
   z-index: 10000;
+  font-family: var(--font-ui);
 }
 
 .font-picker-search {

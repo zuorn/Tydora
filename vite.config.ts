@@ -8,6 +8,13 @@ export default defineConfig({
   // 防止 Vite 遮盖 Rust 的错误信息
   clearScreen: false,
 
+  // 默认会扫描仓库内所有 HTML（含 website/site 文档产物），
+  // 嵌套页里相对路径的 main-*.js 会触发 “could not be resolved”。
+  // 仅以应用入口做依赖预构建扫描。
+  optimizeDeps: {
+    entries: ["index.html", "src/**/*.{js,jsx,ts,tsx}"],
+  },
+
   build: {
     rollupOptions: {
       output: {

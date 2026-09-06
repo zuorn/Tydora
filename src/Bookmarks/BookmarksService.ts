@@ -2,6 +2,28 @@ import i18n from "../i18n";
 
 const BOOKMARKS_KEY = "zmd-bookmarks";
 
+const BOOKMARK_GROUP_I18N_KEYS = new Set([
+  "bookmarks.defaultGroup",
+  "bookmarks.ungrouped",
+  "sidebar.bookmarks.defaultGroup",
+  "sidebar.bookmarks.ungrouped",
+]);
+
+/** 将 localStorage 中误存为 i18n 键名的分组名还原为当前语言文案 */
+export function resolveBookmarkGroupName(name: string): string {
+  if (!name) return name;
+  if (BOOKMARK_GROUP_I18N_KEYS.has(name)) {
+    const key = name.startsWith("sidebar.") ? name : `sidebar.${name}`;
+    return i18n.t(key);
+  }
+  if (/^bookmarks\./.test(name)) {
+    const key = `sidebar.${name}`;
+    const translated = i18n.t(key);
+    if (translated !== key) return translated;
+  }
+  return name;
+}
+
 export interface Bookmark {
   id: string;
   path: string;
@@ -59,7 +81,7 @@ export function addBookmark(
   if (!group) {
     group = {
       id: generateId(),
-      name: i18n.t("bookmarks.ungrouped"),
+      name: i18n.t("sidebar.bookmarks.ungrouped"),
       bookmarks: [],
       order: store[vaultPath].length,
     };
@@ -119,7 +141,7 @@ export function updateBookmark(
     if (!targetGroup) {
       targetGroup = {
         id: generateId(),
-        name: i18n.t("bookmarks.ungrouped"),
+        name: i18n.t("sidebar.bookmarks.ungrouped"),
         bookmarks: [],
         order: store[vaultPath].length,
       };

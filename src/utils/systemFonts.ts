@@ -106,12 +106,22 @@ export function ensureWebFontsLoaded(editorFontValue: string) {
   }
 }
 
+/** 解析 UI 字体（与编辑器正文字体同一套解析规则）。 */
+export function resolveUiFont(value: string | undefined | null): string {
+  return resolveEditorFont(value);
+}
+
 /** 将字体设置应用到 documentElement CSS 变量。 */
 export function applyFontSettings(opts: {
+  uiFont?: string | null;
   editorFont?: string | null;
   codeFont?: string | null;
   codeFontSize?: number | null;
 }) {
+  if (opts.uiFont != null) {
+    ensureWebFontsLoaded(opts.uiFont);
+    document.documentElement.style.setProperty("--font-ui", resolveUiFont(opts.uiFont));
+  }
   if (opts.editorFont != null) {
     ensureWebFontsLoaded(opts.editorFont);
     document.documentElement.style.setProperty("--editor-font", resolveEditorFont(opts.editorFont));
@@ -125,6 +135,24 @@ export function applyFontSettings(opts: {
   }
 }
 
+/** 从 localStorage 读取并应用字体设置（供各独立窗口启动时调用）。 */
+export function applyFontSettingsFromStorage() {
+  try {
+    const raw = localStorage.getItem("zmd-general-settings");
+    const settings = raw ? JSON.parse(raw) : {};
+    applyFontSettings({
+      uiFont: settings.uiFont ?? "system",
+      editorFont: settings.editorFont ?? "system",
+      codeFont: settings.codeFont ?? "system",
+      codeFontSize:
+        typeof settings.codeFontSize === "number" ? settings.codeFontSize : 14,
+    });
+    if (typeof settings.fontSize === "number") {
+      document.documentElement.style.setProperty("--editor-font-size", settings.fontSize + "px");
+    }
+  } catch {}
+}
+
 /**
  * 将已保存的值规范为 FontPicker 使用的 value：
  * - 系统默认栈 → `system`
@@ -132,6 +160,10 @@ export function applyFontSettings(opts: {
  * - 旧版完整 CSS 栈 → 提取第一个族名
  * - 其余保留
  */
+export function normalizeUiFontValue(value: string | undefined | null): string {
+  return normalizeEditorFontValue(value);
+}
+
 export function normalizeEditorFontValue(value: string | undefined | null): string {
   if (!value) return SYSTEM_FONT_SENTINEL;
   if (value === SYSTEM_FONT_SENTINEL) return value;

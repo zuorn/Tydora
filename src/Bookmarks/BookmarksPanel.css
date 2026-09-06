@@ -20,13 +20,6 @@
   font-size: 11px;
 }
 
-.bookmarks-empty-small {
-  padding: 8px 16px;
-  text-align: center;
-  color: var(--text-tertiary, #999);
-  font-size: 11px;
-}
-
 /* ── Bookmark Group ── */
 
 .bookmark-group {

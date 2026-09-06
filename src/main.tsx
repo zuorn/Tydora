@@ -1,6 +1,14 @@
 import { lazy, Suspense } from "react";
 import ReactDOM from "react-dom/client";
 import { bootStart, bootEnd, bootStamp, bootSummary, connectRustBootTiming } from "./boot-timing";
+import { getPdfPrintWindowRequest } from "./export/pdfPrint/pdfPrintWindow";
+
+// 在最早阶段检测 PDF 打印窗口，提前设置样式类
+const pdfPrintWindowRequest = getPdfPrintWindowRequest();
+if (pdfPrintWindowRequest) {
+  document.documentElement.classList.add("tydora-pdf-print-window");
+  document.body.classList.add("tydora-pdf-print-window");
+}
 
 // —— 最早的 JS 执行时间点（文件解析即执行，无需等待 import 完成）
 bootStart("main_entry_to_root_rendered");
@@ -49,6 +57,7 @@ const VaultManagerWindow = lazy(() => import("./VaultManager/VaultManagerWindow"
 const MindmapWindow = lazy(() => import("./mindmap").then((m) => ({ default: m.MindmapWindow })));
 const GraphWindow = lazy(() => import("./graph").then((m) => ({ default: m.GraphWindow })));
 const CanvasWindow = lazy(() => import("./Canvas/CanvasWindow"));
+const PdfPrintWindow = lazy(() => import("./export/pdfPrint/PrintWindow").then((m) => ({ default: m.PdfPrintWindow })));
 
 // 屏蔽 ResizeObserver 循环警告（调整窗口/侧栏宽度时的良性警告）
 // Chromium 的 ResizeObserver 错误走 window.onerror 和 console.error 两条路径
@@ -110,6 +119,10 @@ function Root() {
   if (isCanvasWindow) {
     bootEnd("main_window_lazy_chunks_resolve");
     return <CanvasWindow />;
+  }
+  if (pdfPrintWindowRequest) {
+    bootEnd("main_window_lazy_chunks_resolve");
+    return <PdfPrintWindow request={pdfPrintWindowRequest} />;
   }
   return (
     <VimProvider>

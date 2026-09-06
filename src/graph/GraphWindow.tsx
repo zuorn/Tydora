@@ -65,7 +65,7 @@ export default function GraphWindow() {
     });
   }, [vaultPath]);
 
-  useVaultWatcher(vaultPath, useCallback(() => setRefreshKey(n => n + 1), []));
+  useVaultWatcher(vaultPath, { onIndexChange: useCallback(() => setRefreshKey(n => n + 1), []) });
 
   const handleClose = useCallback(() => {
     getCurrentWindow().close();

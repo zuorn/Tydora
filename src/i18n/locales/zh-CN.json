@@ -677,6 +677,14 @@
       "renameFailed": "重命名失败:",
       "openLocationFailed": "打开文件位置失败:"
     },
+    "externalChange": {
+      "prompt": "该文件已在外部被修改，是否重新加载？",
+      "reload": "重新加载",
+      "ignore": "忽略",
+      "deleted": "该文件已在外部被删除，内存中的内容仍保留，保存即可恢复。",
+      "gotIt": "知道了",
+      "autoReloaded": "文件已在外部更新，已自动重新加载"
+    },
     "command": {
       "categories": {
         "file": "文件",

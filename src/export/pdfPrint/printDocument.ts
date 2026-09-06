@@ -1,0 +1,335 @@
+const DEFAULT_PRINT_RESOURCE_TIMEOUT_MS = 15_000;
+const AFTER_PRINT_FALLBACK_MS = 250;
+const NATIVE_PRINT_FALLBACK_MS = 30 * 60_000;
+
+export interface PrintImagePreparationResult {
+  failedImageCount: number;
+}
+
+export interface PrintHydration {
+  settled: Promise<void>;
+}
+
+export interface PreparePrintDocumentOptions {
+  root: HTMLElement;
+  hydration: PrintHydration;
+  interactiveMediaLabel: string;
+  timeoutMs?: number;
+  document?: Document;
+  signal?: AbortSignal;
+  window?: Window;
+}
+
+export interface InvokeSystemPrintOptions {
+  nativeCompletion?: Promise<void>;
+  nativeFallbackMs?: number;
+  standardFallbackMs?: number;
+}
+
+let printTaskActive = false;
+
+export function acquirePrintTask(): (() => void) | null {
+  if (printTaskActive) return null;
+
+  printTaskActive = true;
+  let released = false;
+
+  return () => {
+    if (released) return;
+    released = true;
+    printTaskActive = false;
+  };
+}
+
+function createAbortError(): DOMException {
+  return new DOMException("Print task was cancelled", "AbortError");
+}
+
+function throwIfAborted(signal: AbortSignal): void {
+  if (signal.aborted) throw createAbortError();
+}
+
+function waitForAbortable<T>(promise: Promise<T>, signal: AbortSignal): Promise<T> {
+  throwIfAborted(signal);
+
+  return new Promise<T>((resolve, reject) => {
+    const handleAbort = () => {
+      cleanup();
+      reject(createAbortError());
+    };
+    const cleanup = () => signal.removeEventListener("abort", handleAbort);
+
+    signal.addEventListener("abort", handleAbort, { once: true });
+    promise.then(
+      (value) => {
+        cleanup();
+        resolve(value);
+      },
+      (error) => {
+        cleanup();
+        reject(error);
+      },
+    );
+  });
+}
+
+function withTimeout<T>(
+  promise: Promise<T>,
+  timeoutMs: number,
+  win: Window,
+  handleTimeout: () => void,
+): Promise<T> {
+  let timeoutHandle: number | undefined;
+  const timeout = new Promise<never>((_, reject) => {
+    timeoutHandle = win.setTimeout(() => {
+      reject(new Error("Timed out while preparing the document for printing"));
+      handleTimeout();
+    }, timeoutMs);
+  });
+
+  return Promise.race([promise, timeout]).finally(() => {
+    if (timeoutHandle !== undefined) win.clearTimeout(timeoutHandle);
+  });
+}
+
+function getMediaSource(element: Element): string | null {
+  if (element instanceof HTMLMediaElement) {
+    return (
+      element.currentSrc ||
+      element.getAttribute("src") ||
+      element.querySelector("source[src]")?.getAttribute("src") ||
+      null
+    );
+  }
+
+  return element.getAttribute("src");
+}
+
+function getSafeWebUrl(source: string, doc: Document): string | null {
+  try {
+    const url = new URL(source, doc.baseURI);
+    return url.protocol === "http:" || url.protocol === "https:" ? url.href : null;
+  } catch {
+    return null;
+  }
+}
+
+export function replaceInteractiveMedia(
+  root: HTMLElement,
+  label: string,
+  doc: Document = document,
+): void {
+  root.querySelectorAll("iframe, video, audio, canvas").forEach((element) => {
+    const placeholder = doc.createElement("aside");
+    placeholder.className = "tydora-pdf-media-placeholder";
+    placeholder.setAttribute("role", "note");
+
+    const labelElement = doc.createElement("span");
+    labelElement.textContent = label;
+    placeholder.append(labelElement);
+
+    const source = getMediaSource(element);
+    const safeUrl = source ? getSafeWebUrl(source, doc) : null;
+    if (safeUrl) {
+      const link = doc.createElement("a");
+      link.href = safeUrl;
+      link.textContent = source!;
+      placeholder.append(link);
+    }
+
+    element.replaceWith(placeholder);
+  });
+}
+
+async function waitForImage(image: HTMLImageElement, signal: AbortSignal): Promise<boolean> {
+  throwIfAborted(signal);
+  image.removeAttribute("loading");
+
+  const decodeLoadedImage = async () => {
+    if (image.naturalWidth <= 0) return false;
+    if (!image.decode) return true;
+
+    try {
+      await waitForAbortable(image.decode(), signal);
+    } catch {
+      // Some WebViews reject decode() for images that are already visibly loaded.
+      // naturalWidth remains the reliable fallback in that case.
+    }
+    return image.naturalWidth > 0;
+  };
+
+  if (!image.getAttribute("src")) return false;
+  if (image.complete) return decodeLoadedImage();
+
+  const loaded = await new Promise<boolean>((resolve, reject) => {
+    const handleLoad = () => {
+      cleanup();
+      resolve(true);
+    };
+    const handleError = () => {
+      cleanup();
+      resolve(false);
+    };
+    const cleanup = () => {
+      image.removeEventListener("load", handleLoad);
+      image.removeEventListener("error", handleError);
+      signal.removeEventListener("abort", handleAbort);
+    };
+    const handleAbort = () => {
+      cleanup();
+      reject(createAbortError());
+    };
+
+    image.addEventListener("load", handleLoad, { once: true });
+    image.addEventListener("error", handleError, { once: true });
+    signal.addEventListener("abort", handleAbort, { once: true });
+  });
+
+  return loaded ? decodeLoadedImage() : false;
+}
+
+async function waitForImages(root: HTMLElement, signal: AbortSignal): Promise<number> {
+  const results = await Promise.all(
+    Array.from(root.querySelectorAll<HTMLImageElement>("img")).map((image) =>
+      waitForImage(image, signal),
+    ),
+  );
+  return results.filter((loaded) => !loaded).length;
+}
+
+async function waitForFonts(doc: Document, signal: AbortSignal): Promise<void> {
+  if ("fonts" in doc) {
+    await waitForAbortable(doc.fonts.ready, signal);
+  }
+}
+
+async function waitForLayout(root: HTMLElement, win: Window, signal: AbortSignal): Promise<void> {
+  throwIfAborted(signal);
+  void root.offsetHeight;
+
+  await new Promise<void>((resolve, reject) => {
+    let settled = false;
+    let firstFrame = 0;
+    let secondFrame = 0;
+    const cleanup = () => {
+      win.clearTimeout(fallback);
+      if (firstFrame) win.cancelAnimationFrame(firstFrame);
+      if (secondFrame) win.cancelAnimationFrame(secondFrame);
+      signal.removeEventListener("abort", handleAbort);
+    };
+    const settle = () => {
+      if (settled) return;
+      settled = true;
+      cleanup();
+      resolve();
+    };
+    const fallback = win.setTimeout(settle, 50);
+    const handleAbort = () => {
+      if (settled) return;
+      settled = true;
+      cleanup();
+      reject(createAbortError());
+    };
+    signal.addEventListener("abort", handleAbort, { once: true });
+
+    firstFrame = win.requestAnimationFrame(() => {
+      secondFrame = win.requestAnimationFrame(settle);
+    });
+  });
+}
+
+export function waitForPrintLayout(
+  root: HTMLElement,
+  signal: AbortSignal,
+  win: Window = window,
+): Promise<void> {
+  return waitForLayout(root, win, signal);
+}
+
+export async function preparePrintDocument({
+  root,
+  hydration,
+  interactiveMediaLabel,
+  timeoutMs = DEFAULT_PRINT_RESOURCE_TIMEOUT_MS,
+  document: doc = document,
+  signal,
+  window: win = window,
+}: PreparePrintDocumentOptions): Promise<PrintImagePreparationResult> {
+  const taskAbortController = new AbortController();
+  const handleExternalAbort = () => taskAbortController.abort();
+  signal?.addEventListener("abort", handleExternalAbort, { once: true });
+
+  try {
+    return await withTimeout(
+      (async () => {
+        await waitForAbortable(hydration.settled, taskAbortController.signal);
+        replaceInteractiveMedia(root, interactiveMediaLabel, doc);
+        const [failedImageCount] = await Promise.all([
+          waitForImages(root, taskAbortController.signal),
+          waitForFonts(doc, taskAbortController.signal),
+        ]);
+        await waitForLayout(root, win, taskAbortController.signal);
+
+        return { failedImageCount };
+      })(),
+      timeoutMs,
+      win,
+      () => taskAbortController.abort(),
+    );
+  } finally {
+    signal?.removeEventListener("abort", handleExternalAbort);
+    taskAbortController.abort();
+  }
+}
+
+export async function invokeSystemPrint(
+  win: Window = window,
+  {
+    nativeCompletion,
+    nativeFallbackMs = NATIVE_PRINT_FALLBACK_MS,
+    standardFallbackMs = AFTER_PRINT_FALLBACK_MS,
+  }: InvokeSystemPrintOptions = {},
+): Promise<void> {
+  let afterPrintFired = false;
+  let resolveAfterPrint!: () => void;
+  const afterPrint = new Promise<void>((resolve) => {
+    resolveAfterPrint = resolve;
+  });
+  const handleAfterPrint = () => {
+    afterPrintFired = true;
+    resolveAfterPrint();
+  };
+
+  win.addEventListener("afterprint", handleAfterPrint, { once: true });
+
+  try {
+    const printResult = (win.print as () => unknown)();
+    const usesAsyncNativeBridge =
+      typeof printResult === "object" &&
+      printResult !== null &&
+      "then" in printResult &&
+      typeof printResult.then === "function";
+
+    await Promise.resolve(printResult);
+    if (!afterPrintFired) {
+      let fallbackHandle: number | undefined;
+      try {
+        const completions = [afterPrint];
+        if (usesAsyncNativeBridge && nativeCompletion) completions.push(nativeCompletion);
+        completions.push(
+          new Promise<void>((resolve) => {
+            fallbackHandle = win.setTimeout(
+              resolve,
+              usesAsyncNativeBridge ? nativeFallbackMs : standardFallbackMs,
+            );
+          }),
+        );
+        await Promise.race(completions);
+      } finally {
+        if (fallbackHandle !== undefined) win.clearTimeout(fallbackHandle);
+      }
+    }
+  } finally {
+    win.removeEventListener("afterprint", handleAfterPrint);
+  }
+}

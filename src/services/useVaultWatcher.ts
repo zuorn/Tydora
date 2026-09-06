@@ -35,17 +35,30 @@ function isNoisePath(p: string): boolean {
   });
 }
 
-export function useVaultWatcher(
-  vaultPath: string | null,
-  onIndexChange?: () => void,
-  onStructureChange?: () => void,
-) {
+export interface VaultWatcherOptions {
+  /** 索引变化（文件被创建/修改/删除）时回调，用于刷新侧栏、反链、图谱等 */
+  onIndexChange?: () => void;
+  /** 文件树结构性变化（增/删/重命名，非噪声路径）时回调，用于刷新文件树 */
+  onStructureChange?: () => void;
+  /**
+   * 某个「已打开的文件」在外部（其它软件）被修改/删除时回调。
+   * kind:
+   *   - 'modify'：文件内容被外部修改（Create / Modify 事件）
+   *   - 'remove'：文件在外部被删除（Remove 事件）
+   * 由调用方决定是否自动重新加载或提示用户。
+   */
+  onFileExternallyChanged?: (path: string, kind: 'modify' | 'remove') => void;
+}
+
+export function useVaultWatcher(vaultPath: string | null, options?: VaultWatcherOptions) {
   const debounceRef = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
   const structureDebounceRef = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
-  const onIndexChangeRef = useRef(onIndexChange);
-  const onStructureChangeRef = useRef(onStructureChange);
-  onIndexChangeRef.current = onIndexChange;
-  onStructureChangeRef.current = onStructureChange;
+  const onIndexChangeRef = useRef(options?.onIndexChange);
+  const onStructureChangeRef = useRef(options?.onStructureChange);
+  const onFileChangedRef = useRef(options?.onFileExternallyChanged);
+  onIndexChangeRef.current = options?.onIndexChange;
+  onStructureChangeRef.current = options?.onStructureChange;
+  onFileChangedRef.current = options?.onFileExternallyChanged;
 
   useEffect(() => {
     if (!vaultPath) return;
@@ -58,17 +71,20 @@ export function useVaultWatcher(
       // 1) 索引/图谱更新（仅 .md），沿用原 300ms debounce
       clearTimeout(debounceRef.current);
       debounceRef.current = setTimeout(async () => {
+        const isRemove = kind.includes('Remove');
         for (const filePath of paths) {
           if (!filePath.endsWith('.md')) continue;
 
-          if (kind.includes('Remove')) {
+          if (isRemove) {
             LinkIndexService.removeFile(filePath);
+            onFileChangedRef.current?.(filePath, 'remove');
           } else if (kind.includes('Create') || kind.includes('Modify')) {
             try {
               await LinkIndexService.updateFileLinks(filePath, vaultPath);
             } catch {
               // 文件可能正在被写入
             }
+            onFileChangedRef.current?.(filePath, 'modify');
           }
         }
         onIndexChangeRef.current?.();

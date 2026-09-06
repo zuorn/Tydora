@@ -678,6 +678,14 @@
       "openLocationFailed": "Failed to open file location:",
       "openTerminalFailed": "Failed to open terminal:"
     },
+    "externalChange": {
+      "prompt": "This file was modified externally. Reload it?",
+      "reload": "Reload",
+      "ignore": "Ignore",
+      "deleted": "This file was deleted externally. The in-memory content is preserved; saving will restore it.",
+      "gotIt": "Got it",
+      "autoReloaded": "File updated externally; reloaded automatically"
+    },
     "command": {
       "categories": {
         "file": "File",

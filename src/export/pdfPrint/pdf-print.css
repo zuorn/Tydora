@@ -1,0 +1,164 @@
+.tydora-pdf-print-root {
+  position: fixed;
+  inset-block-start: 0;
+  inset-inline-start: -100000px;
+  z-index: -1;
+  width: 900px;
+  min-height: 1px;
+  overflow: visible;
+  visibility: hidden;
+  pointer-events: none;
+  background: #fff;
+  color: #000;
+}
+
+html.tydora-pdf-print-window,
+body.tydora-pdf-print-window,
+body.tydora-pdf-print-window > #root {
+  height: auto !important;
+  min-height: 0 !important;
+  overflow: visible !important;
+  background: #fff !important;
+  color: #000 !important;
+}
+
+body.tydora-pdf-print-window {
+  margin: 0 !important;
+}
+
+body.tydora-pdf-print-window .tydora-pdf-window-root {
+  position: static !important;
+  inset: auto !important;
+  z-index: auto !important;
+  display: block !important;
+  width: auto !important;
+  min-height: 0 !important;
+  overflow: visible !important;
+  visibility: visible !important;
+  pointer-events: auto !important;
+  background: #fff !important;
+  color: #000 !important;
+  -webkit-print-color-adjust: exact;
+  print-color-adjust: exact;
+}
+
+.tydora-pdf-media-placeholder {
+  display: grid;
+  gap: 4px;
+  margin-block: 12px;
+  padding: 12px;
+  overflow-wrap: anywhere;
+  border: 1px solid #d0d7de;
+  border-radius: 6px;
+  background: #f6f8fa;
+  color: #24292f;
+}
+
+.tydora-pdf-media-placeholder a {
+  color: #0969da;
+  text-decoration: underline;
+}
+
+.tydora-pdf-print-root > div,
+.tydora-pdf-print-root .tiptap-export-content {
+  height: auto !important;
+  min-height: 0 !important;
+  max-height: none !important;
+  padding: 0 !important;
+  overflow: visible !important;
+  overflow-wrap: anywhere;
+}
+
+.tydora-pdf-print-root h1,
+.tydora-pdf-print-root h2,
+.tydora-pdf-print-root h3,
+.tydora-pdf-print-root h4,
+.tydora-pdf-print-root h5,
+.tydora-pdf-print-root h6 {
+  break-after: avoid-page;
+  page-break-after: avoid;
+}
+
+.tydora-pdf-print-root img,
+.tydora-pdf-print-root svg,
+.tydora-pdf-print-root figure,
+.tydora-pdf-print-root tr,
+.tydora-pdf-print-root .tydora-pdf-media-placeholder {
+  break-inside: avoid;
+  page-break-inside: avoid;
+}
+
+.tydora-pdf-print-root img,
+.tydora-pdf-print-root svg {
+  max-width: 100% !important;
+  max-height: 100vh !important;
+  height: auto !important;
+}
+
+.tydora-pdf-print-root img:not([src]) {
+  display: inline;
+}
+
+.tydora-pdf-print-root pre,
+.tydora-pdf-print-root code {
+  white-space: pre-wrap !important;
+  overflow-wrap: anywhere;
+  word-break: break-word;
+}
+
+.tydora-pdf-print-root pre {
+  max-height: none !important;
+  overflow: visible !important;
+}
+
+.tydora-pdf-print-root table {
+  display: table !important;
+  width: 100% !important;
+  max-width: 100% !important;
+  table-layout: auto;
+  overflow: visible !important;
+}
+
+.tydora-pdf-print-root thead {
+  display: table-header-group;
+}
+
+.tydora-pdf-print-root tfoot {
+  display: table-footer-group;
+}
+
+.tydora-pdf-print-root th,
+.tydora-pdf-print-root td {
+  overflow-wrap: anywhere;
+  word-break: break-word;
+}
+
+.tydora-pdf-print-root a {
+  overflow-wrap: anywhere;
+  text-decoration: underline;
+}
+
+.tydora-pdf-print-root input[type="checkbox"] {
+  -webkit-print-color-adjust: exact;
+  print-color-adjust: exact;
+}
+
+.tydora-pdf-print-root ::selection {
+  background: transparent;
+}
+
+@media print {
+  @page {
+    margin: 16mm;
+  }
+
+  html.tydora-pdf-print-window,
+  body.tydora-pdf-print-window,
+  body.tydora-pdf-print-window > #root {
+    height: auto !important;
+    min-height: 0 !important;
+    overflow: visible !important;
+    background: #fff !important;
+    color: #000 !important;
+  }
+}

@@ -94,7 +94,6 @@
     "html2canvas": "^1.4.1",
     "i18next": "^26.3.6",
     "immer": "^11.1.11",
-    "jspdf": "^4.2.1",
     "katex": "^0.16.47",
     "lowlight": "^3.3.0",
     "markdown-it": "^14.3.0",

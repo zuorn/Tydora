@@ -104,7 +104,7 @@ interface ThemeContextValue {
 }
 
 const ThemeContext = createContext<ThemeContextValue>({
-  theme: "mint",
+  theme: "white",
   setTheme: () => {},
   appearanceMode: "system",
   setAppearanceMode: () => {},
@@ -331,7 +331,7 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
       }
       document.documentElement.dataset.theme = theme;
     } else {
-      document.documentElement.dataset.theme = "mint";
+      document.documentElement.dataset.theme = "white";
     }
     document.documentElement.dataset.appearance = resolvedMode;
   }, [theme, resolvedMode, appearanceMode, preferredAppTheme, preferredCodeTheme]);
@@ -347,6 +347,8 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
     if (existing) existing.remove();
 
     const actualThemeId = codeTheme;
+    const isDark = getCodeThemeIsDark(actualThemeId);
+
     if (actualThemeId.startsWith("custom-")) {
       const style = document.getElementById(`code-theme-${actualThemeId}`) as HTMLStyleElement | null;
       if (style) style.disabled = false;
@@ -361,8 +363,32 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
       }
     }
 
+    // 暴露当前代码主题给非 React 组件（如代码块工具栏 NodeView）读取
+    document.documentElement.dataset.codeTheme = actualThemeId;
+    document.documentElement.dataset.codeThemeDark = isDark ? "true" : "false";
+
+    // 暗色代码主题时，把整个代码块背景也调成暗色
+    // （--bg-code 由应用主题设置，这里在代码主题为暗色时覆盖它）
+    const bgStyle = document.getElementById("code-theme-bg") as HTMLStyleElement | null;
+    if (isDark) {
+      const css = `:root { --bg-code: #1e1e2e; --code-block-text: #cdd6f4; }`;
+      if (bgStyle) {
+        bgStyle.textContent = css;
+      } else {
+        const s = document.createElement("style");
+        s.id = "code-theme-bg";
+        s.textContent = css;
+        document.head.appendChild(s);
+      }
+    } else if (bgStyle) {
+      bgStyle.remove();
+    }
+
+    // 把自定义代码主题暴露给非 React 组件（代码块工具栏下拉）
+    (window as unknown as { __tydoraCustomCodeThemes?: CustomCodeTheme[] }).__tydoraCustomCodeThemes = customCodeThemes;
+
     window.dispatchEvent(new CustomEvent("code-theme-changed"));
-  }, [codeTheme, customCodeThemes]);
+  }, [codeTheme, customCodeThemes, getCodeThemeIsDark]);
 
   const injectOrUpdateStyle = useCallback((id: string, css: string, enable: boolean) => {
     let style = styleElementsRef.current.get(id);
@@ -584,6 +610,18 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
       return preferredCodeThemeNext;
     });
   }, []);
+
+  // ── 监听代码块工具栏发起的主题切换请求 ──
+  useEffect(() => {
+    const handler = (e: Event) => {
+      const detail = (e as CustomEvent<{ themeId: string }>).detail;
+      if (detail?.themeId) {
+        setCodeTheme(detail.themeId);
+      }
+    };
+    window.addEventListener("request-code-theme-change", handler as EventListener);
+    return () => window.removeEventListener("request-code-theme-change", handler as EventListener);
+  }, [setCodeTheme]);
 
   const importCodeTheme = useCallback(async (filePath: string, name: string): Promise<CustomCodeTheme> => {
     const manifest = await importCodeThemeFile(filePath, name);

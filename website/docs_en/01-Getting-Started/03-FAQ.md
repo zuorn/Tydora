@@ -7,7 +7,7 @@ tags: [help]
 
 This page summarizes common issues and troubleshooting tips for Tydora. If your question isn't covered here, feel free to report it on GitHub Issues (see [[01-Getting-Started/02-About]]).
 
-## Getting Started & Basics
+## Getting Started & Basics 
 
 ### Which vault should I choose when starting for the first time?
 

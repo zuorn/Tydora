@@ -23,6 +23,7 @@ export default function PublishPanel({ vaultPath, onClose, onDone }: PublishPane
   const [error, setError] = useState<string | null>(null);
   const [done, setDone] = useState(false);
   const [outputPath, setOutputPath] = useState<string | null>(null);
+  const [previewing, setPreviewing] = useState(false);
 
   const handlePublish = useCallback(async () => {
     if (!vaultPath) return;
@@ -30,6 +31,7 @@ export default function PublishPanel({ vaultPath, onClose, onDone }: PublishPane
     setPublishing(true);
     setError(null);
     setDone(false);
+    setPreviewing(false);
 
     try {
       const config = await loadPublishConfig(vaultPath);
@@ -63,10 +65,20 @@ export default function PublishPanel({ vaultPath, onClose, onDone }: PublishPane
     if (!outputPath) return;
     try {
       await invoke("preview_site", { dir: outputPath });
+      setPreviewing(true);
     } catch (e) {
       console.error(t("publish.previewFailed"), e);
     }
   }, [outputPath]);
+
+  const handleStopPreview = useCallback(async () => {
+    try {
+      await invoke("stop_preview");
+      setPreviewing(false);
+    } catch (e) {
+      console.error(t("publish.stopPreviewFailed"), e);
+    }
+  }, []);
 
   const handleOpenFolder = useCallback(async () => {
     if (!outputPath) return;
@@ -126,9 +138,15 @@ export default function PublishPanel({ vaultPath, onClose, onDone }: PublishPane
               <span className="publish-success-icon">✓</span>
               {t("publish.done")}
               <div className="publish-success-actions">
-                <button className="publish-button" onClick={handlePreview}>
-                  {t("publish.previewSite")}
-                </button>
+                {previewing ? (
+                  <button className="publish-button" onClick={handleStopPreview}>
+                    {t("publish.stopPreview")}
+                  </button>
+                ) : (
+                  <button className="publish-button" onClick={handlePreview}>
+                    {t("publish.previewSite")}
+                  </button>
+                )}
                 <button className="publish-button" onClick={handleOpenFolder}>
                   {t("publish.openOutputDir")}
                 </button>

@@ -1,0 +1,54 @@
+<div class="site" [class.nav-open]="navOpen()">
+  <button
+    type="button"
+    class="nav-toggle"
+    aria-label="Toggle navigation"
+    [attr.aria-expanded]="navOpen()"
+    (click)="navOpen.set(!navOpen())"
+  >
+    @if (navOpen()) {
+      <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor"
+        stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M18 6 6 18M6 6l12 12" />
+      </svg>
+    } @else {
+      <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor"
+        stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M3 6h18M3 12h18M3 18h18" />
+      </svg>
+    }
+  </button>
+
+  <aside class="site-sidebar">
+    <a class="site-name" routerLink="/">{{ manifest.value()?.site?.title ?? 'Notes' }}</a>
+
+    <app-theme-toggle />
+    <app-search-overlay />
+
+    <a class="site-graph-link" routerLink="/graph">
+      <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor"
+        stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <circle cx="12" cy="18" r="3" />
+        <circle cx="6" cy="6" r="3" />
+        <circle cx="18" cy="6" r="3" />
+        <path d="M18 9v1a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2V9" />
+        <path d="M12 12v3" />
+      </svg>
+      <span>Graph view</span>
+    </a>
+
+    <nav class="site-nav" aria-label="Navigation">
+      @if (manifest.value(); as data) {
+        <app-nav-tree [nodes]="data.nav" />
+      }
+    </nav>
+
+    @if (manifest.value()?.site?.footer; as footer) {
+      <div class="site-sidebar-footer">{{ footer }}</div>
+    }
+  </aside>
+
+  <main class="site-main">
+    <router-outlet />
+  </main>
+</div>

@@ -1,4 +1,4 @@
-﻿---
+---
 title: Mind Map
 tags: [feature]
 ---

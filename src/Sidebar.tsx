@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback, useRef, useLayoutEffect, useMemo, type ReactNode } from "react";
+import { useState, useEffect, useCallback, useRef, useLayoutEffect, useMemo, lazy, Suspense, type ReactNode } from "react";
 import { bootStart, bootEnd, bootStamp } from "./boot-timing";
 bootStamp("sidebar_module_imported");
 import { useTranslation } from "react-i18next";
@@ -16,6 +16,9 @@ import { BookmarksPanel } from "./Bookmarks";
 import { OpenFilesPanel } from "./OpenFiles";
 import { type SidebarTab } from "./Settings";
 import "./Sidebar.css";
+
+// 大纲标签页顶部的本地图谱：d3 依赖较重，动态加载避免拖慢首屏
+const LocalGraphLazy = lazy(() => import("./graph/LocalGraph").then((m) => ({ default: m.LocalGraph })));
 
 // ── Types ────────────────────────────────────────────────────────────
 
@@ -86,6 +89,8 @@ interface SidebarProps {
   onSelectVault: (index: number) => void;
   collapsed: boolean;
   refreshKey: number;
+  /** 链接索引刷新计数：本地图谱 / Linked references 依赖它重绘 */
+  graphRefreshKey?: number;
   width: number;
   onWidthChange: (width: number) => void;
   onBookmark: (filePath: string, isDirectory: boolean) => void;
@@ -101,6 +106,10 @@ interface SidebarProps {
   tabs?: SidebarTab[];
   /** 侧栏底部仓库切换条是否自动隐藏（仅左栏） */
   autoHideVaultFooter?: boolean;
+  /** 打开全局关系图谱 */
+  onOpenGlobalGraph?: () => void;
+  /** 全局关系图谱是否已打开（用于按钮激活态） */
+  graphViewOpen?: boolean;
 }
 
 interface ContextMenuItem {
@@ -183,6 +192,22 @@ function ancestorDirs(dirPath: string, rootPath: string): string[] {
     cur = parent;
   }
   return result;
+}
+
+/** 比较当前可见文件树（折叠目录不看子节点）。结构未变时跳过 setState，避免刷新打散点击。 */
+function visibleTreeEqual(a: TreeNode[], b: TreeNode[]): boolean {
+  if (a.length !== b.length) return false;
+  for (let i = 0; i < a.length; i++) {
+    const x = a[i];
+    const y = b[i];
+    if (x.path !== y.path || x.isDirectory !== y.isDirectory || x.expanded !== y.expanded) {
+      return false;
+    }
+    if (x.isDirectory && x.expanded) {
+      if (!visibleTreeEqual(x.children ?? [], y.children ?? [])) return false;
+    }
+  }
+  return true;
 }
 
 async function uniqueFilePath(dirPath: string, baseName: string, ext: string): Promise<string> {
@@ -1431,6 +1456,18 @@ function FileTree({
   const treeRef = useRef<HTMLDivElement>(null);
   const lastScrollTopRef = useRef(0);
   const pendingRevealPathRef = useRef<string | null>(null);
+  // 滚动位置持久化：用 localStorage 保存，刷新/重载后恢复，避免跳回顶部
+  const scrollSaveQueuedRef = useRef(false);
+  const loadGenRef = useRef(0);
+  const restoreGenRef = useRef(0);
+  const restoringScrollRef = useRef(false);
+  const pointerDownOnTreeRef = useRef(false);
+  const interactUntilRef = useRef(0);
+
+  const markTreeInteract = useCallback(() => {
+    interactUntilRef.current = Date.now() + 450;
+    restoreGenRef.current++;
+  }, []);
 
   const scrollToPath = useCallback((path: string) => {
     const node = treeRef.current?.querySelector(`[data-path="${CSS.escape(path)}"]`);
@@ -1438,6 +1475,26 @@ function FileTree({
       node.scrollIntoView({ behavior: "smooth", block: "center" });
     }
   }, []);
+
+  // ── 滚动位置持久化（localStorage） ──
+  const scrollStorageKey = `zmd-sidebar-scroll-${vaultPath}`;
+
+  const saveScrollTop = useCallback((st: number) => {
+    try {
+      localStorage.setItem(scrollStorageKey, String(st));
+    } catch {
+      /* ignore quota / private mode */
+    }
+  }, [scrollStorageKey]);
+
+  const loadScrollTop = useCallback((): number | null => {
+    try {
+      const raw = localStorage.getItem(scrollStorageKey);
+      return raw ? Number(raw) : null;
+    } catch {
+      return null;
+    }
+  }, [scrollStorageKey]);
 
   const handleStartEdit = useCallback((path: string) => {
     setEditingPath(path);
@@ -1496,22 +1553,40 @@ function FileTree({
     }
   }, []);
 
-  const loadRoot = useCallback(async () => {
+  const loadRoot = useCallback(async (opts?: { skipIfUnchanged?: boolean; deferIfInteracting?: boolean }) => {
+    const gen = ++loadGenRef.current;
     bootStart("sidebar_load_root");
     bootStamp("sidebar_load_dir_start");
     const nodes = await loadDirectory(rootPath);
     bootStamp("sidebar_load_dir_done");
-    // Restore expanded state from localStorage
-    const savedExpanded = loadExpandedPaths(vaultPath);
-    if (savedExpanded.size > 0) {
+    const expanded = new Set(loadExpandedPaths(vaultPath));
+    for (const p of collectExpanded(rootNodesRef.current)) expanded.add(p);
+    if (expanded.size > 0) {
       bootStamp("sidebar_restore_expanded_start");
-      await restoreExpanded(nodes, savedExpanded);
+      await restoreExpanded(nodes, expanded);
       bootStamp("sidebar_restore_expanded_done");
     }
+    if (gen !== loadGenRef.current) {
+      bootEnd("sidebar_load_root");
+      return;
+    }
+    if (opts?.deferIfInteracting && (pointerDownOnTreeRef.current || Date.now() < interactUntilRef.current)) {
+      window.setTimeout(() => {
+        if (gen !== loadGenRef.current) return;
+        void loadRoot(opts);
+      }, 80);
+      bootEnd("sidebar_load_root");
+      return;
+    }
+    if (opts?.skipIfUnchanged && visibleTreeEqual(rootNodesRef.current, nodes)) {
+      bootEnd("sidebar_load_root");
+      return;
+    }
+    if (treeRef.current) lastScrollTopRef.current = treeRef.current.scrollTop;
     setRootNodes(nodes);
     bootStamp("sidebar_setRootNodes_called");
     bootEnd("sidebar_load_root");
-  }, [rootPath, vaultPath]);
+  }, [rootPath, vaultPath, collectExpanded, restoreExpanded]);
 
   const handleRefresh = useCallback(() => {
     forceUpdate((n) => n + 1);
@@ -1568,6 +1643,39 @@ function FileTree({
     pendingRevealPathRef.current = null;
     scrollToPath(pending);
   }, [rootNodes, scrollToPath]);
+
+  // 刷新后同步恢复滚动。优先用当前 DOM/ref 位置，避免 rAF 循环在点击过程中把列表拽走。
+  useLayoutEffect(() => {
+    if (pendingRevealPathRef.current) return;
+    const el = treeRef.current;
+    if (!el) return;
+    const saved = lastScrollTopRef.current > 0 ? lastScrollTopRef.current : (loadScrollTop() ?? 0);
+    if (saved <= 0) return;
+
+    const restoreGen = ++restoreGenRef.current;
+    restoringScrollRef.current = true;
+    el.scrollTop = saved;
+    restoringScrollRef.current = false;
+    if (el.scrollTop >= saved - 1) return;
+    const atBottom = el.scrollTop + el.clientHeight >= el.scrollHeight - 1;
+    if (atBottom) return;
+
+    let rafId = 0;
+    let attempts = 0;
+    const tryRestore = () => {
+      if (restoreGen !== restoreGenRef.current) return;
+      if (pointerDownOnTreeRef.current || Date.now() < interactUntilRef.current) return;
+      attempts++;
+      restoringScrollRef.current = true;
+      el.scrollTop = saved;
+      restoringScrollRef.current = false;
+      const reached = el.scrollTop >= saved - 1
+        || el.scrollTop + el.clientHeight >= el.scrollHeight - 1;
+      if (!reached && attempts < 20) rafId = requestAnimationFrame(tryRestore);
+    };
+    rafId = requestAnimationFrame(tryRestore);
+    return () => cancelAnimationFrame(rafId);
+  }, [rootNodes, loadScrollTop]);
 
   // ── Collapse all / Expand all ──
   const hasExpandedDir = useMemo(() => {
@@ -1966,7 +2074,42 @@ function FileTree({
     setCtxMenu({ x: e.clientX, y: e.clientY });
   }, []);
 
-  useEffect(() => { loadRoot(); }, [loadRoot, refreshKey]);
+  useEffect(() => {
+    let cancelled = false;
+    let timer: ReturnType<typeof setTimeout> | undefined;
+    const run = () => {
+      if (cancelled) return;
+      if (pointerDownOnTreeRef.current || Date.now() < interactUntilRef.current) {
+        timer = setTimeout(run, 80);
+        return;
+      }
+      void loadRoot({ skipIfUnchanged: true, deferIfInteracting: true });
+    };
+    run();
+    return () => {
+      cancelled = true;
+      if (timer) clearTimeout(timer);
+    };
+  }, [loadRoot, refreshKey]);
+
+  useEffect(() => {
+    const tree = treeRef.current;
+    if (!tree) return;
+    const onPointerDown = () => {
+      pointerDownOnTreeRef.current = true;
+      markTreeInteract();
+    };
+    const onPointerUp = () => {
+      pointerDownOnTreeRef.current = false;
+      markTreeInteract();
+    };
+    tree.addEventListener("pointerdown", onPointerDown);
+    window.addEventListener("pointerup", onPointerUp);
+    return () => {
+      tree.removeEventListener("pointerdown", onPointerDown);
+      window.removeEventListener("pointerup", onPointerUp);
+    };
+  }, [markTreeInteract]);
 
   // Handle expand/collapse and persist to localStorage
   const handleToggleExpand = useCallback((path: string, expanded: boolean) => {
@@ -2247,13 +2390,31 @@ function FileTree({
 
   const handleScroll = useCallback(() => {
     const el = treeRef.current;
-    if (!el || !onScrollToTop) return;
+    if (!el) return;
     const st = el.scrollTop;
-    if (st < lastScrollTopRef.current && st < 5) {
-      onScrollToTop();
+
+    if (!restoringScrollRef.current) {
+      markTreeInteract();
+    }
+
+    // 节流保存滚动位置到 localStorage（每帧最多一次）
+    if (!scrollSaveQueuedRef.current) {
+      scrollSaveQueuedRef.current = true;
+      requestAnimationFrame(() => {
+        scrollSaveQueuedRef.current = false;
+        const latest = treeRef.current?.scrollTop ?? 0;
+        lastScrollTopRef.current = latest;
+        saveScrollTop(latest);
+      });
+    }
+
+    if (onScrollToTop) {
+      if (st < lastScrollTopRef.current && st < 5) {
+        onScrollToTop();
+      }
     }
     lastScrollTopRef.current = st;
-  }, [onScrollToTop]);
+  }, [onScrollToTop, saveScrollTop, markTreeInteract]);
 
   // ── Link update dialog handlers ──
   const handleLinkUpdateAlways = useCallback(async () => {
@@ -2451,7 +2612,13 @@ function FileTree({
             depth={0}
             activePath={activePath}
             pendingActivePath={pendingActivePath}
-            onSelect={onSelect}
+            onSelect={(path) => {
+              // 鼠标点击后 Vim 光标跟随到该文件：pending-active 始终指向最近交互的节点，
+              // 任何未来的 reveal 也只滚到当前文件（在视野内，nearest 不会产生滚动）
+              setPendingActivePath(path);
+              pendingActivePathRef.current = path;
+              onSelect(path);
+            }}
             onRefresh={handleRefresh}
             onReload={handleReload}
             rootPath={rootPath}
@@ -2714,6 +2881,91 @@ function Outline({
   );
 }
 
+// ── Linked References（大纲面板底部：列出当前打开的笔记中包含的 wiki 链接/出链）──
+
+/** 与文件树一致的系统分隔符（Windows 用反斜杠，其它用正斜杠） */
+function refNativeSeparator(): string {
+  return navigator.platform?.toLowerCase().includes("win") ? "\\" : "/";
+}
+
+/** 把任意书写风格的路径统一成系统原生分隔符，保证与文件树/编辑器路径可比对 */
+function refToNativePath(p: string): string {
+  return refNativeSeparator() === "\\" ? p.replace(/\//g, "\\") : p.replace(/\\/g, "/");
+}
+
+interface LinkedRefItem {
+  raw: string;
+  path: string;
+  label: string;
+  valid: boolean;
+}
+
+/** 从链接目标提取文件名：去路径、去扩展名（如 Notes/Mind-Map.md → Mind-Map） */
+function linkFileName(raw: string): string {
+  const seg = raw.replace(/\\/g, "/").split("/").pop() ?? raw;
+  const hashIdx = seg.indexOf("#");
+  const core = hashIdx >= 0 ? seg.slice(0, hashIdx) : seg;
+  return core.replace(/\.[^.]+$/, "");
+}
+
+function LinkedReferences({
+  vaultPath,
+  filePath,
+  refreshTick,
+  onSelectFile,
+}: {
+  vaultPath: string;
+  filePath: string;
+  refreshTick?: number;
+  onSelectFile: (path: string) => void;
+}) {
+  // 本面板展示当前文档里的 wiki 链接（[[...]] 出链）：按出现顺序去重，
+  // 统一显示链接目标的文件名；点击跳转到目标文件。
+  const items = useMemo<LinkedRefItem[]>(() => {
+    if (!vaultPath || !filePath) return [];
+    const seen = new Set<string>();
+    const result: LinkedRefItem[] = [];
+    for (const target of LinkIndexService.getOutlinksForFile(filePath)) {
+      if (!target) continue;
+      const found = LinkIndexService.resolveTargetPath(target);
+      const resolved = found ? refToNativePath(found) : "";
+      const label = linkFileName(target);
+      const key = resolved ? resolved.toLowerCase() : label.toLowerCase();
+      if (seen.has(key)) continue;
+      seen.add(key);
+      result.push({ raw: target, path: resolved, label, valid: Boolean(resolved) });
+    }
+    return result;
+  }, [vaultPath, filePath, refreshTick]);
+
+  if (items.length === 0) {
+    return <div className="inspector-empty">No links in this note</div>;
+  }
+  return (
+    <div className="linked-refs">
+      {items.map((it) => (
+        <button
+          key={it.path || it.raw}
+          type="button"
+          className="linked-ref"
+          title={it.valid ? it.path : `[[${it.label}]]（未找到对应文件）`}
+          onClick={() => {
+            // 优先用缓存路径；点击时再解析一次兜底（索引可能刚更新）
+            let target = it.path;
+            if (!target) {
+              const found = LinkIndexService.resolveTargetPath(it.raw);
+              if (found) target = refToNativePath(found);
+            }
+            if (target) onSelectFile(target);
+          }}
+        >
+          {it.label}
+        </button>
+      ))}
+    </div>
+  );
+}
+
 // ── VaultSwitcher ────────────────────────────────────────────────────
 
 function VaultSwitcher({
@@ -2918,6 +3170,7 @@ export default function Sidebar({
   onSelectVault,
   collapsed,
   refreshKey,
+  graphRefreshKey,
   width,
   onWidthChange,
   onBookmark,
@@ -2930,6 +3183,8 @@ export default function Sidebar({
   side = "left",
   tabs,
   autoHideVaultFooter = true,
+  onOpenGlobalGraph,
+  graphViewOpen = false,
 }: SidebarProps) {
   bootStart("sidebar_component_render");
   bootStamp("sidebar_component_entered");
@@ -2944,6 +3199,18 @@ export default function Sidebar({
     visibleTabs[0] ?? "files",
   );
   const [searchQuery, setSearchQuery] = useState("");
+  // 局部关系图谱放大弹窗
+  const [localGraphExpanded, setLocalGraphExpanded] = useState(false);
+
+  // ESC 关闭局部图谱弹窗
+  useEffect(() => {
+    if (!localGraphExpanded) return;
+    const handler = (e: KeyboardEvent) => {
+      if (e.key === "Escape") setLocalGraphExpanded(false);
+    };
+    window.addEventListener("keydown", handler);
+    return () => window.removeEventListener("keydown", handler);
+  }, [localGraphExpanded]);
   // Trigger re-render on language change
   useTranslation();
 
@@ -2954,10 +3221,13 @@ export default function Sidebar({
   const outlinePanelRef = useRef<HTMLDivElement>(null);
   const bookmarksPanelRef = useRef<HTMLDivElement>(null);
 
-  const focusTabContent = useCallback((tab: SidebarActiveTab) => {
+  const focusTabContent = useCallback((tab: SidebarActiveTab, opts?: { reveal?: boolean }) => {
     switch (tab) {
       case "files": {
         filesPanelRef.current?.focus();
+        // 鼠标点击路径（reveal: false）只做焦点管理，不滚动列表：
+        // 否则 pending-active/active 落在滚动位置之外时，scrollIntoView 会把文件树拽回顶部
+        if (opts?.reveal === false) break;
         // 兜底：若 FileTree 内部已有 pending-active 元素，滚到视野
         const el = filesPanelRef.current?.querySelector<HTMLElement>(
           ".tree-node.pending-active, .tree-node.active",
@@ -3191,73 +3461,76 @@ export default function Sidebar({
         // 当前焦点已经在侧栏内部则不重复触发
         const cur = document.activeElement as HTMLElement | null;
         if (cur && sidebarRef.current?.contains(cur)) return;
-        focusTabContent(activeTab);
+        // 鼠标点击不做 reveal：文件树停在用户滚动到的位置，避免被拽回顶部
+        focusTabContent(activeTab, { reveal: false });
       }}
     >
       <div className="sidebar-topbar" data-tauri-drag-region="deep" />
 
-      <div className="sidebar-header">
-        <div className="sidebar-tabs-wrapper">
-          {visibleTabs.includes("files") && (
-            <button
-              className={`sidebar-tab${activeTab === "files" ? " active" : ""}`}
-              onClick={() => switchTab("files")}
-            >
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                <path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z" />
-              </svg>
-            </button>
-          )}
-          {visibleTabs.includes("openFiles") && (
-            <button
-              className={`sidebar-tab${activeTab === "openFiles" ? " active" : ""}`}
-              onClick={() => switchTab("openFiles")}
-              title={i18n.t("openFiles.tabTitle")}
-            >
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                <rect x="3" y="3" width="7" height="18" rx="1" />
-                <rect x="14" y="3" width="7" height="18" rx="1" />
-              </svg>
-            </button>
-          )}
-          {visibleTabs.includes("search") && (
-            <button
-              className={`sidebar-tab${activeTab === "search" ? " active" : ""}`}
-              onClick={() => switchTab("search")}
-            >
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                <circle cx="11" cy="11" r="8" />
-                <path d="M21 21l-4.35-4.35" />
-              </svg>
-            </button>
-          )}
-          {visibleTabs.includes("outline") && (
-            <button
-              className={`sidebar-tab${activeTab === "outline" ? " active" : ""}`}
-              onClick={() => switchTab("outline")}
-            >
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                <line x1="8" y1="6" x2="21" y2="6" />
-                <line x1="8" y1="12" x2="21" y2="12" />
-                <line x1="8" y1="18" x2="21" y2="18" />
-                <line x1="3" y1="6" x2="3.01" y2="6" />
-                <line x1="3" y1="12" x2="3.01" y2="12" />
-                <line x1="3" y1="18" x2="3.01" y2="18" />
-              </svg>
-            </button>
-          )}
-          {visibleTabs.includes("bookmarks") && (
-            <button
-              className={`sidebar-tab${activeTab === "bookmarks" ? " active" : ""}`}
-              onClick={() => switchTab("bookmarks")}
-            >
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                <path d="M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z" />
-              </svg>
-            </button>
-          )}
+      {visibleTabs.length > 1 && (
+        <div className="sidebar-header">
+          <div className="sidebar-tabs-wrapper">
+            {visibleTabs.includes("files") && (
+              <button
+                className={`sidebar-tab${activeTab === "files" ? " active" : ""}`}
+                onClick={() => switchTab("files")}
+              >
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z" />
+                </svg>
+              </button>
+            )}
+            {visibleTabs.includes("openFiles") && (
+              <button
+                className={`sidebar-tab${activeTab === "openFiles" ? " active" : ""}`}
+                onClick={() => switchTab("openFiles")}
+                title={i18n.t("openFiles.tabTitle")}
+              >
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <rect x="3" y="3" width="7" height="18" rx="1" />
+                  <rect x="14" y="3" width="7" height="18" rx="1" />
+                </svg>
+              </button>
+            )}
+            {visibleTabs.includes("search") && (
+              <button
+                className={`sidebar-tab${activeTab === "search" ? " active" : ""}`}
+                onClick={() => switchTab("search")}
+              >
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <circle cx="11" cy="11" r="8" />
+                  <path d="M21 21l-4.35-4.35" />
+                </svg>
+              </button>
+            )}
+            {visibleTabs.includes("outline") && (
+              <button
+                className={`sidebar-tab${activeTab === "outline" ? " active" : ""}`}
+                onClick={() => switchTab("outline")}
+              >
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <line x1="8" y1="6" x2="21" y2="6" />
+                  <line x1="8" y1="12" x2="21" y2="12" />
+                  <line x1="8" y1="18" x2="21" y2="18" />
+                  <line x1="3" y1="6" x2="3.01" y2="6" />
+                  <line x1="3" y1="12" x2="3.01" y2="12" />
+                  <line x1="3" y1="18" x2="3.01" y2="18" />
+                </svg>
+              </button>
+            )}
+            {visibleTabs.includes("bookmarks") && (
+              <button
+                className={`sidebar-tab${activeTab === "bookmarks" ? " active" : ""}`}
+                onClick={() => switchTab("bookmarks")}
+              >
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <path d="M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z" />
+                </svg>
+              </button>
+            )}
+          </div>
         </div>
-      </div>
+      )}
 
       {visibleTabs.length === 0 ? (
         <div className="sidebar-empty">
@@ -3329,7 +3602,67 @@ export default function Sidebar({
 
           {activeTab === "outline" && (
             <div ref={outlinePanelRef} tabIndex={-1} style={{ outline: "none", flex: 1, minHeight: 0, display: "flex", flexDirection: "column" }}>
-              <Outline content={content} onSelectHeading={onSelectHeading} />
+              {activeVault && currentFilePath ? (
+                <div className="sidebar-inspector">
+                  <section className="inspector-section">
+                    <div className="inspector-section-header">
+                      <h3 className="inspector-section-title">Graph</h3>
+                      <div className="inspector-section-actions">
+                        <button
+                          className={`inspector-icon-btn${localGraphExpanded ? " active" : ""}`}
+                          title="Open local graph"
+                          onClick={() => setLocalGraphExpanded((prev) => !prev)}
+                        >
+                          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                            <circle cx="12" cy="5" r="3" />
+                            <circle cx="4" cy="19" r="3" />
+                            <circle cx="20" cy="19" r="3" />
+                            <line x1="9.5" y1="6.5" x2="5.5" y2="16.5" />
+                            <line x1="14.5" y1="6.5" x2="18.5" y2="16.5" />
+                            <line x1="7" y1="19" x2="17" y2="19" />
+                          </svg>
+                        </button>
+                        <button
+                          className={`inspector-icon-btn${graphViewOpen ? " active" : ""}`}
+                          title="Open global graph"
+                          onClick={() => onOpenGlobalGraph?.()}
+                        >
+                          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                            <path d="M7 17 17 7" />
+                            <path d="M7 7h10v10" />
+                          </svg>
+                        </button>
+                      </div>
+                    </div>
+                    <Suspense fallback={<div className="local-graph-loading" />}>
+                      <LocalGraphLazy
+                        vaultPath={activeVault.path}
+                        filePath={currentFilePath}
+                        refreshTick={graphRefreshKey ?? 0}
+                        onSelectFile={handleSelectFile}
+                      />
+                    </Suspense>
+                  </section>
+                  <section className="inspector-section">
+                    <h3 className="inspector-section-title">On this page</h3>
+                    <Outline content={content} onSelectHeading={onSelectHeading} />
+                  </section>
+                  <section className="inspector-section">
+                    <h3 className="inspector-section-title">Linked references</h3>
+                    <LinkedReferences
+                      vaultPath={activeVault.path}
+                      filePath={currentFilePath}
+                      refreshTick={graphRefreshKey ?? 0}
+                      onSelectFile={handleSelectFile}
+                    />
+                  </section>
+                </div>
+              ) : (
+                <div className="sidebar-tree">
+                  <div className="tree-empty">{i18n.t("sidebar.outline.untitled")}</div>
+                  <div className="tree-empty-hint">{i18n.t("sidebar.outline.hint")}</div>
+                </div>
+              )}
             </div>
           )}
 
@@ -3356,6 +3689,36 @@ export default function Sidebar({
 
       {!collapsed && (
         <div className="sidebar-resize-handle" onMouseDown={handleMouseDown} />
+      )}
+
+      {/* 局部关系图谱放大弹窗 */}
+      {localGraphExpanded && activeVault && currentFilePath && (
+        <div className="graph-modal-overlay" onClick={() => setLocalGraphExpanded(false)}>
+          <div className="graph-modal" onClick={(e) => e.stopPropagation()}>
+            <div className="graph-modal-header">
+              <span className="graph-modal-title">Local Graph</span>
+              <button className="graph-modal-close" onClick={() => setLocalGraphExpanded(false)} title="Close">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <line x1="18" y1="6" x2="6" y2="18" />
+                  <line x1="6" y1="6" x2="18" y2="18" />
+                </svg>
+              </button>
+            </div>
+            <div className="graph-modal-body">
+              <Suspense fallback={<div className="local-graph-loading" />}>
+                <LocalGraphLazy
+                  vaultPath={activeVault.path}
+                  filePath={currentFilePath}
+                  refreshTick={graphRefreshKey ?? 0}
+                  onSelectFile={(path) => {
+                    handleSelectFile(path);
+                    setLocalGraphExpanded(false);
+                  }}
+                />
+              </Suspense>
+            </div>
+          </div>
+        </div>
       )}
     </div>
   );

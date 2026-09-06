@@ -1,0 +1,108 @@
+{
+  "name": "@abstractwebunit/markdown-publish",
+  "version": "1.0.6",
+  "description": "Publish an Obsidian/Markdown vault as a fast static site — search, link graph, canvas boards. CLI + GitHub Action.",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/abstractwebunit/markdown-publish.git"
+  },
+  "homepage": "https://abstractwebunit.github.io/markdown-publish-docs/",
+  "publishConfig": {
+    "access": "public"
+  },
+  "bin": {
+    "markdown-publish": "tools/cli/cli.mjs"
+  },
+  "files": [
+    "tools",
+    "!tools/fixtures",
+    "src",
+    "!src/content",
+    "shared",
+    "public",
+    "angular.json",
+    "tsconfig*.json",
+    "action.yml",
+    "templates"
+  ],
+  "scripts": {
+    "ng": "ng",
+    "start": "ng serve",
+    "build": "ng build",
+    "watch": "ng build --watch --configuration development",
+    "test": "ng test",
+    "serve:ssr:markdown-publish": "node dist/markdown-publish/server/server.mjs",
+    "parse": "tsx tools/vault-parser/run.ts",
+    "build:content": "tsx tools/vault-parser/run.ts",
+    "build:app": "ng build",
+    "build:index": "pagefind --site dist/markdown-publish/browser",
+    "build:seo": "node tools/gen-seo.mjs",
+    "build:site": "npm run build:content && npm run build:app && npm run build:index && npm run build:seo && npm run build:og",
+    "serve:static": "node tools/static-serve.mjs",
+    "test:cli": "node --test \"tools/cli/**/*.test.mjs\"",
+    "build:og": "node tools/gen-og.mjs"
+  },
+  "packageManager": "npm@11.13.0",
+  "engines": {
+    "node": ">=20"
+  },
+  "dependencies": {
+    "@angular/build": "^22.0.0",
+    "@angular/cli": "^22.0.0",
+    "@angular/common": "^22.0.0",
+    "@angular/compiler": "^22.0.0",
+    "@angular/compiler-cli": "^22.0.0",
+    "@angular/core": "^22.0.0",
+    "@angular/forms": "^22.0.0",
+    "@angular/platform-browser": "^22.0.0",
+    "@angular/platform-server": "^22.0.0",
+    "@angular/router": "^22.0.0",
+    "@angular/ssr": "^22.0.0",
+    "@expo-google-fonts/inter": "^0.4.2",
+    "@ng-draw-flow/core": "^1.1.0",
+    "@ng-web-apis/resize-observer": "^5.3.0",
+    "@resvg/resvg-js": "^2.6.2",
+    "@types/d3-force": "^3.0.10",
+    "@types/express": "^5.0.1",
+    "@types/node": "^20.17.19",
+    "d3-force": "^3.0.0",
+    "dompurify": "^3.4.8",
+    "express": "^5.1.0",
+    "fast-glob": "^3.3.3",
+    "github-slugger": "^2.0.0",
+    "gray-matter": "^4.0.3",
+    "highlight.js": "^11.11.1",
+    "jsdom": "^28.0.0",
+    "less": "^4.6.4",
+    "markdown-it": "^14.2.0",
+    "markdown-it-anchor": "^9.2.0",
+    "markdown-it-footnote": "^4.0.0",
+    "markdown-it-task-lists": "^2.1.1",
+    "pagefind": "^1.5.2",
+    "rxjs": "~7.8.0",
+    "tslib": "^2.3.0",
+    "tsx": "^4.22.4",
+    "typescript": "~6.0.2"
+  },
+  "devDependencies": {
+    "prettier": "^3.8.1",
+    "vitest": "^4.0.8"
+  },
+  "keywords": [
+    "obsidian",
+    "obsidian-publish",
+    "obsidian-publish-alternative",
+    "static-site-generator",
+    "markdown",
+    "digital-garden",
+    "knowledge-base",
+    "second-brain",
+    "notes",
+    "wiki",
+    "publish",
+    "pagefind",
+    "github-pages",
+    "json-canvas"
+  ]
+}

@@ -1,0 +1,8 @@
+.node/
+dist/
+src/content/
+docs/
+.angular/
+.git/
+tools/fixtures/
+*.tgz

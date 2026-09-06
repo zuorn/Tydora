@@ -1,4 +1,4 @@
-﻿---
+---
 title: Shortcut Quick Reference
 tags: [Shortcuts]
 ---
@@ -7,8 +7,7 @@ tags: [Shortcuts]
 
 Tydora comes with 40+ keyboard shortcuts. The table below shows the **default configuration**. All shortcuts can be viewed, modified, or reset to defaults in [[07-Settings/03-Keyboard-Shortcuts]].
 
-> [!NOTE]
-> In the tables, `Ctrl` corresponds to `Cmd` (⌘) on macOS. Some combinations use `Ctrl+Alt+Number` — use the main keyboard number row directly; a numeric keypad is not required.
+> [!NOTE]In the tables, Ctrl corresponds to Cmd (⌘) on macOS. Some combinations use Ctrl+Alt+Number — use the main keyboard number row directly; a numeric keypad is not required.
 
 ## Global Shortcuts
 
@@ -16,16 +15,16 @@ The following shortcuts are available anywhere in the application (system-level 
 
 | Shortcut | Function | Related Document |
 | --- | --- | --- |
-| `Ctrl+S` | Save current file | [[01-Getting-Started/01-Quick-Start]] |
-| `Ctrl+O` | Quick open file | [[05-Navigation-Search/01-Quick-Open]] |
-| `Ctrl+P` | Command palette | [[05-Navigation-Search/02-Command-Palette]] |
-| `Ctrl+/` | Toggle editing mode (IR ↔ SV) | [[02-Editor/01-Editing-Modes]] |
-| `Ctrl+M` | Open mind map | [[08-Advanced-Features/02-Mind-Map]] |
-| `Ctrl+G` | Open knowledge graph | [[03-Knowledge-Management/04-Knowledge-Graph]] |
+| `Ctrl+S` | Save current file |  |
+| `Ctrl+O` | Quick open file |  |
+| `Ctrl+P` | Command palette |  |
+| `Ctrl+/` | Toggle editing mode (IR ↔ SV) |  |
+| `Ctrl+M` | Open mind map |  |
+| `Ctrl+G` | Open knowledge graph |  |
 | `Ctrl+\` | Toggle sidebar | — |
 | `Ctrl+W` | Close current window | — |
-| `Ctrl+Alt+T` | Toggle typewriter mode | [[02-Editor/10-Typewriter-Mode]] |
-| `Ctrl+E` | Inline code | [[02-Editor/02-Markdown-Syntax]] |
+| `Ctrl+Alt+T` | Toggle typewriter mode |  |
+| `Ctrl+E` | Inline code |  |
 
 ## Format
 
@@ -116,10 +115,9 @@ The following shortcuts are available anywhere in the application (system-level 
 
 ## Notes on Shortcut Conflicts
 
-> [!WARNING]
-> Due to historical reasons, some default shortcuts overlap. At runtime, **global shortcuts** take precedence:
-> - `Ctrl+O` is bound to both "Ordered List" and "Quick Open File". At runtime, **Quick Open takes priority**, so `Ctrl+O` opens files rather than inserting an ordered list. If you frequently use the ordered list shortcut, consider reassigning "Ordered List" to a non-conflicting combination in [[07-Settings/03-Keyboard-Shortcuts]].
->
+> [!WARNING]Due to historical reasons, some default shortcuts overlap. At runtime, global shortcuts take precedence:
+> `Ctrl+O` is bound to both "Ordered List" and "Quick Open File". At runtime, **Quick Open takes priority**, so `Ctrl+O` opens files rather than inserting an ordered list. If you frequently use the ordered list shortcut, consider reassigning "Ordered List" to a non-conflicting combination in [[07-Settings/03-Keyboard-Shortcuts]].
+
 > All shortcuts can be customized in Settings and take effect immediately after assignment.
 
 ## Customizing Shortcuts

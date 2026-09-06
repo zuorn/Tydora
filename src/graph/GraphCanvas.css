@@ -1,0 +1,26 @@
+.graph-canvas-host {
+  position: relative;
+  width: 100%;
+  height: 100%;
+}
+
+.graph-gl,
+.graph-labels {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+}
+
+.graph-gl {
+  touch-action: none;
+  cursor: grab;
+}
+
+.graph-gl:active {
+  cursor: grabbing;
+}
+
+.graph-labels {
+  pointer-events: none;
+}

@@ -768,6 +768,14 @@ function App({ initialFilePath, initialVaultPath }: { initialFilePath?: string |
     () => sidebarTabsForSide(sidebarTabPlacement, "right"),
     [sidebarTabPlacement],
   );
+
+  // 右侧栏 tab 全部移走时，自动关闭右侧栏（否则按钮隐藏但侧栏还显示）
+  useEffect(() => {
+    if (rightTabs.length === 0 && rightSidebarOpen) {
+      setRightSidebarOpen(false);
+    }
+  }, [rightTabs, rightSidebarOpen]);
+
   const [treeRefreshKey, setTreeRefreshKey] = useState(0);
   const [saveConfirmOpen, setSaveConfirmOpen] = useState(false);
   const [pendingFilePath, setPendingFilePath] = useState<string | null>(null);
@@ -889,17 +897,17 @@ function App({ initialFilePath, initialVaultPath }: { initialFilePath?: string |
   });
 
   // 顶部栏固定项（思维导图、关系图谱、导出）
-  const [pinnedItems, setPinnedItems] = useState<{ mindmap: boolean; graph: boolean; export: boolean; splitLr: boolean; splitTb: boolean }>(() => {
+  const [pinnedItems, setPinnedItems] = useState<{ back: boolean; forward: boolean; mindmap: boolean; graph: boolean; export: boolean; splitLr: boolean; splitTb: boolean }>(() => {
     try {
       const saved = localStorage.getItem(PINNED_ITEMS_KEY);
       if (saved) {
         const parsed = JSON.parse(saved);
-        return { mindmap: !!parsed.mindmap, graph: !!parsed.graph, export: !!parsed.export, splitLr: !!parsed.splitLr, splitTb: !!parsed.splitTb };
+        return { back: !!parsed.back, forward: !!parsed.forward, mindmap: !!parsed.mindmap, graph: !!parsed.graph, export: !!parsed.export, splitLr: !!parsed.splitLr, splitTb: !!parsed.splitTb };
       }
     } catch {
       // ignore
     }
-    return { mindmap: false, graph: false, export: false, splitLr: false, splitTb: false };
+    return { back: false, forward: false, mindmap: false, graph: false, export: false, splitLr: false, splitTb: false };
   });
 
   // Persist pinned items
@@ -1086,10 +1094,14 @@ function App({ initialFilePath, initialVaultPath }: { initialFilePath?: string |
     return () => window.clearTimeout(handle);
   }, [activeVaultIndex, vaults]);
 
-  // 文件监听：外部文件变化时自动更新索引
+  // 文件监听：外部文件变化时自动更新索引，并刷新文件树（结构性变化）
   const [graphRefreshKey, forceIndexRerender] = useState(0);
   const vaultPath = activeVaultIndex >= 0 ? vaults[activeVaultIndex]?.path : null;
-  useVaultWatcher(vaultPath, useCallback(() => forceIndexRerender(n => n + 1), []));
+  useVaultWatcher(
+    vaultPath,
+    useCallback(() => forceIndexRerender(n => n + 1), []),
+    useCallback(() => setTreeRefreshKey(k => k + 1), []),
+  );
 
   useEffect(() => {
     localStorage.setItem(SIDEBAR_WIDTH_KEY, String(sidebarWidth));
@@ -1396,7 +1408,8 @@ function App({ initialFilePath, initialVaultPath }: { initialFilePath?: string |
       // 更新链接索引和标签索引
       const activeVault = activeVaultIndex >= 0 ? vaults[activeVaultIndex] : null;
       if (activeVault) {
-        LinkIndexService.updateFileLinks(path, activeVault.path);
+        await LinkIndexService.updateFileLinks(path, activeVault.path);
+        forceIndexRerender((n) => n + 1);
         TagIndexService.updateFileTags(path, contentToWrite);
         try { persistIndexesToStorage(activeVault.path); } catch {}
       }
@@ -1484,7 +1497,8 @@ function App({ initialFilePath, initialVaultPath }: { initialFilePath?: string |
           updateBuffer(b.id, { savedContent: contentToWrite, modified: false });
           if (b.id === activeBufferIdRef.current) setSaveStatus("saved");
           if (activeVault) {
-            LinkIndexService.updateFileLinks(b.fileName, activeVault.path);
+            await LinkIndexService.updateFileLinks(b.fileName, activeVault.path);
+            forceIndexRerender((n) => n + 1);
             TagIndexService.updateFileTags(b.fileName, contentToWrite);
           }
         }
@@ -3722,6 +3736,7 @@ function App({ initialFilePath, initialVaultPath }: { initialFilePath?: string |
           onSelectVault={setActiveVaultIndex}
           collapsed={!sidebarOpen}
           refreshKey={treeRefreshKey}
+          graphRefreshKey={graphRefreshKey}
           width={sidebarWidth}
           onWidthChange={setSidebarWidth}
           onBookmark={handleShowBookmarkDialog}
@@ -3734,6 +3749,8 @@ function App({ initialFilePath, initialVaultPath }: { initialFilePath?: string |
           side="left"
           tabs={leftTabs}
           autoHideVaultFooter={autoHideVaultFooter}
+          onOpenGlobalGraph={() => setGraphViewOpen((prev) => !prev)}
+          graphViewOpen={graphViewOpen}
         />
 
         {/* 编辑区域 */}
@@ -3786,6 +3803,30 @@ function App({ initialFilePath, initialVaultPath }: { initialFilePath?: string |
               <span className={`traffic-light traffic-light--${displayedFileName ? displayedSaveStatus : "idle"}`} />
             </span>
             <div className="window-controls" data-tauri-drag-region="false">
+              {pinnedItems.back && (
+                <button
+                  className="window-control-btn"
+                  title={t("app.menu.back")}
+                  disabled={historyIndex <= 0}
+                  onClick={() => { if (historyIndex <= 0) return; navigateBack(); }}
+                >
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                    <polyline points="15 18 9 12 15 6" />
+                  </svg>
+                </button>
+              )}
+              {pinnedItems.forward && (
+                <button
+                  className="window-control-btn"
+                  title={t("app.menu.forward")}
+                  disabled={historyIndex >= fileHistory.length - 1}
+                  onClick={() => { if (historyIndex >= fileHistory.length - 1) return; navigateForward(); }}
+                >
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                    <polyline points="9 18 15 12 9 6" />
+                  </svg>
+                </button>
+              )}
               {pinnedItems.mindmap && (
                 <button className="window-control-btn" title={t("app.toolbar.mindmap")} onClick={() => {
                   localStorage.setItem("zmd-mindmap-mode", "document");
@@ -3877,7 +3918,21 @@ function App({ initialFilePath, initialVaultPath }: { initialFilePath?: string |
                       <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                         <polyline points="15 18 9 12 15 6" />
                       </svg>
-                      {t("app.menu.back")}
+                      <span className="editor-topbar-more-menu-label">{t("app.menu.back")}</span>
+                      <button
+                        className={`editor-topbar-more-menu-pin${pinnedItems.back ? ' pinned' : ''}`}
+                        title={pinnedItems.back ? t("app.toolbar.unpin") : t("app.toolbar.pinToToolbar")}
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setPinnedItems(prev => ({ ...prev, back: !prev.back }));
+                        }}
+                      >
+                        <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                          <line x1="12" y1="17" x2="12" y2="22" />
+                          <path d="M5 17h14v-1.76a2 2 0 0 0-1.11-1.79l-1.78-.9A2 2 0 0 1 15 10.76V6h1a2 2 0 0 0 0-4H8a2 2 0 0 0 0 4h1v4.76a2 2 0 0 1-1.11 1.79l-1.78.9A2 2 0 0 0 5 15.24Z" />
+                          {pinnedItems.back && <line x1="2" y1="2" x2="22" y2="22" />}
+                        </svg>
+                      </button>
                     </div>
                     <div
                       className={`editor-topbar-more-menu-item${historyIndex >= fileHistory.length - 1 ? ' disabled' : ''}`}
@@ -3886,7 +3941,21 @@ function App({ initialFilePath, initialVaultPath }: { initialFilePath?: string |
                       <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                         <polyline points="9 18 15 12 9 6" />
                       </svg>
-                      {t("app.menu.forward")}
+                      <span className="editor-topbar-more-menu-label">{t("app.menu.forward")}</span>
+                      <button
+                        className={`editor-topbar-more-menu-pin${pinnedItems.forward ? ' pinned' : ''}`}
+                        title={pinnedItems.forward ? t("app.toolbar.unpin") : t("app.toolbar.pinToToolbar")}
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setPinnedItems(prev => ({ ...prev, forward: !prev.forward }));
+                        }}
+                      >
+                        <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                          <line x1="12" y1="17" x2="12" y2="22" />
+                          <path d="M5 17h14v-1.76a2 2 0 0 0-1.11-1.79l-1.78-.9A2 2 0 0 1 15 10.76V6h1a2 2 0 0 0 0-4H8a2 2 0 0 0 0 4h1v4.76a2 2 0 0 1-1.11 1.79l-1.78.9A2 2 0 0 0 5 15.24Z" />
+                          {pinnedItems.forward && <line x1="2" y1="2" x2="22" y2="22" />}
+                        </svg>
+                      </button>
                     </div>
                     <div className="editor-topbar-more-menu-divider" />
                     <div
@@ -4161,24 +4230,26 @@ function App({ initialFilePath, initialVaultPath }: { initialFilePath?: string |
                   </div>
                 )}
               </div>
-              {/* 右侧栏折叠/展开按钮：紧挨"更多"按钮右侧，样式与左侧栏按钮一致 */}
-              <button
-                className="sidebar-toggle-btn"
-                onClick={handleRightSidebarToggle}
-                title={rightSidebarOpen ? t("app.toolbar.collapseRightSidebar") : t("app.toolbar.expandRightSidebar")}
-              >
-                <svg width="18" height="18" viewBox="0 0 18 18" fill="none" xmlns="http://www.w3.org/2000/svg">
-                  <rect x="1.5" y="1.5" width="15" height="15" rx="2" stroke="currentColor" strokeWidth="1.4" />
-                  {rightSidebarOpen ? (
-                    <>
-                      <rect x="10.5" y="2.5" width="5" height="13" rx="1" fill="currentColor" opacity="0.25" />
+              {/* 右侧栏折叠/展开按钮：紧挨"更多"按钮右侧，仅当有 tab 配置在右侧栏时显示 */}
+              {rightTabs.length > 0 && (
+                <button
+                  className="sidebar-toggle-btn"
+                  onClick={handleRightSidebarToggle}
+                  title={rightSidebarOpen ? t("app.toolbar.collapseRightSidebar") : t("app.toolbar.expandRightSidebar")}
+                >
+                  <svg width="18" height="18" viewBox="0 0 18 18" fill="none" xmlns="http://www.w3.org/2000/svg">
+                    <rect x="1.5" y="1.5" width="15" height="15" rx="2" stroke="currentColor" strokeWidth="1.4" />
+                    {rightSidebarOpen ? (
+                      <>
+                        <rect x="10.5" y="2.5" width="5" height="13" rx="1" fill="currentColor" opacity="0.25" />
+                        <line x1="10.5" y1="2.5" x2="10.5" y2="15.5" stroke="currentColor" strokeWidth="1.2" />
+                      </>
+                    ) : (
                       <line x1="10.5" y1="2.5" x2="10.5" y2="15.5" stroke="currentColor" strokeWidth="1.2" />
-                    </>
-                  ) : (
-                    <line x1="10.5" y1="2.5" x2="10.5" y2="15.5" stroke="currentColor" strokeWidth="1.2" />
-                  )}
-                </svg>
-              </button>
+                    )}
+                  </svg>
+                </button>
+              )}
               <div className="window-controls-divider window-controls-native" />
               <div className="window-caption-controls window-controls-native">
                 <button className="window-control-btn window-controls-native" onClick={handleMinimize} title={t("app.toolbar.minimize")}>
@@ -4467,6 +4538,7 @@ function App({ initialFilePath, initialVaultPath }: { initialFilePath?: string |
             onSelectVault={setActiveVaultIndex}
             collapsed={!rightSidebarOpen}
             refreshKey={treeRefreshKey}
+            graphRefreshKey={graphRefreshKey}
             width={rightSidebarWidth}
             onWidthChange={setRightSidebarWidth}
             onBookmark={handleShowBookmarkDialog}
@@ -4478,6 +4550,8 @@ function App({ initialFilePath, initialVaultPath }: { initialFilePath?: string |
             onCloseOpenFile={closeOpenFile}
             side="right"
             tabs={rightTabs}
+            onOpenGlobalGraph={() => setGraphViewOpen((prev) => !prev)}
+            graphViewOpen={graphViewOpen}
           />
         )}
       </div>

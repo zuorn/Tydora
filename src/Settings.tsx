@@ -189,7 +189,7 @@ export const DEFAULT_GENERAL: GeneralSettings = {
     openFiles: "left",
     search: "left",
     outline: "right",
-    bookmarks: "right",
+    bookmarks: "left",
   },
 };
 

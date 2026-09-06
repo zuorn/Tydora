@@ -1,0 +1,12 @@
+{
+  "nodes": [
+    { "id": "t1", "type": "text", "x": -200, "y": -100, "width": 250, "height": 120, "text": "# Canvas\nA **text** node.", "color": "4" },
+    { "id": "f1", "type": "file", "x": 120, "y": -100, "width": 260, "height": 140, "file": "Notes/Note B.md", "subpath": "#Details" },
+    { "id": "l1", "type": "link", "x": -200, "y": 120, "width": 250, "height": 120, "url": "https://obsidian.md" },
+    { "id": "g1", "type": "group", "x": -260, "y": -160, "width": 700, "height": 420, "label": "Group" }
+  ],
+  "edges": [
+    { "id": "e1", "fromNode": "t1", "toNode": "f1", "fromSide": "right", "toSide": "left", "toEnd": "arrow" },
+    { "id": "e2", "fromNode": "t1", "toNode": "l1", "fromSide": "bottom", "toSide": "top", "color": "1", "label": "rel" }
+  ]
+}

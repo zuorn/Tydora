@@ -1,0 +1,3 @@
+[build]
+  command = "npx --yes @abstractwebunit/markdown-publish build --out dist"
+  publish = "dist"

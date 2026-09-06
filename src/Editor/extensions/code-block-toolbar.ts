@@ -3,6 +3,7 @@ import type { EditorView } from "@tiptap/pm/view";
 import { Plugin, PluginKey } from "@tiptap/pm/state";
 import type { Node as ProseMirrorNode } from "@tiptap/pm/model";
 import type { NodeView } from "@tiptap/pm/view";
+import { CODE_THEMES, type CodeTheme, type CustomCodeTheme } from "../../themes/codeThemes";
 
 const LANGUAGES = [
   { value: "", label: "Plain Text" },
@@ -41,6 +42,25 @@ const LANGUAGES = [
 const COPY_ICON = `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"/><path d="M5 15H4a2 2 0 01-2-2V4a2 2 0 012-2h9a2 2 0 012 2v1"/></svg>`;
 const CHECK_ICON = `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 6L9 17l-5-5"/></svg>`;
 const DELETE_ICON = `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 6h18M19 6v14a2 2 0 01-2 2H7a2 2 0 01-2-2V6m3 0V4a2 2 0 012-2h4a2 2 0 012 2v2"/></svg>`;
+const THEME_ICON = `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="13.5" cy="6.5" r="1.5"/><circle cx="17.5" cy="10.5" r="1.5"/><circle cx="8.5" cy="7.5" r="1.5"/><circle cx="6.5" cy="12.5" r="1.5"/><path d="M12 2C6.5 2 2 6.5 2 12s4.5 10 10 10c.926 0 1.648-.746 1.648-1.688 0-.437-.18-.835-.437-1.125-.29-.289-.438-.652-.438-1.125a1.64 1.64 0 011.668-1.668h1.996c3.051 0 5.555-2.503 5.555-5.554C21.965 6.012 17.461 2 12 2z"/></svg>`;
+
+/** 获取当前可选的代码主题列表（内置 + 自定义），供主题下拉使用 */
+function getAvailableCodeThemes(): Array<{ id: string; name: string; isDark: boolean }> {
+  const builtin = CODE_THEMES.map((t: CodeTheme) => ({
+    id: t.id,
+    name: t.name,
+    isDark: t.isDark,
+  }));
+  const custom = ((window as unknown as { __tydoraCustomCodeThemes?: CustomCodeTheme[] }).__tydoraCustomCodeThemes || []).map(
+    (m) => ({ id: m.id, name: m.name, isDark: m.isDark }),
+  );
+  return [...builtin, ...custom];
+}
+
+/** 获取当前全局代码主题 id（由 ThemeContext 写入 documentElement.dataset.codeTheme） */
+function getCurrentCodeTheme(): string {
+  return document.documentElement.dataset.codeTheme || "github-light";
+}
 
 function langLabel(lang: string | null | undefined): string {
   return LANGUAGES.find((l) => l.value === (lang || ""))?.label || "Plain Text";
@@ -86,13 +106,16 @@ class CodeBlockToolbarView implements NodeView {
   private wrapper: HTMLElement;
   private toolbar: HTMLElement;
   private langButton: HTMLButtonElement;
+  private themeButton!: HTMLButtonElement;
   private copyButton!: HTMLButtonElement;
   private deleteButton!: HTMLButtonElement;
 
   private portal: HTMLDivElement | null = null;
+  private portalType: "lang" | "theme" | null = null;
   private onDocPointerDown: ((e: PointerEvent) => void) | null = null;
   private openTimer: ReturnType<typeof setTimeout> | null = null;
   private copyResetTimer: ReturnType<typeof setTimeout> | null = null;
+  private onCodeThemeChanged: (() => void) | null = null;
 
   constructor(
     node: ProseMirrorNode,
@@ -136,11 +159,26 @@ class CodeBlockToolbarView implements NodeView {
     this.wrapper.appendChild(this.toolbar);
     this.wrapper.appendChild(pre);
     this.dom = this.wrapper;
+
+    // 全局代码主题变化时更新主题按钮的高亮态（暗色主题时高亮）
+    this.onCodeThemeChanged = () => {
+      const isDark = document.documentElement.dataset.codeThemeDark === "true";
+      this.themeButton.classList.toggle("active", isDark);
+    };
+    window.addEventListener("code-theme-changed", this.onCodeThemeChanged);
+    this.onCodeThemeChanged();
   }
 
   private createActions(): HTMLElement {
     const actions = document.createElement("div");
     actions.className = "code-block-actions";
+
+    this.themeButton = document.createElement("button");
+    this.themeButton.type = "button";
+    this.themeButton.className = "code-block-action-btn theme";
+    this.themeButton.title = "切换主题";
+    this.themeButton.innerHTML = THEME_ICON;
+    this.themeButton.addEventListener("pointerdown", this.onThemePointerDown);
 
     this.deleteButton = document.createElement("button");
     this.deleteButton.type = "button";
@@ -156,6 +194,7 @@ class CodeBlockToolbarView implements NodeView {
     this.copyButton.innerHTML = COPY_ICON;
     this.copyButton.addEventListener("pointerdown", this.onCopyPointerDown);
 
+    actions.appendChild(this.themeButton);
     actions.appendChild(this.deleteButton);
     actions.appendChild(this.copyButton);
     return actions;
@@ -168,10 +207,33 @@ class CodeBlockToolbarView implements NodeView {
     e.stopPropagation();
 
     if (this.portal) {
-      this.closeDropdown();
+      // 已打开主题下拉 → 切到语言；已打开语言 → 关闭
+      if (this.portalType === "theme") {
+        this.closeDropdown();
+        this.openDropdown("lang");
+      } else {
+        this.closeDropdown();
+      }
       return;
     }
-    this.openDropdown();
+    this.openDropdown("lang");
+  };
+
+  private onThemePointerDown = (e: PointerEvent) => {
+    if (e.button !== 0) return;
+    e.preventDefault();
+    e.stopPropagation();
+
+    if (this.portal) {
+      if (this.portalType === "lang") {
+        this.closeDropdown();
+        this.openDropdown("theme");
+      } else {
+        this.closeDropdown();
+      }
+      return;
+    }
+    this.openDropdown("theme");
   };
 
   private onDeletePointerDown = (e: PointerEvent) => {
@@ -188,74 +250,120 @@ class CodeBlockToolbarView implements NodeView {
     this.copyCodeBlock();
   };
 
-  private openDropdown() {
+  private openDropdown(type: "lang" | "theme") {
     this.closeDropdown();
 
-    const currentLang = this.node.attrs.language || "";
-    const anchor = this.langButton.getBoundingClientRect();
+    const anchorButton = type === "lang" ? this.langButton : this.themeButton;
+    const anchor = anchorButton.getBoundingClientRect();
 
     const portal = document.createElement("div");
-    portal.className = "code-block-lang-dropdown-portal";
+    portal.className = type === "lang" ? "code-block-lang-dropdown-portal" : "code-block-theme-dropdown-portal";
     portal.style.display = "flex";
     portal.style.position = "fixed";
     portal.style.top = `${anchor.bottom + 4}px`;
-    portal.style.left = `${anchor.left}px`;
+    // 语言下拉左对齐按钮左边；主题下拉右对齐按钮右边（按钮在代码块右侧，避免溢出）
+    if (type === "lang") {
+      portal.style.left = `${anchor.left}px`;
+    } else {
+      portal.style.right = `${Math.max(8, window.innerWidth - anchor.right)}px`;
+    }
     portal.style.zIndex = "10000";
-
-    const input = document.createElement("input");
-    input.type = "text";
-    input.className = "code-block-lang-search";
-    input.placeholder = "搜索语言...";
-    // 阻止输入框抢走编辑器焦点时触发的外部关闭误判
-    input.addEventListener("pointerdown", (e) => e.stopPropagation());
 
     const list = document.createElement("div");
     list.className = "code-block-lang-list";
 
-    const renderList = (filter: string) => {
-      list.replaceChildren();
-      const q = filter.trim().toLowerCase();
-      for (const lang of LANGUAGES) {
-        if (q && !lang.label.toLowerCase().includes(q) && !lang.value.toLowerCase().includes(q)) {
-          continue;
+    if (type === "lang") {
+      const currentLang = this.node.attrs.language || "";
+      const input = document.createElement("input");
+      input.type = "text";
+      input.className = "code-block-lang-search";
+      input.placeholder = "搜索语言...";
+      input.addEventListener("pointerdown", (e) => e.stopPropagation());
+
+      const renderList = (filter: string) => {
+        list.replaceChildren();
+        const q = filter.trim().toLowerCase();
+        for (const lang of LANGUAGES) {
+          if (q && !lang.label.toLowerCase().includes(q) && !lang.value.toLowerCase().includes(q)) {
+            continue;
+          }
+          const item = document.createElement("div");
+          item.className = "code-block-lang-item";
+          if (lang.value === currentLang) item.classList.add("active");
+          item.textContent = lang.label;
+          item.addEventListener("pointerdown", (e) => {
+            if (e.button !== 0) return;
+            e.preventDefault();
+            e.stopPropagation();
+            this.applyLanguage(lang.value);
+            this.closeDropdown();
+          });
+          list.appendChild(item);
         }
+      };
+      renderList("");
+      input.addEventListener("input", () => renderList(input.value));
+      portal.appendChild(input);
+      setTimeout(() => input.focus(), 0);
+    } else {
+      // 主题列表：与设置页「代码主题」一致（内置 + 自定义），带色块 + 名称
+      const currentTheme = getCurrentCodeTheme();
+      const themes = getAvailableCodeThemes();
+      for (const theme of themes) {
         const item = document.createElement("div");
-        item.className = "code-block-lang-item";
-        if (lang.value === currentLang) item.classList.add("active");
-        item.textContent = lang.label;
+        item.className = "code-block-lang-item code-block-theme-item";
+        if (theme.id === currentTheme) item.classList.add("active");
+
+        const swatch = document.createElement("span");
+        swatch.className = "code-block-theme-swatch";
+        swatch.style.background = theme.isDark ? "#1e1e2e" : "#f6f8fa";
+        item.appendChild(swatch);
+
+        const label = document.createElement("span");
+        label.className = "code-block-theme-label";
+        label.textContent = theme.name;
+        item.appendChild(label);
+
         item.addEventListener("pointerdown", (e) => {
           if (e.button !== 0) return;
           e.preventDefault();
           e.stopPropagation();
-          this.applyLanguage(lang.value);
+          // 通过全局事件通知 ThemeContext 切换代码主题
+          window.dispatchEvent(
+            new CustomEvent("request-code-theme-change", { detail: { themeId: theme.id } }),
+          );
           this.closeDropdown();
         });
         list.appendChild(item);
       }
-    };
+    }
 
-    renderList("");
-    input.addEventListener("input", () => renderList(input.value));
-
-    portal.appendChild(input);
     portal.appendChild(list);
     document.body.appendChild(portal);
     this.portal = portal;
+    this.portalType = type;
     this.wrapper.classList.add("toolbar-active");
 
     // 视口边界修正
     requestAnimationFrame(() => {
       if (!this.portal) return;
       const r = this.portal.getBoundingClientRect();
+      // 底部超出视口 → 翻到按钮上方
       if (r.bottom > window.innerHeight) {
         this.portal.style.top = `${anchor.top - r.height - 4}px`;
       }
-      if (r.right > window.innerWidth) {
-        this.portal.style.left = `${Math.max(8, window.innerWidth - r.width - 8)}px`;
+      if (type === "lang") {
+        // 语言下拉：右边溢出 → 贴右视口边
+        if (r.right > window.innerWidth) {
+          this.portal.style.left = `${Math.max(8, window.innerWidth - r.width - 8)}px`;
+        }
+      } else {
+        // 主题下拉：左边溢出 → 贴左视口边
+        if (r.left < 0) {
+          this.portal.style.right = `${Math.max(8, window.innerWidth - r.width - 8)}px`;
+        }
       }
     });
-
-    setTimeout(() => input.focus(), 0);
 
     // 延后注册外部关闭：避免打开当下的 pointerdown 立刻关掉菜单
     this.openTimer = setTimeout(() => {
@@ -264,7 +372,7 @@ class CodeBlockToolbarView implements NodeView {
         const t = e.target as Node | null;
         if (!t) return;
         if (this.portal?.contains(t)) return;
-        if (this.langButton.contains(t)) return;
+        if (this.langButton.contains(t) || this.themeButton.contains(t)) return;
         this.closeDropdown();
       };
       document.addEventListener("pointerdown", this.onDocPointerDown, true);
@@ -284,6 +392,7 @@ class CodeBlockToolbarView implements NodeView {
       this.portal.remove();
       this.portal = null;
     }
+    this.portalType = null;
     this.wrapper.classList.remove("toolbar-active");
   }
 
@@ -372,7 +481,12 @@ class CodeBlockToolbarView implements NodeView {
   destroy() {
     this.closeDropdown();
     if (this.copyResetTimer !== null) clearTimeout(this.copyResetTimer);
+    if (this.onCodeThemeChanged) {
+      window.removeEventListener("code-theme-changed", this.onCodeThemeChanged);
+      this.onCodeThemeChanged = null;
+    }
     this.langButton.removeEventListener("pointerdown", this.onLangButtonPointerDown);
+    this.themeButton.removeEventListener("pointerdown", this.onThemePointerDown);
     this.deleteButton.removeEventListener("pointerdown", this.onDeletePointerDown);
     this.copyButton.removeEventListener("pointerdown", this.onCopyPointerDown);
   }

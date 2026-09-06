@@ -1,0 +1,42 @@
+name: 'markdown-publish'
+description: 'Build an Obsidian/Markdown vault into a static site and upload it as a GitHub Pages artifact.'
+inputs:
+  vault-dir:
+    description: 'Vault directory within the repo'
+    required: false
+    default: '.'
+  out:
+    description: 'Output directory'
+    required: false
+    default: 'dist'
+  site-name: { description: 'Site name', required: false, default: '' }
+  site-url: { description: 'Absolute site URL (for canonical/SEO)', required: false, default: '' }
+  site-lang: { description: 'Content language (BCP-47)', required: false, default: 'en' }
+  site-description: { description: 'Site description (for SEO/meta)', required: false, default: '' }
+  site-footer: { description: 'Footer text', required: false, default: '' }
+  build-mode: { description: 'Build mode (full|public)', required: false, default: 'full' }
+  base-href: { description: 'Base href, e.g. "/repo/" for a GitHub Pages project site', required: false, default: '/' }
+  node-version: { description: 'Node version', required: false, default: '22' }
+runs:
+  using: 'composite'
+  steps:
+    - uses: actions/setup-node@v4
+      with:
+        node-version: ${{ inputs.node-version }}
+        # no `cache: npm` — it requires a package-lock.json in the consumer's
+        # repo, and vault repos have none (the engine installs via npx)
+    - shell: bash
+      run: >-
+        npx --yes @abstractwebunit/markdown-publish build
+        --vault-dir "${{ inputs.vault-dir }}"
+        --out "${{ inputs.out }}"
+        --site-name "${{ inputs.site-name }}"
+        --site-url "${{ inputs.site-url }}"
+        --site-lang "${{ inputs.site-lang }}"
+        --site-description "${{ inputs.site-description }}"
+        --site-footer "${{ inputs.site-footer }}"
+        --build-mode "${{ inputs.build-mode }}"
+        --base-href "${{ inputs.base-href }}"
+    - uses: actions/upload-pages-artifact@v3
+      with:
+        path: ${{ inputs.out }}

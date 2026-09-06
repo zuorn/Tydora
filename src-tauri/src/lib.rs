@@ -1036,8 +1036,47 @@ async fn run_markdown_publish(
         return Err(install_hint.to_string());
     };
 
-    let output = Command::new(&launch.program)
-        .args(&launch.args)
+    // Node.js v24 的 realpathSync 在 Windows 上对 D: 等驱动器根执行 lstat 会报 EISDIR。
+    // 解决方案：创建一个临时 wrapper 脚本（在系统 temp 目录，通常在 C: 盘），
+    // 通过 dynamic import 加载实际 CLI，绕过主入口的 realpathSync。
+    let cli_path = launch
+        .args
+        .first()
+        .map(|p| std::path::Path::new(p).to_path_buf());
+
+    let (program, final_args) = if cli_path.is_some() {
+        let cli = cli_path.unwrap();
+
+        let wrapper = format!(
+            "import {{ parseFlags, resolveConfig }} from '{}';\n\
+             import {{ runBuild }} from '{}';\n\
+             const [cmd, ...rest] = process.argv.slice(2);\n\
+             if (cmd !== 'build') {{ console.error('Usage: markdown-publish build [...]'); process.exit(1); }}\n\
+             const flags = parseFlags(rest);\n\
+             const cfg = resolveConfig({{ flags, env: process.env, cwd: process.cwd() }});\n\
+             try {{ const out = runBuild(cfg, {{ cwd: process.cwd() }}); console.log(`✓ Site built to ${{out}}`); }}\n\
+             catch (err) {{ console.error(`✗ ${{err.message}}`); process.exit(1); }}\n",
+            url::Url::from_file_path(cli.with_file_name("resolve-config.mjs")).map(|u| u.to_string()).unwrap_or_default(),
+            url::Url::from_file_path(cli.with_file_name("run-build.mjs")).map(|u| u.to_string()).unwrap_or_default(),
+        );
+
+        let temp_dir = std::env::temp_dir();
+        let wrapper_path = temp_dir.join("tydora-mp-launcher.mjs");
+        std::fs::write(&wrapper_path, &wrapper)
+            .map_err(|e| format!("创建启动脚本失败: {}", e))?;
+
+        ("node".to_string(), vec![wrapper_path.into_os_string()])
+    } else {
+        (launch.program.clone(), launch.args.clone())
+    };
+
+    eprintln!(
+        "[markdown-publish] program={}, args={:?}, extra={:?}",
+        program, final_args, args
+    );
+
+    let output = Command::new(&program)
+        .args(&final_args)
         .args(&args)
         .output()
         .map_err(|e| format!("启动 markdown-publish 失败（请确认已安装 Node.js）: {}", e))?;
@@ -1086,8 +1125,22 @@ fn find_markdown_publish_launcher(app: &tauri::AppHandle) -> Option<MarkdownPubl
         }
     }
 
-    // 2. 项目 node_modules（开发环境）
+    // 2. 项目 vendor 目录（开发环境优先，直接使用 fork 源码，绕过 node_modules junction）
     if let Some(project_root) = current_project_root() {
+        let vendor = project_root
+            .join("vendor")
+            .join("markdown-publish")
+            .join("tools")
+            .join("cli")
+            .join("cli.mjs");
+        if vendor.exists() {
+            return Some(MarkdownPublishLauncher {
+                program: "node".to_string(),
+                args: vec![vendor.into_os_string()],
+            });
+        }
+
+        // 2b. node_modules（npm file: 链接可能为 junction，某些 Node 版本 realpathSync 有问题）
         let local = project_root
             .join("node_modules")
             .join("@abstractwebunit")

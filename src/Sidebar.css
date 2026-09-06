@@ -1643,3 +1643,202 @@ html.platform-macos .sidebar.sidebar-right .sidebar-topbar {
   line-height: 1.6;
   max-width: 200px;
 }
+
+/* ========== 大纲面板：Graph / On this page / Linked references ========== */
+.sidebar-inspector {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  overscroll-behavior-y: contain;
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+  padding: 8px 8px 18px;
+  user-select: none;
+  -webkit-user-select: none;
+}
+
+.inspector-section {
+  flex-shrink: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+.inspector-section-title {
+  margin: 0;
+  padding: 0 4px;
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  color: var(--text-secondary);
+}
+
+.inspector-section-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 6px;
+}
+
+.inspector-section-actions {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+}
+
+.inspector-icon-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 22px;
+  height: 22px;
+  padding: 0;
+  border: none;
+  border-radius: 4px;
+  background: transparent;
+  color: var(--text-secondary);
+  cursor: pointer;
+  transition: background 0.15s, color 0.15s;
+}
+
+.inspector-icon-btn:hover {
+  background: var(--bg-hover, rgba(0, 0, 0, 0.06));
+  color: var(--text-primary);
+}
+
+.inspector-icon-btn.active {
+  color: var(--accent);
+  background: var(--bg-hover, rgba(0, 0, 0, 0.06));
+}
+
+/* 局部/全局图谱放大弹窗 */
+.graph-modal-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 9999;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(0, 0, 0, 0.45);
+  backdrop-filter: blur(2px);
+}
+
+.graph-modal {
+  width: min(820px, 92vw);
+  height: min(620px, 85vh);
+  display: flex;
+  flex-direction: column;
+  background: var(--bg-primary);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.35);
+  overflow: hidden;
+}
+
+.graph-modal-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 12px 16px;
+  border-bottom: 1px solid var(--border);
+}
+
+.graph-modal-title {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text-primary);
+}
+
+.graph-modal-close {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 24px;
+  padding: 0;
+  border: none;
+  border-radius: 4px;
+  background: transparent;
+  color: var(--text-secondary);
+  cursor: pointer;
+  transition: background 0.15s, color 0.15s;
+}
+
+.graph-modal-close:hover {
+  background: var(--bg-hover, rgba(0, 0, 0, 0.06));
+  color: var(--text-primary);
+}
+
+.graph-modal-body {
+  flex: 1;
+  min-height: 0;
+  padding: 12px;
+}
+
+.graph-modal-body .local-graph {
+  height: 100%;
+}
+
+/* On this page 复用的 Outline 结构：去掉在大纲面板里的额外留白/滚动，交给外层统一滚动 */
+.inspector-section .sidebar-tree {
+  flex: none;
+  overflow: visible;
+  padding: 0;
+}
+
+.local-graph-loading {
+  height: 200px;
+  flex-shrink: 0;
+  display: grid;
+  place-items: center;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--bg-primary);
+  color: var(--text-secondary);
+  font-size: 12px;
+  opacity: 0.75;
+}
+
+.local-graph-loading::before {
+  content: "…";
+}
+
+/* Linked references */
+.linked-refs {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+}
+
+.linked-ref {
+  display: block;
+  width: 100%;
+  box-sizing: border-box;
+  padding: 4px 8px;
+  border: none;
+  border-radius: 6px;
+  background: transparent;
+  color: var(--text-secondary);
+  font: inherit;
+  font-size: 12.5px;
+  line-height: 1.45;
+  text-align: left;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  cursor: pointer;
+  transition: background 0.1s ease, color 0.1s ease;
+}
+
+.linked-ref:hover {
+  background: rgba(128, 128, 128, 0.14);
+  color: var(--text-primary);
+}
+
+.inspector-empty {
+  padding: 2px 8px;
+  color: var(--text-secondary);
+  font-size: 12px;
+  opacity: 0.7;
+}

@@ -89,3 +89,7 @@ Thumbs.db
 .edgeone/*
 .tef_dist/*
 
+
+dist-test/
+website/dist/
+website/.obsidian/

@@ -1648,20 +1648,20 @@ html.platform-macos .tiptap-editor .frontmatter-node {
   border-radius: var(--radius-code-block, 8px);
   background: var(--bg-code, #f6f8fa);
   border: 1px solid var(--border, #e0e0e0);
+  color: var(--code-block-text, var(--text-primary, #333));
   overflow: visible;
 }
 
-/* ── minimal（默认）：右上角浮动语言选择 ── */
+/* ── minimal（默认）：语言按钮在文档流内，右操作按钮绝对定位浮在代码上层 ── */
 .code-block-toolbar {
-  position: absolute;
-  top: 4px;
-  right: 6px;
+  position: relative;
   z-index: 5;
   display: flex;
   align-items: center;
-  justify-content: flex-end;
+  /* 工具栏高度仅由语言按钮决定，不给右操作按钮留空间 */
+  justify-content: flex-start;
   gap: 4px;
-  padding: 0;
+  padding: 4px 8px 2px;
   background: transparent;
   border: none;
   pointer-events: auto;
@@ -1670,8 +1670,127 @@ html.platform-macos .tiptap-editor .frontmatter-node {
   -webkit-user-select: none;
 }
 
+/* minimal 模式：右操作按钮绝对定位到右上角，浮在代码上层，不占工具栏高度 */
 .code-block-actions {
-  display: none;
+  position: absolute;
+  top: 4px;
+  right: 6px;
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  opacity: 0;
+  pointer-events: none;
+  transform: translateY(-2px);
+  transition: opacity 0.18s ease, transform 0.18s ease;
+  z-index: 6;
+}
+
+.code-block-toolbar-wrapper:hover .code-block-actions,
+.code-block-toolbar-wrapper.toolbar-active .code-block-actions {
+  opacity: 1;
+  pointer-events: auto;
+  transform: translateY(0);
+}
+
+/* minimal 模式下操作按钮统一样式 */
+.code-block-action-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  padding: 0;
+  background: var(--bg-primary, #fff);
+  border: 1px solid var(--border, #d0d0d0);
+  border-radius: 6px;
+  color: var(--text-secondary, #666);
+  cursor: pointer;
+  transition: background 0.15s ease, color 0.15s ease, border-color 0.15s ease;
+}
+
+.code-block-action-btn:hover {
+  background: var(--bg-hover, #e8e8e8);
+  color: var(--text-primary, #333);
+}
+
+.code-block-action-btn.theme.active {
+  background: var(--accent, #2563eb);
+  color: #fff;
+  border-color: var(--accent, #2563eb);
+}
+
+.code-block-action-btn.delete:hover {
+  background: #fee2e2;
+  color: #dc2626;
+  border-color: #fecaca;
+}
+
+.code-block-action-btn.copy:hover {
+  background: #dbeafe;
+  color: #2563eb;
+  border-color: #bfdbfe;
+}
+
+/* ── 全局暗色代码主题：背景/边框/文字/按钮适配（由 ThemeContext 设置 html[data-code-theme-dark]） ──
+   语法高亮 token 色由代码主题的 --hljs-* CSS 变量提供，此处不再重复定义 */
+html[data-code-theme-dark="true"] .code-block-toolbar-wrapper {
+  border-color: #313244;
+}
+
+html[data-code-theme-dark="true"] .code-block-content {
+  color: #cdd6f4;
+}
+
+html[data-code-theme-dark="true"] .code-block-action-btn {
+  background: #313244;
+  border-color: #45475a;
+  color: #cdd6f4;
+}
+
+html[data-code-theme-dark="true"] .code-block-action-btn:hover {
+  background: #45475a;
+  color: #fff;
+}
+
+html[data-code-theme-dark="true"] .code-block-lang-button {
+  background: #313244;
+  border-color: #45475a;
+  color: #cdd6f4;
+}
+
+html[data-code-theme-dark="true"] .code-block-lang-button:hover {
+  background: #45475a;
+  border-color: #6c7086;
+}
+
+/* 主题下拉项：色块 + 名称 */
+.code-block-theme-dropdown-portal {
+  min-width: 180px;
+  background: var(--bg-primary, #fff);
+  border: 1px solid var(--border, #d0d0d0);
+  border-radius: 8px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+  overflow: hidden;
+  flex-direction: column;
+}
+
+.code-block-theme-item {
+  display: flex !important;
+  align-items: center;
+  gap: 8px;
+}
+
+.code-block-theme-swatch {
+  width: 18px;
+  height: 18px;
+  border-radius: 4px;
+  border: 1px solid var(--border, #d0d0d0);
+  flex-shrink: 0;
+}
+
+.code-block-theme-label {
+  font-size: 13px;
+  color: var(--text-primary, #333);
 }
 
 .code-block-lang-selector {
@@ -1684,31 +1803,21 @@ html.platform-macos .tiptap-editor .frontmatter-node {
   align-items: center;
   gap: 4px;
   padding: 2px 6px;
-  background: transparent;
-  border: 1px solid transparent;
+  background: var(--bg-primary, #fff);
+  border: 1px solid var(--border, #d0d0d0);
   border-radius: 4px;
   font-size: 12px;
   line-height: 1.2;
   font-family: var(--editor-font, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif);
-  color: var(--text-secondary, #999);
+  color: var(--text-primary, #333);
   cursor: pointer;
   pointer-events: auto;
-  transition: background 0.15s ease, border-color 0.15s ease, color 0.15s ease, opacity 0.15s ease;
-  opacity: 0.75;
-}
-
-.code-block-toolbar-wrapper:hover .code-block-lang-button,
-.code-block-toolbar-wrapper.toolbar-active .code-block-lang-button {
-  background: var(--bg-primary, #fff);
-  border-color: var(--border, #d0d0d0);
-  color: var(--text-primary, #333);
-  opacity: 1;
+  transition: background 0.15s ease, border-color 0.15s ease, color 0.15s ease;
 }
 
 .code-block-lang-button:hover {
   background: var(--bg-hover, #e8e8e8);
   border-color: var(--text-secondary, #999);
-  opacity: 1;
 }
 
 /* ── classic：顶栏 + 复制/删除 ── */
@@ -1725,6 +1834,10 @@ html[data-code-block-toolbar="classic"] .code-block-toolbar {
 }
 
 html[data-code-block-toolbar="classic"] .code-block-actions {
+  position: static;
+  opacity: 1;
+  pointer-events: auto;
+  transform: none;
   display: flex;
   align-items: center;
   gap: 4px;
@@ -1781,6 +1894,13 @@ html[data-code-block-toolbar="classic"] .code-block-action-btn.copy:hover {
 }
 
 html[data-code-block-toolbar="classic"] .code-block-content {
+  /* classic 模式工具栏在文档流中，恢复原始内边距 */
+  padding: 16px;
+  border-radius: 0 0 var(--radius-code-block, 8px) var(--radius-code-block, 8px);
+}
+
+/* minimal 模式：内容区仅保留底圆角（顶圆角由工具栏区域承担） */
+html:not([data-code-block-toolbar="classic"]) .code-block-content {
   border-radius: 0 0 var(--radius-code-block, 8px) var(--radius-code-block, 8px);
 }
 
@@ -1863,7 +1983,8 @@ html[data-code-block-toolbar="classic"] .code-block-content {
 /* 代码内容（minimal 顶栏叠加用完整圆角；classic 由上方覆盖为底部圆角） */
 .code-block-content {
   margin: 0;
-  padding: 16px;
+  /* 工具栏在文档流内，无需额外顶部内边距让位 */
+  padding: 4px 16px 16px;
   overflow: auto;
   font-family: var(--font-mono, "Fira Code", "Consolas", monospace);
   font-size: var(--font-mono-size, 14px);

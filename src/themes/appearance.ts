@@ -16,7 +16,7 @@ export interface AppearanceState {
 }
 
 export const DEFAULT_APP_THEME_PAIR: ThemePair = {
-  light: "mint",
+  light: "white",
   dark: "mint-dark",
 };
 

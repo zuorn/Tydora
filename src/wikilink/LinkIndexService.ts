@@ -329,6 +329,48 @@ class LinkIndexServiceImpl {
   getOutlinks(filePath: string): string[] {
     return this.index.outlinks.get(filePath) || [];
   }
+
+  /**
+   * 获取文件的出链（对路径书写风格健壮）：
+   * 先按 key 精确命中；未命中时做一次大小写/分隔符无关的线性兜底。
+   * 用于解决 Windows 下“文件树用 \、索引构建用 /”导致 key 对不上的问题。
+   */
+  getOutlinksForFile(filePath: string): string[] {
+    const direct = this.index.outlinks.get(filePath);
+    if (direct) return direct;
+    const key = this.normalizePathKey(filePath);
+    for (const [p, targets] of this.index.outlinks) {
+      if (this.normalizePathKey(p) === key) return targets;
+    }
+    return [];
+  }
+
+  /**
+   * 找出“反向链接来源”：任何文件的出链目标命中候选笔记名之一
+   * （大小写无关、分隔符无关）即视为引用。返回去重后的源文件路径列表。
+   */
+  findFilesReferencing(candidateNames: string[]): string[] {
+    if (candidateNames.length === 0) return [];
+    const wanted = new Set(candidateNames.map((n) => this.normalizePathKey(n)));
+    const seen = new Set<string>();
+    const result: string[] = [];
+    for (const [source, targets] of this.index.outlinks) {
+      const hit = targets.some((t) => wanted.has(this.normalizePathKey(t)));
+      if (hit) {
+        const canonical = this.normalizePathKey(source);
+        if (!seen.has(canonical)) {
+          seen.add(canonical);
+          result.push(source);
+        }
+      }
+    }
+    return result;
+  }
+
+  /** 把任意路径归一为「/」分隔的小写形式，用于跨书写风格的 key 比较 */
+  private normalizePathKey(path: string): string {
+    return path.replace(/\\/g, "/").toLowerCase();
+  }
   
   /**
    * 根据笔记名查找文件路径
@@ -353,6 +395,40 @@ class LinkIndexServiceImpl {
       }
     }
     return bestPath;
+  }
+
+  /**
+   * 把 wiki 链接目标（原样文本）解析为实际文件路径。
+   * 兼容多种书写：带/不带路径、带/不带扩展名、图片嵌入、不同分隔符。
+   * 解析不到返回 undefined。
+   */
+  resolveTargetPath(raw: string): string | undefined {
+    if (!raw) return undefined;
+    let t = raw.replace(/\\/g, "/").replace(/#.*$/, "").trim();
+    if (!t) return undefined;
+    const dotIdx = t.lastIndexOf(".");
+    const ext = dotIdx >= 0 ? t.slice(dotIdx + 1).toLowerCase() : "";
+    const stripExt = (s: string) => (dotIdx > 0 ? s.slice(0, dotIdx) : s);
+
+    if (ext && IMAGE_EXTENSIONS.has(ext)) {
+      const img = this.findImageByBaseName(t);
+      if (img) return img;
+    }
+
+    const note = this.findFileByNoteName(t);
+    if (note) return note;
+
+    // 带扩展名的写法（如 [[note.md]] / [[note.canvas]]）：剥掉扩展名再试
+    const base = stripExt(t);
+    if (base !== t) {
+      const note2 = this.findFileByNoteName(base);
+      if (note2) return note2;
+      const img2 = this.findImageByBaseName(base);
+      if (img2) return img2;
+    }
+
+    // 兜底：目标本身就是一个已索引的笔记名
+    return this.index.fileByName.get(t);
   }
   
   /**

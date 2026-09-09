@@ -280,7 +280,7 @@ Obsidian 风格的 `[[双向链接]]` 由三个模块协作实现：
 
 ## CLI（tydora-cli）
 
-> **2026-09-07 启动**：参考 `D:\code\flowix\app\flowix-cli\` 的 Rust 原生二进制 + Tauri sidecar 范式，给 Tydora 加 CLI 和后续 MCP。详见 `docs/cli-implementation-plan.md`。
+> **2026-09-07 启动**：参考既有「Rust 原生二进制 + Tauri sidecar」范式，给 Tydora 加 CLI 和后续 MCP。详见 `docs/cli-implementation-plan.md`。
 
 ### 位置
 
@@ -339,7 +339,7 @@ eval "$(bash scripts/cli-env.sh)" && cd app && cargo build --bin tydora-cli
   Tauri externalBin + 桌面端 PATH 安装 + ≥30 天的 trash 自动清理
 - ⏳ Phase 4（MCP）：`tydora mcp` + 受限 CLI 语法 + 唯一工具 `tydora_note`
 - ✅ **Phase 6**（`src-tauri/` → `app/tydora-desktop/` 物理搬迁）：2026-09-09
-  flowix 式结构重构已落地，`src-tauri/` 与仓库根 `src/` 全部并入 `app/` Cargo
+  统一 `app/` 工作区的结构重构已落地，`src-tauri/` 与仓库根 `src/` 全部并入 `app/` Cargo
   workspace（tydora-core / tydora-cli / tydora-desktop / tydora-web）。关键经验：
   wry [patch] 必须放 workspace 根 `app/Cargo.toml`（成员级被忽略）；tauri.conf.json
   的相对路径（frontendDist `.build/web-dist`、resources `../../vendor/...`）以配置

@@ -470,7 +470,8 @@
       "outline": "大纲",
       "bookmarks": "书签",
       "left": "左侧栏",
-      "right": "右侧栏"
+      "right": "右侧栏",
+      "tags": "标签"
     },
     "editor": {
       "defaultMode": "默认编辑模式",
@@ -856,7 +857,7 @@
       "openInTerminal": "在终端打开"
     },
     "search": {
-      "placeholder": "搜索文件内容...",
+      "placeholder": "搜索文件内容，支持 #标签 关键字",
       "clear": "清除",
       "searching": "搜索中...",
       "noResults": "未找到匹配结果",
@@ -880,6 +881,10 @@
       "noVault": "尚未打开仓库",
       "openVaultHint": "点击底部按钮打开一个文件夹",
       "noTabs": "此侧栏暂无标签页\n在通用设置中分配标签页到此侧栏"
+    },
+    "tabDrag": {
+      "hint": "按住可拖到另一侧栏",
+      "moveTo": "移到{{side}}"
     },
     "dialog": {
       "deleteConfirmTitle": "删除确认",
@@ -968,6 +973,15 @@
       "collapseAll": "折叠全部",
       "expandAll": "展开全部",
       "revealActiveFile": "定位当前文件"
+    },
+    "tags": {
+      "filterPlaceholder": "筛选标签...",
+      "graphView": "标签图谱：展示所有标签，同一文档中同时出现的标签彼此相连",
+      "listView": "切换到标签列表",
+      "empty": "当前知识库暂无标签",
+      "noMatch": "没有匹配的标签",
+      "graphHint": "相连的标签出现在同一篇文档中，点击节点可全局筛选",
+      "searchTag": "在搜索框中填入 {{tag}} 进行全局筛选"
     }
   },
   "editor": {
@@ -1049,7 +1063,7 @@
     "commands": "{{count}} 个命令"
   },
   "quickOpen": {
-    "placeholder": "输入文件名搜索...",
+    "placeholder": "输入文件名搜索，或 #标签 关键字 按标签筛选...",
     "searching": "搜索中...",
     "recentFiles": "最近访问的文件",
     "noMatch": "未找到匹配的文件或知识库",

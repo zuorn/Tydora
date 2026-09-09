@@ -470,7 +470,8 @@
       "outline": "Outline",
       "bookmarks": "Bookmarks",
       "left": "Left Sidebar",
-      "right": "Right Sidebar"
+      "right": "Right Sidebar",
+      "tags": "Tags"
     },
     "editor": {
       "defaultMode": "Default Edit Mode",
@@ -857,7 +858,7 @@
       "openInTerminal": "Open in Terminal"
     },
     "search": {
-      "placeholder": "Search files...",
+      "placeholder": "Search files, or #tag keyword",
       "clear": "Clear",
       "searching": "Searching...",
       "noResults": "No results found",
@@ -881,6 +882,10 @@
       "noVault": "No vault opened",
       "openVaultHint": "Click the button below to open a folder",
       "noTabs": "No tabs on this sidebar\nAssign tabs to this sidebar in General Settings"
+    },
+    "tabDrag": {
+      "hint": "Drag to move to the other sidebar",
+      "moveTo": "Move to {{side}}"
     },
     "dialog": {
       "deleteConfirmTitle": "Confirm Delete",
@@ -968,6 +973,15 @@
       "collapseAll": "Collapse All",
       "expandAll": "Expand All",
       "revealActiveFile": "Reveal Active File"
+    },
+    "tags": {
+      "filterPlaceholder": "Filter tags...",
+      "graphView": "Tag graph: tags that co-occur in the same note are connected",
+      "listView": "Switch to tag list",
+      "empty": "No tags in this vault yet",
+      "noMatch": "No matching tags",
+      "graphHint": "Connected tags co-occur in the same note; click a node to filter",
+      "searchTag": "Fill search box with {{tag}} to filter globally"
     }
   },
   "editor": {
@@ -1049,7 +1063,7 @@
     "commands": "{{count}} command(s)"
   },
   "quickOpen": {
-    "placeholder": "Search files by name...",
+    "placeholder": "Search files by name, or #tag keyword...",
     "searching": "Searching...",
     "recentFiles": "Recently opened files",
     "noMatch": "No matching files or vaults found",

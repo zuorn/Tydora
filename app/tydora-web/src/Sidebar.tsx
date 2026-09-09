@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback, useRef, useLayoutEffect, useMemo, lazy, Suspense, type ReactNode } from "react";
+import { useState, useEffect, useCallback, useRef, useLayoutEffect, useMemo, lazy, Suspense, type ReactNode, type MouseEvent as ReactMouseEvent } from "react";
 import { bootStart, bootEnd, bootStamp } from "./boot-timing";
 bootStamp("sidebar_module_imported");
 import { useTranslation } from "react-i18next";
@@ -13,11 +13,54 @@ import { LinkIndexService } from "./wikilink";
 import { resolveRelativePath } from "./services";
 import { relativePath as computeRelativePath } from "./services/ImageManager";
 import { BookmarksPanel } from "./Bookmarks";
+import { TagPanel, parseTagSearchQuery, resolveTagFileSet } from "./tags";
 import { type SidebarTab } from "./Settings";
 import "./Sidebar.css";
 
 // 大纲标签页顶部的本地图谱：d3 依赖较重，动态加载避免拖慢首屏
 const LocalGraphLazy = lazy(() => import("./graph/LocalGraph").then((m) => ({ default: m.LocalGraph })));
+
+/** 点击标签后通知拥有「搜索」tab 的侧栏：切换到搜索并把搜索框填入 #标签名 */
+export const SIDEBAR_SEARCH_TAG_EVENT = "sidebar-search-tag";
+
+/** 侧栏 tab 图标（与设置面板「侧栏设置」里的图标保持一致） */
+const SIDEBAR_TAB_ICONS: Record<SidebarTab, ReactNode> = {
+  files: (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z" />
+    </svg>
+  ),
+  search: (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <circle cx="11" cy="11" r="8" />
+      <path d="M21 21l-4.35-4.35" />
+    </svg>
+  ),
+  outline: (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <line x1="8" y1="6" x2="21" y2="6" />
+      <line x1="8" y1="12" x2="21" y2="12" />
+      <line x1="8" y1="18" x2="21" y2="18" />
+      <line x1="3" y1="6" x2="3.01" y2="6" />
+      <line x1="3" y1="12" x2="3.01" y2="12" />
+      <line x1="3" y1="18" x2="3.01" y2="18" />
+    </svg>
+  ),
+  bookmarks: (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z" />
+    </svg>
+  ),
+  tags: (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M20.59 13.41l-7.17 7.17a2 2 0 0 1-2.83 0L2 12V2h10l8.59 8.59a2 2 0 0 1 0 2.82z" />
+      <line x1="7" y1="7" x2="7.01" y2="7" />
+    </svg>
+  ),
+};
+
+/** tab 跨栏拖拽的移动阈值（px）：超过才算拖拽，避免误伤点击 */
+const TAB_DRAG_THRESHOLD = 4;
 
 // ── Types ────────────────────────────────────────────────────────────
 
@@ -102,6 +145,8 @@ interface SidebarProps {
   onOpenGlobalGraph?: () => void;
   /** 全局关系图谱是否已打开（用于按钮激活态） */
   graphViewOpen?: boolean;
+  /** 把某个 tab 移到左/右侧栏（拖拽跨栏时触发） */
+  onMoveTabToSide?: (tab: SidebarTab, side: "left" | "right") => void;
 }
 
 interface ContextMenuItem {
@@ -1002,6 +1047,28 @@ function SearchResults({
     const timer = setTimeout(async () => {
       setSearching(true);
       setResults([]);
+      const trimmed = query.trim();
+      // #标签 [关键字] 查询：先取携带该标签的文档集合（含 frontmatter tags，支持层级前缀）；
+      // 有关键字时在该集合内做全文搜索，无关键字时直接列出文档
+      const parsedTag = parseTagSearchQuery(trimmed);
+      if (parsedTag) {
+        const tagFileSet = resolveTagFileSet(parsedTag.tag, vaultPath);
+        if (parsedTag.keyword) {
+          await searchVaultIncremental(vaultPath, parsedTag.keyword, (batch) => {
+            if (!signal.cancelled) setResults(batch.filter((r) => tagFileSet.has(r.path)));
+          }, signal);
+        } else {
+          const tagResults: SearchResult[] = Array.from(tagFileSet).map((p) => ({
+            path: p,
+            fileName: p.split(/[\\/]/).pop() || p,
+            matches: [],
+          }));
+          tagResults.sort((a, b) => a.fileName.localeCompare(b.fileName));
+          if (!signal.cancelled) setResults(tagResults);
+        }
+        if (!signal.cancelled) setSearching(false);
+        return;
+      }
       await searchVaultIncremental(vaultPath, query.trim(), (batch) => {
         if (!signal.cancelled) setResults(batch);
       }, signal);
@@ -1009,6 +1076,11 @@ function SearchResults({
     }, 150);
     return () => { clearTimeout(timer); signalRef.current.cancelled = true; };
   }, [query, vaultPath]);
+
+  // #标签 关键字 模式下高亮与跳转传参使用关键字部分（而非完整查询串）
+  const trimmedQuery = query.trim();
+  const parsedTagQuery = useMemo(() => parseTagSearchQuery(trimmedQuery), [trimmedQuery]);
+  const highlightQuery = parsedTagQuery?.keyword || trimmedQuery;
 
   const highlight = (text: string, q: string) => {
     if (!q) return text;
@@ -1033,18 +1105,18 @@ function SearchResults({
         <div key={r.path} className="sidebar-search-result">
           <div
             className="sidebar-search-result-name"
-            onClick={() => onSelectFile(r.path, undefined, query.trim())}
+            onClick={() => onSelectFile(r.path, undefined, highlightQuery)}
             style={{ cursor: "pointer" }}
-          ><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{verticalAlign: "-2px", marginRight: 4}}><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>{highlight(r.fileName, query.trim())}</div>
+          ><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{verticalAlign: "-2px", marginRight: 4}}><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>{highlight(r.fileName, highlightQuery)}</div>
           {r.matches.map((m, i) => (
             <div
               key={i}
               className="sidebar-search-result-line"
-              onClick={() => onSelectFile(r.path, m.line, query.trim())}
+              onClick={() => onSelectFile(r.path, m.line, highlightQuery)}
             >
               <span className="sidebar-search-result-ln">{m.line}</span>
               <span className="sidebar-search-result-text">
-                {highlight(m.content, query.trim())}
+                {highlight(m.content, highlightQuery)}
               </span>
             </div>
           ))}
@@ -1455,6 +1527,12 @@ function FileTree({
   const restoringScrollRef = useRef(false);
   const pointerDownOnTreeRef = useRef(false);
   const interactUntilRef = useRef(0);
+
+  // ── Delete 键删除：与右键删除走同一确认弹窗 ──
+  const hoveredPathRef = useRef<string | null>(null);
+  const lastTreeInteractRef = useRef(0);
+  const lastEditorInteractRef = useRef(0);
+  const [kbdDeleteTarget, setKbdDeleteTarget] = useState<TreeNode | null>(null);
 
   const markTreeInteract = useCallback(() => {
     interactUntilRef.current = Date.now() + 450;
@@ -1982,7 +2060,9 @@ function FileTree({
     const el = treeRef.current;
     if (!el) return;
     const onSelectStart = (e: Event) => {
-      if ((e.target as HTMLElement).closest(".tree-name-input")) return;
+      // selectstart 的 target 可能是文本节点（无 closest 方法），先判 Element
+      const t = e.target;
+      if (t instanceof Element && t.closest(".tree-name-input")) return;
       e.preventDefault();
     };
     el.addEventListener("selectstart", onSelectStart);
@@ -2203,6 +2283,90 @@ function FileTree({
       return list[0]?.path ?? null;
     });
   }, [activePath, rootNodes, findNodeByPath, flattenVisible]);
+
+  // ── Delete 键删除文件（与右键删除同一确认流程） ──
+  // 目标优先级：鼠标悬停节点 > 焦点在树内时的最近交互节点（vim 光标 / 最后点击）。
+  // 点击文件后编辑器会自动抢焦点，因此不能要求「焦点必须在树内」；
+  // 用时间戳守卫：焦点在编辑器且编辑器自最近一次树交互后有过键鼠输入 → Delete 归编辑器，
+  // 避免在编辑器里打字 / 删字时误删文件。
+  useEffect(() => {
+    const tree = treeRef.current;
+    if (!tree) return;
+    const isEditorHost = (el: EventTarget | null | undefined) =>
+      !!(el instanceof Element && (el.closest(".ProseMirror") || el.closest(".cm-editor") || el.closest(".codemirror-editor")));
+    const onOver = (e: MouseEvent) => {
+      const tn = (e.target as HTMLElement | null)?.closest?.(".tree-node[data-path]") as HTMLElement | null;
+      hoveredPathRef.current = tn?.dataset.path ?? null;
+    };
+    const onLeave = () => { hoveredPathRef.current = null; };
+    const onTreeDown = () => { lastTreeInteractRef.current = Date.now(); };
+    const onDocKey = (e: KeyboardEvent) => {
+      if (isEditorHost(e.target as Element | null)) lastEditorInteractRef.current = Date.now();
+    };
+    const onDocDown = (e: MouseEvent) => {
+      if (isEditorHost(e.target as Element | null)) lastEditorInteractRef.current = Date.now();
+    };
+    tree.addEventListener("mouseover", onOver);
+    tree.addEventListener("mouseleave", onLeave);
+    tree.addEventListener("mousedown", onTreeDown, true);
+    document.addEventListener("keydown", onDocKey, true);
+    document.addEventListener("mousedown", onDocDown, true);
+    return () => {
+      tree.removeEventListener("mouseover", onOver);
+      tree.removeEventListener("mouseleave", onLeave);
+      tree.removeEventListener("mousedown", onTreeDown, true);
+      document.removeEventListener("keydown", onDocKey, true);
+      document.removeEventListener("mousedown", onDocDown, true);
+    };
+  }, []);
+
+  useEffect(() => {
+    const handler = (e: KeyboardEvent) => {
+      if (e.key !== "Delete") return;
+      if (e.ctrlKey || e.altKey || e.metaKey || e.shiftKey) return;
+      const target = e.target as HTMLElement | null;
+      if (!target) return;
+      // 输入框 / 重命名框 / 编辑器（contenteditable）：Delete 归它们自己
+      if (target.tagName === "INPUT" || target.tagName === "TEXTAREA" || target.isContentEditable) return;
+      // 已有弹窗 / 菜单打开：不重复触发
+      if (document.querySelector(".context-menu, .confirm-dialog-overlay, .modal, [role='dialog']")) return;
+
+      let path = hoveredPathRef.current;
+      if (!path && treeRef.current?.contains(document.activeElement)) {
+        path = pendingActivePathRef.current;
+      }
+      if (!path) return;
+
+      // 焦点在编辑器时：仅当编辑器自最近一次树交互后没有键鼠输入才触发
+      const active = document.activeElement as HTMLElement | null;
+      const focusInEditor = !!(active && (active.closest(".ProseMirror") || active.closest(".cm-editor") || active.closest(".codemirror-editor")));
+      if (focusInEditor && lastEditorInteractRef.current > lastTreeInteractRef.current) return;
+
+      const node = findNodeByPath(rootNodesRef.current, path);
+      if (!node || node.path === rootPath) return;
+      e.preventDefault();
+      e.stopPropagation();
+      setKbdDeleteTarget(node);
+    };
+    document.addEventListener("keydown", handler, true);
+    return () => document.removeEventListener("keydown", handler, true);
+  }, [findNodeByPath, rootPath]);
+
+  const handleKbdDeleteConfirm = useCallback(async () => {
+    const node = kbdDeleteTarget;
+    setKbdDeleteTarget(null);
+    if (!node) return;
+    try {
+      const pathsToDelete = selectedPaths.size > 0 && selectedPaths.has(node.path)
+        ? Array.from(selectedPaths)
+        : [node.path];
+      for (const p of pathsToDelete) {
+        await remove(p, { recursive: true });
+      }
+      handleMultiSelect([], "replace");
+      await handleReload();
+    } catch (err) { console.error(i18n.t("sidebar.error.deleteFailed"), err); }
+  }, [kbdDeleteTarget, selectedPaths, handleMultiSelect, handleReload]);
 
   // 监听 Vim 侧栏动作事件
   useEffect(() => {
@@ -2656,6 +2820,22 @@ function FileTree({
         onSelect={handleFolderSelect}
         onCancel={handleFolderPickerCancel}
       />
+
+      {/* Delete 键删除确认弹窗（与右键删除同一文案 / 同一流程） */}
+      {kbdDeleteTarget && (
+        <ConfirmDialog
+          isOpen
+          title={i18n.t("sidebar.dialog.deleteConfirmTitle")}
+          message={selectedPaths.size > 1 && selectedPaths.has(kbdDeleteTarget.path)
+            ? i18n.t("sidebar.dialog.deleteMultiConfirm", { count: selectedPaths.size })
+            : kbdDeleteTarget.isDirectory
+              ? i18n.t("sidebar.dialog.deleteFolderConfirm", { name: kbdDeleteTarget.name })
+              : i18n.t("sidebar.dialog.deleteFileConfirm", { name: kbdDeleteTarget.name })}
+          type="danger"
+          onConfirm={handleKbdDeleteConfirm}
+          onCancel={() => setKbdDeleteTarget(null)}
+        />
+      )}
       </div>
     </div>
   );
@@ -2721,6 +2901,41 @@ function parseOutline(markdown: string): OutlineItem[] {
     }
   }
   return items;
+}
+
+// 大纲行内 markdown 轻量渲染：加粗/斜体/行内代码/删除线/高亮/链接。
+// 只做展示，跳转定位仍使用原始文本。刻意不支持 _斜体_（避免 snake_case 误判）。
+function renderInlineMd(text: string, keyBase = "m"): React.ReactNode[] {
+  const nodes: React.ReactNode[] = [];
+  const re =
+    /\*\*([^*]+)\*\*|__([^_]+)__|`([^`\n]+)`|~~([^~\n]+)~~|==([^=\n]+)==|\*([^*\n]+)\*|\[([^\]]*)\]\([^)]*\)|\[\[([^\]|]+)(?:\|[^\]]*)?\]\]/g;
+  let last = 0;
+  let m: RegExpExecArray | null;
+  let k = 0;
+  while ((m = re.exec(text)) !== null) {
+    if (m.index > last) nodes.push(text.slice(last, m.index));
+    const key = `${keyBase}-${k++}`;
+    if (m[1] !== undefined || m[2] !== undefined) {
+      nodes.push(<strong key={key}>{renderInlineMd(m[1] ?? m[2]!, key)}</strong>);
+    } else if (m[3] !== undefined) {
+      nodes.push(<code key={key} className="outline-inline-code">{m[3]}</code>);
+    } else if (m[4] !== undefined) {
+      nodes.push(<del key={key}>{renderInlineMd(m[4], key)}</del>);
+    } else if (m[5] !== undefined) {
+      nodes.push(<mark key={key}>{renderInlineMd(m[5], key)}</mark>);
+    } else if (m[6] !== undefined) {
+      nodes.push(<em key={key}>{renderInlineMd(m[6], key)}</em>);
+    } else if (m[7] !== undefined) {
+      // [text](url)：只显示链接文字
+      nodes.push(<span key={key} className="outline-link-text">{renderInlineMd(m[7], key)}</span>);
+    } else if (m[8] !== undefined) {
+      // [[wiki]] / [[wiki|alias]]：显示 wiki 名或别名
+      nodes.push(<span key={key} className="outline-link-text">{renderInlineMd(m[8].trim(), key)}</span>);
+    }
+    last = m.index + m[0].length;
+  }
+  if (last < text.length) nodes.push(text.slice(last));
+  return nodes;
 }
 
 function buildOutlineTree(items: OutlineItem[]): OutlineNode[] {
@@ -2794,7 +3009,7 @@ function OutlineNodeComp({
           className="outline-text"
           onClick={() => onSelectHeading(node.item.level, node.item.text, node.item.line)}
         >
-          {node.item.text}
+          {renderInlineMd(node.item.text, `o-${node.item.line}`)}
         </span>
       </div>
 
@@ -3169,6 +3384,7 @@ export default function Sidebar({
   tabs,
   onOpenGlobalGraph,
   graphViewOpen = false,
+  onMoveTabToSide,
 }: SidebarProps) {
   bootStart("sidebar_component_render");
   bootStamp("sidebar_component_entered");
@@ -3179,7 +3395,7 @@ export default function Sidebar({
     () => tabs ?? ["files", "search", "outline", "bookmarks"],
     [tabs],
   );
-  const [activeTab, setActiveTab] = useState<"files" | "search" | "outline" | "bookmarks">(
+  const [activeTab, setActiveTab] = useState<SidebarTab>(
     visibleTabs[0] ?? "files",
   );
   const [searchQuery, setSearchQuery] = useState("");
@@ -3203,8 +3419,9 @@ export default function Sidebar({
   const filesPanelRef = useRef<HTMLDivElement>(null);
   const outlinePanelRef = useRef<HTMLDivElement>(null);
   const bookmarksPanelRef = useRef<HTMLDivElement>(null);
+  const tagsPanelRef = useRef<HTMLDivElement>(null);
 
-  const focusTabContent = useCallback((tab: "files" | "search" | "outline" | "bookmarks", opts?: { reveal?: boolean }) => {
+  const focusTabContent = useCallback((tab: SidebarTab, opts?: { reveal?: boolean }) => {
     switch (tab) {
       case "files": {
         filesPanelRef.current?.focus();
@@ -3235,6 +3452,9 @@ export default function Sidebar({
       case "bookmarks":
         bookmarksPanelRef.current?.focus();
         break;
+      case "tags":
+        tagsPanelRef.current?.focus();
+        break;
     }
   }, []);
 
@@ -3243,7 +3463,7 @@ export default function Sidebar({
     [onSelectFile],
   );
 
-  const switchTab = useCallback((tab: "files" | "search" | "outline" | "bookmarks") => {
+  const switchTab = useCallback((tab: SidebarTab) => {
     // 本侧栏不渲染该 tab 时忽略（避免 vim/快捷键切换把焦点设到不存在的面板）
     if (!visibleTabs.includes(tab)) return;
     setActiveTab(tab);
@@ -3251,6 +3471,124 @@ export default function Sidebar({
       setSearchQuery("");
     }
   }, [visibleTabs]);
+
+  // 当前文档的 wiki 链接情况，用于决定「关系图谱 / Linked references」是否需要展示：
+  // - hasOutLinks：文档自身含有 [[...]] 出链
+  // - hasBacklinks：仓库内其它文档链接到了当前文档（入链）
+  // 两者都没有时该笔记是孤立节点，图谱画不出连线、链接引用也是空的，此时只保留大纲。
+  const noteLinkStats = useMemo(() => {
+    if (!activeVault || !currentFilePath) {
+      return { hasOutLinks: false, hasBacklinks: false };
+    }
+    try {
+      const outLinks = LinkIndexService.getOutlinksForFile(currentFilePath) ?? [];
+      const noteName = LinkIndexService.toNoteName(currentFilePath, activeVault.path);
+      const backlinks = noteName
+        ? LinkIndexService.getBacklinks(noteName) ?? []
+        : [];
+      // 反向链接里可能包含自己（自链），不算作「被其它文档引用」
+      const selfName = noteName.toLowerCase();
+      const realBacklinks = backlinks.filter((n) => n.toLowerCase() !== selfName);
+      return {
+        hasOutLinks: outLinks.length > 0,
+        hasBacklinks: realBacklinks.length > 0,
+      };
+    } catch {
+      return { hasOutLinks: false, hasBacklinks: false };
+    }
+  }, [activeVault, currentFilePath, content, graphRefreshKey, refreshKey]);
+
+  // ── Tab 跨栏拖拽：把 tab 从本侧栏拖到另一侧栏 ──
+  const [draggingTab, setDraggingTab] = useState<SidebarTab | null>(null);
+  const [tabGhostPos, setTabGhostPos] = useState({ x: 0, y: 0 });
+  const [tabDropSide, setTabDropSide] = useState<"left" | "right" | null>(null);
+  const tabDragRef = useRef<{ x: number; y: number; tab: SidebarTab; active: boolean } | null>(null);
+  const tabDropSideRef = useRef<"left" | "right" | null>(null);
+  const suppressTabClickRef = useRef(false);
+
+  const handleTabMouseDown = useCallback(
+    (e: ReactMouseEvent, tab: SidebarTab) => {
+      // 按下即清掉上一次残留的抑制标记：拖拽后若没有紧跟 click 也能自愈
+      suppressTabClickRef.current = false;
+      if (e.button !== 0 || !onMoveTabToSide) return;
+      tabDragRef.current = { x: e.clientX, y: e.clientY, tab, active: false };
+    },
+    [onMoveTabToSide],
+  );
+
+  useEffect(() => {
+    if (!onMoveTabToSide) return;
+
+    const reset = () => {
+      tabDragRef.current = null;
+      tabDropSideRef.current = null;
+      setDraggingTab(null);
+      setTabDropSide(null);
+    };
+
+    const handleMove = (e: MouseEvent) => {
+      const drag = tabDragRef.current;
+      if (!drag) return;
+      if (!drag.active) {
+        if (
+          Math.abs(e.clientX - drag.x) < TAB_DRAG_THRESHOLD &&
+          Math.abs(e.clientY - drag.y) < TAB_DRAG_THRESHOLD
+        ) {
+          return;
+        }
+        drag.active = true;
+        window.getSelection()?.removeAllRanges();
+        setDraggingTab(drag.tab);
+      }
+      setTabGhostPos({ x: e.clientX, y: e.clientY });
+      // 判定落点：左半屏 → 左栏，右半屏 → 右栏
+      const next: "left" | "right" =
+        e.clientX < window.innerWidth / 2 ? "left" : "right";
+      tabDropSideRef.current = next;
+      setTabDropSide(next);
+    };
+
+    const handleUp = () => {
+      const drag = tabDragRef.current;
+      if (!drag) return;
+      if (!drag.active) {
+        reset();
+        return;
+      }
+      const target = tabDropSideRef.current;
+      const tab = drag.tab;
+      reset();
+      // 拖过阈值后紧随的 click 不应再切换 tab
+      suppressTabClickRef.current = true;
+      if (target && target !== side) {
+        onMoveTabToSide(tab, target);
+      }
+    };
+
+    const handleKey = (e: KeyboardEvent) => {
+      if (e.key === "Escape" && tabDragRef.current) reset();
+    };
+
+    window.addEventListener("mousemove", handleMove);
+    window.addEventListener("mouseup", handleUp);
+    window.addEventListener("keydown", handleKey);
+    return () => {
+      window.removeEventListener("mousemove", handleMove);
+      window.removeEventListener("mouseup", handleUp);
+      window.removeEventListener("keydown", handleKey);
+    };
+  }, [onMoveTabToSide, side]);
+
+  const handleTabClick = useCallback(
+    (tab: SidebarTab) => {
+      if (suppressTabClickRef.current) {
+        suppressTabClickRef.current = false;
+        return;
+      }
+      switchTab(tab);
+    },
+    [switchTab],
+  );
 
   // tabs 变化后（如设置里把当前 activeTab 移到另一侧）：把 activeTab 重置为本侧第一个 tab
   useEffect(() => {
@@ -3310,10 +3648,32 @@ export default function Sidebar({
     return () => window.removeEventListener("vim-sidebar-tab", handler);
   }, [switchTab]);
 
+  // 标签面板点击标签 → 切到搜索 tab 并把搜索框填入 #标签名 进行全局筛选。
+  // 标签面板可能挂在与搜索 tab 不同的侧栏（如右侧栏），故走窗口事件；
+  // 只有挂载了 search tab 的侧栏实例响应（默认即左侧栏）。
+  useEffect(() => {
+    const handler = (e: Event) => {
+      const { tag } = ((e as CustomEvent).detail ?? {}) as { tag?: string };
+      if (!tag) return;
+      if (!visibleTabs.includes("search")) return;
+      setActiveTab("search");
+      setSearchQuery(`#${tag}`);
+    };
+    window.addEventListener(SIDEBAR_SEARCH_TAG_EVENT, handler);
+    return () => window.removeEventListener(SIDEBAR_SEARCH_TAG_EVENT, handler);
+  }, [visibleTabs]);
+
+  // 标签面板点击标签 / 图谱节点：广播事件，由拥有 search tab 的侧栏接管
+  const handleTagSearch = useCallback((tag: string) => {
+    window.dispatchEvent(
+      new CustomEvent(SIDEBAR_SEARCH_TAG_EVENT, { detail: { tag } }),
+    );
+  }, []);
+
   // Ctrl+h 到最左边界 / focusPane 跨界 → 把焦点交给侧栏当前 tab 的主内容区
   useEffect(() => {
     const handler = (e: Event) => {
-      const detail = (e as CustomEvent<{ tab?: "files" | "search" | "outline" | "bookmarks"; side?: "left" | "right" }>).detail ?? {};
+      const detail = (e as CustomEvent<{ tab?: SidebarTab; side?: "left" | "right" }>).detail ?? {};
       // 只处理属于本侧栏的事件：未指定 side 时默认 left（兼容旧调用方）
       const targetSide = detail.side === "right" ? "right" : "left";
       if (targetSide !== side) return;
@@ -3391,58 +3751,50 @@ export default function Sidebar({
     >
       <div className="sidebar-topbar" data-tauri-drag-region="deep" />
 
-      {visibleTabs.length > 1 && (
+      {visibleTabs.length >= 1 && (
         <div className="sidebar-header">
           <div className="sidebar-tabs-wrapper">
-            {visibleTabs.includes("files") && (
+            {visibleTabs.map((tab) => (
               <button
-                className={`sidebar-tab${activeTab === "files" ? " active" : ""}`}
-                onClick={() => switchTab("files")}
+                key={tab}
+                data-tab={tab}
+                className={`sidebar-tab${activeTab === tab ? " active" : ""}${draggingTab === tab ? " dragging" : ""}`}
+                title={`${i18n.t(`settings.sidebar.${tab}`)}${onMoveTabToSide ? ` · ${i18n.t("sidebar.tabDrag.hint")}` : ""}`}
+                onClick={() => handleTabClick(tab)}
+                onMouseDown={(e) => handleTabMouseDown(e, tab)}
               >
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                  <path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z" />
-                </svg>
+                {SIDEBAR_TAB_ICONS[tab]}
               </button>
-            )}
-            {visibleTabs.includes("search") && (
-              <button
-                className={`sidebar-tab${activeTab === "search" ? " active" : ""}`}
-                onClick={() => switchTab("search")}
-              >
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                  <circle cx="11" cy="11" r="8" />
-                  <path d="M21 21l-4.35-4.35" />
-                </svg>
-              </button>
-            )}
-            {visibleTabs.includes("outline") && (
-              <button
-                className={`sidebar-tab${activeTab === "outline" ? " active" : ""}`}
-                onClick={() => switchTab("outline")}
-              >
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                  <line x1="8" y1="6" x2="21" y2="6" />
-                  <line x1="8" y1="12" x2="21" y2="12" />
-                  <line x1="8" y1="18" x2="21" y2="18" />
-                  <line x1="3" y1="6" x2="3.01" y2="6" />
-                  <line x1="3" y1="12" x2="3.01" y2="12" />
-                  <line x1="3" y1="18" x2="3.01" y2="18" />
-                </svg>
-              </button>
-            )}
-            {visibleTabs.includes("bookmarks") && (
-              <button
-                className={`sidebar-tab${activeTab === "bookmarks" ? " active" : ""}`}
-                onClick={() => switchTab("bookmarks")}
-              >
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                  <path d="M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z" />
-                </svg>
-              </button>
-            )}
+            ))}
           </div>
         </div>
       )}
+
+      {/* 拖拽中的浮动图标 + 落点提示（portal 到 body，避免被侧栏 overflow 裁掉） */}
+      {draggingTab &&
+        createPortal(
+          <>
+            <div
+              className="sidebar-tab-drag-ghost"
+              style={{ transform: `translate3d(${tabGhostPos.x}px, ${tabGhostPos.y}px, 0)` }}
+            >
+              {SIDEBAR_TAB_ICONS[draggingTab]}
+              <span className="sidebar-tab-drag-ghost-label">
+                {i18n.t(`settings.sidebar.${draggingTab}`)}
+              </span>
+            </div>
+            {tabDropSide && tabDropSide !== side && (
+              <div className={`sidebar-tab-drop-hint sidebar-tab-drop-hint-${tabDropSide}`}>
+                <span className="sidebar-tab-drop-hint-pill">
+                  {i18n.t("sidebar.tabDrag.moveTo", {
+                    side: i18n.t(`settings.sidebar.${tabDropSide}`),
+                  })}
+                </span>
+              </div>
+            )}
+          </>,
+          document.body,
+        )}
 
       {visibleTabs.length === 0 ? (
         <div className="sidebar-empty">
@@ -3504,6 +3856,8 @@ export default function Sidebar({
             <div ref={outlinePanelRef} tabIndex={-1} style={{ outline: "none", flex: 1, minHeight: 0, display: "flex", flexDirection: "column" }}>
               {activeVault && currentFilePath ? (
                 <div className="sidebar-inspector">
+                  {/* 孤立笔记（既无出链也无人引用）不展示关系图谱，只留大纲 */}
+                  {(noteLinkStats.hasOutLinks || noteLinkStats.hasBacklinks) && (
                   <section className="inspector-section">
                     <div className="inspector-section-header">
                       <h3 className="inspector-section-title">Graph</h3>
@@ -3543,10 +3897,13 @@ export default function Sidebar({
                       />
                     </Suspense>
                   </section>
+                  )}
                   <section className="inspector-section">
                     <h3 className="inspector-section-title">On this page</h3>
                     <Outline content={content} onSelectHeading={onSelectHeading} />
                   </section>
+                  {/* 文档本身没有 [[...]] 出链时，「Linked references」只会显示空态，直接整段隐藏 */}
+                  {noteLinkStats.hasOutLinks && (
                   <section className="inspector-section">
                     <h3 className="inspector-section-title">Linked references</h3>
                     <LinkedReferences
@@ -3556,6 +3913,7 @@ export default function Sidebar({
                       onSelectFile={handleSelectFile}
                     />
                   </section>
+                  )}
                 </div>
               ) : (
                 <div className="sidebar-tree">
@@ -3574,6 +3932,23 @@ export default function Sidebar({
                 onSelectFile={handleSelectFile}
                 onNewWindow={onNewWindow}
               />
+            </div>
+          )}
+
+          {activeTab === "tags" && (
+            <div ref={tagsPanelRef} tabIndex={-1} style={{ outline: "none", flex: 1, minHeight: 0, display: "flex", flexDirection: "column" }}>
+              {activeVault ? (
+                <TagPanel
+                  vaultPath={activeVault.path}
+                  refreshTick={graphRefreshKey ?? 0}
+                  onSelectTag={handleTagSearch}
+                />
+              ) : (
+                <div className="sidebar-tree">
+                  <div className="tree-empty">{i18n.t("sidebar.empty.noVault")}</div>
+                  <div className="tree-empty-hint">{i18n.t("sidebar.empty.openVaultHint")}</div>
+                </div>
+              )}
             </div>
           )}
         </>

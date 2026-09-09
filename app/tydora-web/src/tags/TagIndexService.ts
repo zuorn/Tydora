@@ -58,12 +58,34 @@ export interface TagIndex {
   tagCount: Map<string, number>;
 }
 
+/** 归一化仓库路径：反斜杠→斜杠、小写、去掉尾部斜杠。空串返回 null。 */
+function normalizeVaultPath(p: string | null | undefined): string | null {
+  if (!p) return null;
+  const norm = p.replace(/\\/g, "/").toLowerCase().replace(/\/+$/, "");
+  return norm || null;
+}
+
 class TagIndexServiceImpl {
   private index: TagIndex = {
     fileTags: new Map(),
     tagFiles: new Map(),
     tagCount: new Map(),
   };
+
+  /** 当前活动仓库（归一化路径）；所有查询按该前缀过滤，避免混入其他仓库的标签 */
+  private activeVaultPrefix: string | null = null;
+
+  /** 设置当前活动仓库路径（null 表示不过滤）。切换仓库时由调用方更新。 */
+  setActiveVault(vaultPath: string | null): void {
+    this.activeVaultPrefix = normalizeVaultPath(vaultPath);
+  }
+
+  private inActiveVault(filePath: string): boolean {
+    const prefix = this.activeVaultPrefix;
+    if (!prefix) return true;
+    const norm = filePath.replace(/\\/g, "/").toLowerCase();
+    return norm.startsWith(prefix + "/");
+  }
 
   private async getAllMarkdownFiles(vaultPath: string): Promise<string[]> {
     const files: string[] = [];
@@ -222,11 +244,16 @@ class TagIndexServiceImpl {
     this.removeFileTagsInternal(filePath);
   }
 
-  /** 获取所有标签，按使用次数排序 */
+  /** 获取所有标签，按使用次数排序（仅当前活动仓库） */
   getAllTags(): string[] {
-    return Array.from(this.index.tagCount.entries())
-      .sort((a, b) => b[1] - a[1])
-      .map(([tag]) => tag);
+    const counts: Array<[string, number]> = [];
+    for (const [tag, files] of this.index.tagFiles) {
+      const n = this.activeVaultPrefix
+        ? files.filter((f) => this.inActiveVault(f)).length
+        : files.length;
+      if (n > 0) counts.push([tag, n]);
+    }
+    return counts.sort((a, b) => b[1] - a[1]).map(([tag]) => tag);
   }
 
   /** 搜索标签（前缀匹配 + 包含匹配） */
@@ -253,14 +280,23 @@ class TagIndexServiceImpl {
     return this.index.fileTags.get(filePath) || [];
   }
 
-  /** 获取使用某标签的所有文件 */
+  /** 获取使用某标签的所有文件（仅当前活动仓库） */
   getTagFiles(tag: string): string[] {
-    return this.index.tagFiles.get(tag) || [];
+    const files = this.index.tagFiles.get(tag) || [];
+    return this.activeVaultPrefix ? files.filter((f) => this.inActiveVault(f)) : files;
   }
 
-  /** 获取标签使用次数 */
+  /** 获取标签使用次数（仅当前活动仓库） */
   getTagCount(tag: string): number {
-    return this.index.tagCount.get(tag) || 0;
+    return this.getTagFiles(tag).length;
+  }
+
+  /** 遍历索引：文件路径 → 标签列表（仅当前活动仓库；供标签图谱等共现分析使用） */
+  getAllFileTagEntries(): Array<[string, string[]]> {
+    const entries = Array.from(this.index.fileTags.entries());
+    return this.activeVaultPrefix
+      ? entries.filter(([p]) => this.inActiveVault(p))
+      : entries;
   }
 
   /** 清空索引 */

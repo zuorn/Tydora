@@ -31,7 +31,7 @@ import { ExportPreviewDialog } from "./components/ExportPreviewDialog";
 import { XhsPreviewPanel } from "./export/xiaohongshu";
 import { emit, listen } from "@tauri-apps/api/event";
 import { loadImageSettings, type ImageSettings } from "./services";
-import { loadEditorSettings, type EditorSettings, EDITOR_SETTINGS_KEY, SHORTCUTS_KEY, GRAPH_SETTINGS_KEY, DEFAULT_GRAPH, type SidebarTab, type SidebarTabPlacement, sidebarTabsForSide, DEFAULT_GENERAL } from "./Settings";
+import { loadEditorSettings, type EditorSettings, EDITOR_SETTINGS_KEY, SHORTCUTS_KEY, GRAPH_SETTINGS_KEY, DEFAULT_GRAPH, type SidebarTab, type SidebarSide, type SidebarTabPlacement, sidebarTabsForSide, DEFAULT_GENERAL } from "./Settings";
 import { applyFontSettings } from "./utils/systemFonts";
 import { applyMenuDensity, applyEditorSpacingFromSettings, normalizeMenuDensity } from "./utils/menuDensity";
 import { checkForUpdate, downloadAndInstall, relaunchApp, exitApp, isPortableVersion, type UpdateInfo } from "./services";
@@ -553,7 +553,7 @@ function App({ initialFilePath, initialVaultPath }: { initialFilePath?: string |
         // 侧栏 tab 分配变更后实时重算左/右栏可见 tab
         const placementSrc = settings.sidebarTabPlacement ?? {};
         const base = { ...DEFAULT_GENERAL.sidebarTabPlacement };
-        for (const tab of (["files","search","outline","bookmarks"] as SidebarTab[])) {
+        for (const tab of (["files","search","outline","bookmarks","tags"] as SidebarTab[])) {
           const v = placementSrc[tab];
           if (v === "left" || v === "right") base[tab] = v;
         }
@@ -742,7 +742,7 @@ function App({ initialFilePath, initialVaultPath }: { initialFilePath?: string |
   // 可以最终决定主窗口可见性（避免竞态提前关闭）
   const [externalLaunchSettled, setExternalLaunchSettled] = useState(false);
   const [hasExternalFile, setHasExternalFile] = useState(false);
-  const [autoHideTopbar, setAutoHideTopbar] = useState(() => s.autoHideTopbar ?? true);
+  const [autoHideTopbar, setAutoHideTopbar] = useState(() => s.autoHideTopbar ?? false);
   const [autoHideTopbarOnCollapse, setAutoHideTopbarOnCollapse] = useState(() => s.autoHideTopbarOnCollapse ?? true);
   const [sidebarWidth, setSidebarWidth] = useState<number>(() => {
     try {
@@ -776,7 +776,7 @@ function App({ initialFilePath, initialVaultPath }: { initialFilePath?: string |
       const parsed = JSON.parse(raw);
       const base = { ...DEFAULT_GENERAL.sidebarTabPlacement };
       const src = parsed?.sidebarTabPlacement ?? {};
-      for (const tab of (["files","search","outline","bookmarks"] as SidebarTab[])) {
+      for (const tab of (["files","search","outline","bookmarks","tags"] as SidebarTab[])) {
         const v = src[tab];
         if (v === "left" || v === "right") base[tab] = v;
       }
@@ -791,6 +791,29 @@ function App({ initialFilePath, initialVaultPath }: { initialFilePath?: string |
   );
   const rightTabs = useMemo<SidebarTab[]>(
     () => sidebarTabsForSide(sidebarTabPlacement, "right"),
+    [sidebarTabPlacement],
+  );
+
+  // 拖拽侧栏 tab 跨栏移动：更新分配、写回通用设置，并保证目标侧栏是展开的
+  const moveSidebarTab = useCallback(
+    (tab: SidebarTab, side: SidebarSide) => {
+      if (sidebarTabPlacement[tab] === side) return;
+      const next: SidebarTabPlacement = { ...sidebarTabPlacement, [tab]: side };
+      setSidebarTabPlacement(next);
+      try {
+        // 与设置面板共享同一份 localStorage（zmd-general-settings）
+        const raw = localStorage.getItem("zmd-general-settings");
+        const parsed = raw ? JSON.parse(raw) : {};
+        localStorage.setItem(
+          "zmd-general-settings",
+          JSON.stringify({ ...parsed, sidebarTabPlacement: next }),
+        );
+      } catch {
+        // 写入失败不阻塞界面切换
+      }
+      if (side === "right") setRightSidebarOpen(true);
+      else setSidebarOpen(true);
+    },
     [sidebarTabPlacement],
   );
 
@@ -1074,7 +1097,9 @@ function App({ initialFilePath, initialVaultPath }: { initialFilePath?: string |
     // 不关心是否成功：失败时 buildIndexesTogether 内部会降级全量构建
     bootStart("index_restore_and_build");
     bootStamp("index_restore_from_cache_start");
-    const fromCache = restoreIndexesFromCache();
+    // 先声明当前活动仓库：标签索引所有查询按仓库过滤；缓存不属于该仓库时会被丢弃
+    TagIndexService.setActiveVault(vaultPath);
+    const fromCache = restoreIndexesFromCache(vaultPath);
     bootStamp("index_restore_from_cache_done");
 
     // 放到下一个 tick 再跑重量级 I/O，让首帧 UI 先渲染完成
@@ -1098,7 +1123,7 @@ function App({ initialFilePath, initialVaultPath }: { initialFilePath?: string |
         bootStamp("index_build_failed_fallback_done");
       } finally {
         // 无论新老流程成功与否，最后统一持久化（让下次启动有缓存可用）
-        try { persistIndexesToStorage(); } catch { /* ignore */ }
+        try { persistIndexesToStorage(vaultPath); } catch { /* ignore */ }
         bootStamp("index_persist_done");
         bootEnd("index_restore_and_build");
         setTimeout(() => bootSummary(), 0);
@@ -3480,6 +3505,7 @@ function App({ initialFilePath, initialVaultPath }: { initialFilePath?: string |
           outlineTrigger={outlineTrigger}
           side="left"
           tabs={leftTabs}
+          onMoveTabToSide={moveSidebarTab}
           onOpenGlobalGraph={() => setGraphViewOpen((prev) => !prev)}
           graphViewOpen={graphViewOpen}
         />
@@ -4232,6 +4258,7 @@ function App({ initialFilePath, initialVaultPath }: { initialFilePath?: string |
             outlineTrigger={outlineTrigger}
             side="right"
             tabs={rightTabs}
+            onMoveTabToSide={moveSidebarTab}
             onOpenGlobalGraph={() => setGraphViewOpen((prev) => !prev)}
             graphViewOpen={graphViewOpen}
           />

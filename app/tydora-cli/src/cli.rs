@@ -1,6 +1,6 @@
 //! CLI argv 解析（clap builder 风格）。
 //!
-//! 设计参考：`D:\code\flowix\app\flowix-cli\src\cli.rs`
+//! 设计参考：见 docs/cli-implementation-plan.md
 //!
 //! ## 子命令（Phase 1）
 //!

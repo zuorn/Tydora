@@ -1,6 +1,6 @@
 //! CLI 业务实现。
 //!
-//! 设计参考：`D:\code\flowix\app\flowix-cli\src\store.rs`
+//! 设计参考：见 docs/cli-implementation-plan.md
 //!
 //! ## 业务逻辑复用层（2026-09-07 起）
 //!
@@ -115,7 +115,7 @@ pub struct NoteShow {
 /// 列出 vault 下所有 notebook（一级目录 + 根上散落的 .md）。
 ///
 /// Tydora 的 vault 扫描器是纯递归的（见 vault-file-scanner.ts:43-77），
-/// 没有"notebook"的边界概念。这里按 Flowix 的可读性，把 vault 的**一级目录**
+/// 没有"notebook"的边界概念。这里为了可读性，把 vault 的**一级目录**
 /// 当作 notebook，把根上**未归目录**的 .md 归入一个名为 `"(root)"` 的虚拟
 /// notebook，便于 CLI 用户感知"我没把它们放到任何分类"。
 pub fn list_notebooks(explicit: Option<&Path>) -> CliResult<VaultOverview> {

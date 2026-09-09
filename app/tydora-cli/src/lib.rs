@@ -1,6 +1,6 @@
 //! Tydora CLI 库入口。
 //!
-//! 设计参考：`D:\code\flowix\app\flowix-cli\src\lib.rs` + `dispatch.rs`
+//! 设计参考：见 docs/cli-implementation-plan.md + `dispatch.rs`
 //!
 //! ## 错误处理原则
 //!

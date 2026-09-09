@@ -1,6 +1,6 @@
 //! 命令分派。
 //!
-//! 设计参考：`D:\code\flowix\app\flowix-cli\src\dispatch.rs`
+//! 设计参考：见 docs/cli-implementation-plan.md
 //!
 //! 原则：
 //! - Phase 1 的命令是真实实现；Phase 2+ 的占位命令返回 `Usage` 错误（明确告诉用户还没实现）。

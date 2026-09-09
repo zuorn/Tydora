@@ -1,6 +1,6 @@
 //! CLI 冒烟测试（Phase 1 范围）。
 //!
-//! 设计参考：`D:\code\flowix\app\flowix-cli\tests\cli_smoke.rs`
+//! 设计参考：见 docs/cli-implementation-plan.md
 //!
 //! ## 覆盖范围
 //!

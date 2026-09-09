@@ -790,6 +790,85 @@ html:not(.platform-macos) .sidebar-header {
   border: 0.5px solid rgba(var(--accent-rgb, 137, 180, 250), calc(0.25 * var(--sidebar-tab-active-opacity)));
 }
 
+/* 拖拽中的源 tab：淡出，表示"拿起来了" */
+.sidebar-tab.dragging {
+  opacity: 0.35;
+  cursor: grabbing;
+}
+
+.sidebar-tab.dragging svg {
+  transform: scale(0.92);
+}
+
+/* 跟随光标的浮动图标 */
+.sidebar-tab-drag-ghost {
+  position: fixed;
+  top: 0;
+  left: 0;
+  z-index: 10001;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin: -16px 0 0 12px;
+  padding: 5px 10px 5px 8px;
+  border-radius: 10px;
+  color: var(--text-primary);
+  background: var(--bg-secondary, #ffffff);
+  border: 1px solid rgba(var(--accent-rgb, 137, 180, 250), 0.45);
+  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.18);
+  pointer-events: none;
+  user-select: none;
+  -webkit-user-select: none;
+}
+
+.sidebar-tab-drag-ghost svg {
+  width: 16px;
+  height: 16px;
+  flex: none;
+}
+
+.sidebar-tab-drag-ghost-label {
+  font-size: 12px;
+  line-height: 1;
+  white-space: nowrap;
+  color: var(--text-secondary);
+}
+
+/* 落点提示：覆盖对应的半屏，指示松手后会移到哪一侧 */
+.sidebar-tab-drop-hint {
+  position: fixed;
+  top: 0;
+  bottom: 0;
+  width: 50%;
+  z-index: 10000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  pointer-events: none;
+  background: rgba(var(--accent-rgb, 137, 180, 250), 0.07);
+}
+
+.sidebar-tab-drop-hint-left {
+  left: 0;
+  border-right: 2px dashed rgba(var(--accent-rgb, 137, 180, 250), 0.7);
+}
+
+.sidebar-tab-drop-hint-right {
+  right: 0;
+  border-left: 2px dashed rgba(var(--accent-rgb, 137, 180, 250), 0.7);
+}
+
+.sidebar-tab-drop-hint-pill {
+  padding: 6px 14px;
+  border-radius: 999px;
+  font-size: 12px;
+  color: var(--text-primary);
+  background: var(--bg-secondary, #ffffff);
+  border: 1px solid rgba(var(--accent-rgb, 137, 180, 250), 0.5);
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.12);
+  white-space: nowrap;
+}
+
 /* ── Outline ── */
 .outline-branch {
   position: relative;
@@ -902,6 +981,37 @@ html:not(.platform-macos) .sidebar-header {
   overflow: hidden;
   text-overflow: ellipsis;
   min-width: 0;
+}
+
+/* 大纲标题内行内 markdown 渲染样式 */
+.outline-text strong {
+  font-weight: 700;
+}
+
+.outline-text mark {
+  background: color-mix(in srgb, var(--accent) 22%, transparent);
+  color: inherit;
+  padding: 0 1px;
+  border-radius: 2px;
+}
+
+.outline-text del {
+  opacity: 0.55;
+}
+
+.outline-inline-code {
+  font-family: var(--editor-font, "JetBrains Mono", "Fira Code", monospace);
+  font-size: 0.85em;
+  line-height: 1;
+  vertical-align: middle;
+  background: var(--bg-tertiary, rgba(128, 128, 128, 0.12));
+  border: 1px solid var(--border, transparent);
+  border-radius: 3px;
+  padding: 0.1em 4px;
+}
+
+.outline-link-text {
+  color: var(--accent);
 }
 
 /* ── Outline children guide lines (same pattern as tree-children) ── */

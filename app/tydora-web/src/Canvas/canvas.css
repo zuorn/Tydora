@@ -505,7 +505,7 @@
   margin: var(--editor-paragraph-spacing, 0.5em) 0;
 }
 
-/* TipTap Placeholder：空内容时显示"输入@插入"提示 */
+/* TipTap Placeholder：空内容时显示"入@插入双链，#插入标签"提示 */
 .canvas-text-editor p.is-empty::before,
 .canvas-text-editor p.is-editor-empty::before {
   content: attr(data-placeholder);

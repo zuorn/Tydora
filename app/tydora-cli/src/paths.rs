@@ -1,6 +1,6 @@
 //! 路径与环境变量解析。
 //!
-//! 设计参考：`D:\code\flowix\app\flowix-cli\src\paths.rs`
+//! 设计参考：见 docs/cli-implementation-plan.md
 //!
 //! ## 解析优先级（覆盖式）
 //!

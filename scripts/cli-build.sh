@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # 构建 tydora-cli 单原生二进制。
 #
-# 设计参考：D:\code\flowix\scripts\build-cli.sh
+# 设计参考：见 docs/cli-implementation-plan.md
 #
 # 用法：
 #   scripts/cli-build.sh                            # 单 host release（默认）
@@ -42,7 +42,7 @@ while [[ $# -gt 0 ]]; do
   esac
 done
 
-# --debug 与多平台互斥（与 Flowix 一致）
+# --debug 与多平台互斥
 if [[ "$BUILD_MODE" != "host" && "$PROFILE" == "debug" ]]; then
   echo "error: --debug and --$BUILD_MODE are mutually exclusive" >&2
   exit 2

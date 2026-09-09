@@ -43,7 +43,7 @@ function removeHardBreaksAroundInlineAtoms(state: EditorState): Transaction | nu
  * HardBreak 清理扩展
  * 自动移除内联原子节点（tag, wikiLink, image）前后的残留 hardBreak 节点。
  *
- * 对应 Flowix 中 noteReference / fileAttachment 的清理逻辑：
+ * 对应 noteReference / fileAttachment 的清理逻辑：
  * onCreate() + appendTransaction 中调用 removeHardBreaksAround*
  */
 export const HardBreakCleanup = Extension.create({

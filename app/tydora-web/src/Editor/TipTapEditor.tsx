@@ -576,7 +576,7 @@ const TipTapEditor = forwardRef<EditorHandle, TipTapEditorProps>(
         }),
         Heading.extend({ addKeyboardShortcuts() { return {}; } }),
         Placeholder.configure({
-          placeholder: "输入@插入",
+          placeholder: "入@插入双链，#插入标签",
         }),
         CodeBlockLowlight.configure({
           lowlight,

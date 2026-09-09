@@ -269,15 +269,15 @@ html.platform-macos .tiptap-editor .tiptap {
 
 /* ── IR 模式右侧行号 ── */
 
-/* 直接块级子元素 + 列表项，每个计为一行（ul/ol 容器本身不计） */
-.tiptap-editor .tiptap> :where(p, h1, h2, h3, h4, h5, h6, blockquote, pre, hr, table, .code-block-toolbar-wrapper, [data-type="frontmatter"]),
+/* 直接块级子元素 + 列表项，每个计为一行（ul/ol 容器本身不计；table 被 .tableWrapper 包裹） */
+.tiptap-editor .tiptap> :where(p, h1, h2, h3, h4, h5, h6, blockquote, pre, hr, .tableWrapper, .code-block-toolbar-wrapper, [data-type="frontmatter"]),
 .tiptap-editor .tiptap li {
   counter-increment: line;
   position: relative;
 }
 
 /* 行号统一用 rem，不受元素自身字号影响 */
-.tiptap-editor .tiptap> :where(p, h1, h2, h3, h4, h5, h6, blockquote, pre, hr, table, .code-block-toolbar-wrapper, [data-type="frontmatter"])::before,
+.tiptap-editor .tiptap> :where(p, h1, h2, h3, h4, h5, h6, blockquote, pre, hr, .tableWrapper, .code-block-toolbar-wrapper, [data-type="frontmatter"])::before,
 .tiptap-editor .tiptap li::before {
   content: counter(line);
   position: absolute;
@@ -295,7 +295,7 @@ html.platform-macos .tiptap-editor .tiptap {
 }
 
 /* 隐藏 IR 模式行号 */
-.hide-ir-line-numbers .tiptap> :where(p, h1, h2, h3, h4, h5, h6, blockquote, pre, hr, table, .code-block-toolbar-wrapper, [data-type="frontmatter"])::before,
+.hide-ir-line-numbers .tiptap> :where(p, h1, h2, h3, h4, h5, h6, blockquote, pre, hr, .tableWrapper, .code-block-toolbar-wrapper, [data-type="frontmatter"])::before,
 .hide-ir-line-numbers .tiptap li::before {
   content: none;
 }
@@ -342,7 +342,7 @@ html.platform-macos .tiptap-editor .tiptap {
   margin: 0;
 }
 
-/* TipTap Placeholder：空文档时显示"输入@插入"提示 */
+/* TipTap Placeholder：空文档时显示"入@插入双链，#插入标签"提示 */
 /* 需覆盖上方 IR 行号规则（content/position/right/top 等） */
 .tiptap-editor .tiptap p.is-editor-empty::before,
 .tiptap-editor .tiptap p.is-empty::before {
@@ -443,6 +443,14 @@ html.platform-macos .tiptap-editor .tiptap {
   color: var(--text-code, #e83e8c);
 }
 
+/* 标题内的行内代码：字号随标题缩放，垂直居中与标题文字对齐 */
+.tiptap-editor :is(h1, h2, h3, h4, h5, h6) :not(pre)>code {
+  font-size: 0.6em;
+  line-height: 1;
+  vertical-align: middle;
+  padding: 0.18em 0.45em;
+}
+
 /* 引用 */
 .tiptap-editor blockquote {
   border-left: var(--blockquote-border-width, 3px) solid var(--blockquote-border, var(--border, #d9ede5));
@@ -506,8 +514,8 @@ html.platform-macos .tiptap-editor .tiptap {
   content: " ▸";
 }
 
-/* 折叠时隐藏内容（保留 widget 可见） */
-.tiptap-editor .callout-collapsed>*:is(p, ul, ol, pre, h1, h2, h3, h4, h5, h6, table) {
+/* 折叠时隐藏内容（保留 widget 可见；table 被 .tableWrapper 包裹） */
+.tiptap-editor .callout-collapsed>*:is(p, ul, ol, pre, h1, h2, h3, h4, h5, h6, .tableWrapper) {
   display: none;
 }
 
@@ -865,6 +873,14 @@ html.platform-macos .tiptap-editor .tiptap {
   color: var(--text-code, #e83e8c);
 }
 
+/* 标题内的行内代码：字号随标题缩放，垂直居中与标题文字对齐 */
+.tiptap-export-content :is(h1, h2, h3, h4, h5, h6) :not(pre)>code {
+  font-size: 0.6em;
+  line-height: 1;
+  vertical-align: middle;
+  padding: 0.18em 0.45em;
+}
+
 /* ── 导出代码块 ── */
 .tiptap-export-content pre {
   background: var(--bg-code, #f5f5f5);
@@ -932,6 +948,8 @@ html.platform-macos .tiptap-editor .tiptap {
   border-collapse: separate;
   border-spacing: 0;
   width: 100%;
+  max-width: 100%;
+  table-layout: fixed;
   margin: 1em 0;
   border-radius: var(--radius-table, 0);
   overflow: hidden;
@@ -943,7 +961,11 @@ html.platform-macos .tiptap-editor .tiptap {
   border-bottom: 1px solid var(--border, #d9ede5);
   padding: 0.5em 0.75em;
   text-align: left;
+  vertical-align: top;
+  box-sizing: border-box;
+  position: relative;
   background: var(--table-cell-bg, transparent);
+  overflow-wrap: break-word;
 }
 
 .tiptap-export-content tr:first-child>th,
@@ -1002,7 +1024,7 @@ html.platform-macos .tiptap-editor .tiptap {
   content: " ▸";
 }
 
-.tiptap-export-content .callout-collapsed>*:is(p, ul, ol, pre, h1, h2, h3, h4, h5, h6, table) {
+.tiptap-export-content .callout-collapsed>*:is(p, ul, ol, pre, h1, h2, h3, h4, h5, h6, .tableWrapper) {
   display: none;
 }
 
@@ -1179,10 +1201,20 @@ html.platform-macos .tiptap-editor .tiptap {
 }
 
 /* 表格 */
+/* TableView（resizable 时）把 table 包在 .tableWrapper 里：
+   限宽 + 横向滚动，保证表格永远不会撑破预览区域宽度 */
+.tiptap-editor .tableWrapper {
+  overflow-x: auto;
+  max-width: 100%;
+  margin: 0.6em 0;
+}
+
 .tiptap-editor table {
   border-collapse: separate;
   border-spacing: 0;
   width: 100%;
+  max-width: 100%;
+  table-layout: fixed;
   margin: 0;
   border-radius: var(--radius-table, 0);
   overflow: hidden;
@@ -1194,7 +1226,11 @@ html.platform-macos .tiptap-editor .tiptap {
   border-bottom: 1px solid var(--border, #d9ede5);
   padding: 0.5em 0.75em;
   text-align: left;
+  vertical-align: top;
+  box-sizing: border-box;
+  position: relative;
   background: var(--table-cell-bg, transparent);
+  overflow-wrap: break-word;
 }
 
 .tiptap-editor tr:first-child>th,
@@ -1210,6 +1246,36 @@ html.platform-macos .tiptap-editor .tiptap {
 .tiptap-editor th {
   background: var(--table-header-bg, var(--bg-secondary, #f5f5f5));
   font-weight: 600;
+}
+
+/* 列宽拖拽手柄：鼠标移到单元格边缘（约 5px）时出现，可左右拖动调整列宽 */
+.tiptap-editor .column-resize-handle {
+  position: absolute;
+  right: -2px;
+  top: 0;
+  bottom: 0;
+  width: 4px;
+  z-index: 20;
+  background-color: var(--accent, #89b4fa);
+  pointer-events: none;
+  border-radius: 2px;
+}
+
+.tiptap-editor .tiptap.resize-cursor {
+  cursor: col-resize;
+}
+
+/* 选中单元格时的淡色高亮遮罩 */
+.tiptap-editor .selectedCell:after {
+  z-index: 2;
+  position: absolute;
+  content: '';
+  left: 0;
+  right: 0;
+  top: 0;
+  bottom: 0;
+  background: color-mix(in srgb, var(--accent, #89b4fa) 18%, transparent);
+  pointer-events: none;
 }
 
 /* 图片 */

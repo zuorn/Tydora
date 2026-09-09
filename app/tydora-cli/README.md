@@ -6,17 +6,17 @@ Tydora CLI — 单原生二进制命令行入口，读取同一份 Tydora Markdo
 >
 > **业务逻辑抽离（2026-09-07 下午）**：vault 扫描 / frontmatter 解析 / note id 解析已抽到 [`app/tydora-core/`](../tydora-core/README.md)——CLI 仅保留数据模型、命令编排、退出码语义。
 
-## 与 Flowix CLI 的关系
+## 设计来源
 
-设计上参考 `D:\code\flowix\app\flowix-cli\`（**不是抄**，是适配 Tydora 的业务分布）：
+设计上参考同类 Rust CLI 的范式（**不是抄**，是适配 Tydora 的业务分布）：
 
-| 维度 | Flowix | Tydora |
+| 维度 | 参考实现 | Tydora |
 |---|---|---|
-| 业务核心位置 | Rust（`flowix-core`） | 前端 React/TS（CLI 只覆盖"无 GUI 也能跑"的部分） |
+| 业务核心位置 | Rust（core crate） | 前端 React/TS（CLI 只覆盖"无 GUI 也能跑"的部分） |
 | 工程结构 | 新 Cargo workspace | **`app/` Cargo workspace**（2026-09-09 落地）：`src-tauri/` → `tydora-desktop/`、仓库根 `src/` → `tydora-web/`，与 core/cli 同 workspace |
 | 解析库 | clap v4 builder | clap v4 builder（一致） |
 | 退出码 | 2/3/5/1（严格） | 2/3/5/1（一致） |
-| MCP | `flowix mcp` + 受限 CLI 语法 | `tydora mcp` 待 Phase 4 |
+| MCP | 对应 mcp 子命令 + 受限 CLI 语法 | `tydora mcp` 待 Phase 4 |
 
 ## 编译与运行
 

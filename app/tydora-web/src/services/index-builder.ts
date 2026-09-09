@@ -14,6 +14,14 @@ import { TagIndexService } from "../tags";
 
 const TAG_INDEX_KEY = "zmd-tag-index";
 const LINK_INDEX_KEY = "zmd-link-index";
+/** 缓存所属仓库标记：切换到不同仓库时丢弃缓存并全量重建，避免跨仓库条目混入 */
+const INDEX_VAULT_KEY = "zmd-index-vault";
+
+function normalizeVaultPath(p: string | null | undefined): string | null {
+  if (!p) return null;
+  const norm = p.replace(/\\/g, "/").toLowerCase().replace(/\/+$/, "");
+  return norm || null;
+}
 
 export interface IndexBuildOptions {
   /** 启动时是否先从 localStorage 反序列化恢复（默认 true）。
@@ -39,8 +47,19 @@ export interface IndexBuildResult {
   totalFileCount: number;
 }
 
-/** 策略 A：从 localStorage 反序列化恢复两个索引。返回是否恢复成功。 */
-export function restoreIndexesFromCache(): boolean {
+/** 策略 A：从 localStorage 反序列化恢复两个索引。返回是否恢复成功。
+ *  传入 vaultPath 时校验缓存归属：缓存属于其他仓库则清空索引并返回 false（触发全量重建）。 */
+export function restoreIndexesFromCache(vaultPath?: string): boolean {
+  if (vaultPath) {
+    const cachedVault = localStorage.getItem(INDEX_VAULT_KEY);
+    if (cachedVault !== null) {
+      if (normalizeVaultPath(cachedVault) !== normalizeVaultPath(vaultPath)) {
+        LinkIndexService.clear();
+        TagIndexService.clear();
+        return false;
+      }
+    }
+  }
   let ok = false;
   try {
     const linkRaw = localStorage.getItem(LINK_INDEX_KEY);
@@ -63,8 +82,9 @@ export function restoreIndexesFromCache(): boolean {
   return ok;
 }
 
-/** 把两个索引持久化到 localStorage（刷新完成后统一写，避免启动时写操作阻塞）。 */
-export function persistIndexesToStorage(): void {
+/** 把两个索引持久化到 localStorage（刷新完成后统一写，避免启动时写操作阻塞）。
+ *  传入 vaultPath 时同步更新缓存归属标记。 */
+export function persistIndexesToStorage(vaultPath?: string): void {
   try {
     localStorage.setItem(LINK_INDEX_KEY, LinkIndexService.serialize());
   } catch {
@@ -74,6 +94,13 @@ export function persistIndexesToStorage(): void {
     localStorage.setItem(TAG_INDEX_KEY, TagIndexService.serialize());
   } catch {
     /* ignore */
+  }
+  if (vaultPath) {
+    try {
+      localStorage.setItem(INDEX_VAULT_KEY, vaultPath);
+    } catch {
+      /* ignore */
+    }
   }
 }
 
@@ -105,7 +132,7 @@ export async function buildIndexesTogether(
       LinkIndexService.buildIndex(vaultPath),
       TagIndexService.buildIndex(vaultPath),
     ]);
-    persistIndexesToStorage();
+    persistIndexesToStorage(vaultPath);
     return {
       fromCache: false,
       refreshedFileCount: 0,

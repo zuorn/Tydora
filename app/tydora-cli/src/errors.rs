@@ -1,6 +1,6 @@
 //! CLI 错误类型与退出码映射。
 //!
-//! 设计参考：`D:\code\flowix\app\flowix-cli\src\errors.rs`
+//! 设计参考：见 docs/cli-implementation-plan.md
 //!
 //! ## 4 档退出码（严格 Unix 惯例）
 //!

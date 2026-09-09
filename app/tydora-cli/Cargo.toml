@@ -17,7 +17,7 @@ path = "src/main.rs"
 unsafe_code = "warn"
 
 [dependencies]
-# CLI 解析（builder 风格，参考 Flowix flowix-cli/src/cli.rs）
+# CLI 解析（builder 风格，见 docs/cli-implementation-plan.md）
 clap = { workspace = true }
 clap_complete = { workspace = true }
 thiserror = { workspace = true }

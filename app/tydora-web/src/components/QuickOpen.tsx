@@ -1,8 +1,9 @@
 import { useState, useEffect, useRef, useCallback, useMemo } from "react";
 import { useTranslation } from "react-i18next";
-import { readDir } from "@tauri-apps/plugin-fs";
+import { readDir, readTextFile } from "@tauri-apps/plugin-fs";
 import { VaultInfo } from "../Sidebar";
 import { useDebounce } from "../hooks/useDebounce";
+import { parseTagSearchQuery, resolveTagFileSet, type TagSearchQuery } from "../tags";
 
 interface QuickOpenProps {
   vault: VaultInfo | null;
@@ -117,6 +118,7 @@ export default function QuickOpen({
   const [mode, setMode] = useState<QuickOpenMode>("file");
   const [allFiles, setAllFiles] = useState<FileItem[] | null>(null);
   const [filteredFiles, setFilteredFiles] = useState<FileItem[]>([]);
+  const [tagSearching, setTagSearching] = useState(false);
   const [selectedIndex, setSelectedIndex] = useState(0);
   const [loading, setLoading] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
@@ -154,6 +156,12 @@ export default function QuickOpen({
   // 是否处于“输入了搜索词”的状态（用于文件搜索分支）
   const searchMode = useExternalFiles || query.trim().length > 0;
 
+  // #标签 [关键字] 模式：在携带该标签的文档中按关键字（文件名或正文）筛选
+  const tagSearch = useMemo<TagSearchQuery | null>(
+    () => (mode === "file" ? parseTagSearchQuery(debouncedQuery) : null),
+    [debouncedQuery, mode],
+  );
+
   // 知识库搜索结果：无搜索词时列出全部知识库，否则按名称过滤
   const vaultResults = useMemo(() => {
     const q = debouncedQuery.toLowerCase();
@@ -170,12 +178,13 @@ export default function QuickOpen({
   const currentItems = mode === "file" ? fileItems : vaultResults;
   const totalItems = currentItems.length;
 
-  // 加载全部文件（仅在文件模式且有搜索词时）
+  // 加载全部文件（仅在文件模式且有搜索词时；#标签 模式走标签索引，无需遍历）
   useEffect(() => {
     if (useExternalFiles) return;
     if (!vault) return;
     if (mode !== "file") return;
     if (!query.trim()) return;
+    if (tagSearch) return;
 
     if (allFiles === null && !loading) {
       setLoading(true);
@@ -185,7 +194,53 @@ export default function QuickOpen({
         setLoading(false);
       });
     }
-  }, [query, vault, allFiles, loading, useExternalFiles, mode]);
+  }, [query, vault, allFiles, loading, useExternalFiles, mode, tagSearch]);
+
+  // #标签 [关键字] 搜索：标签索引取候选文档 → 文件名/正文关键字过滤
+  useEffect(() => {
+    if (!tagSearch) return;
+    if (!vault) return;
+    let cancelled = false;
+    setTagSearching(true);
+    (async () => {
+      const candidates = Array.from(resolveTagFileSet(tagSearch.tag, vault.path)).map(
+        (p): FileItem => ({ name: getFileName(p), path: p, isDirectory: false }),
+      );
+      const kw = tagSearch.keyword.toLowerCase();
+      let results: FileItem[];
+      if (!kw) {
+        results = candidates;
+      } else {
+        const nameMatched: FileItem[] = [];
+        const toReadContent: FileItem[] = [];
+        for (const f of candidates) {
+          if (f.name.toLowerCase().includes(kw)) nameMatched.push(f);
+          else toReadContent.push(f);
+        }
+        // 正文匹配候选量通常很小（标签文档数），逐个读取；设置上限兜底
+        const CONTENT_READ_LIMIT = 200;
+        const contentChecks = await Promise.all(
+          toReadContent.slice(0, CONTENT_READ_LIMIT).map(async (f) => {
+            try {
+              const content = (await readTextFile(f.path)).toLowerCase();
+              return content.includes(kw) ? f : null;
+            } catch {
+              return null;
+            }
+          }),
+        );
+        results = [...nameMatched, ...contentChecks.filter((f): f is FileItem => f !== null)];
+      }
+      results.sort((a, b) => a.name.localeCompare(b.name));
+      if (!cancelled) {
+        setFilteredFiles(results.slice(0, 50));
+        setTagSearching(false);
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [tagSearch, vault]);
 
   // 文件搜索过滤 — 使用防抖查询避免每次按键都过滤全量文件
   useEffect(() => {
@@ -197,6 +252,9 @@ export default function QuickOpen({
       return;
     }
 
+    // #标签 [关键字] 模式由上方专用 effect 处理
+    if (tagSearch) return;
+
     if (!sourceFiles) return;
 
     const matched = sourceFiles
@@ -207,7 +265,7 @@ export default function QuickOpen({
       .slice(0, 50);
 
     setFilteredFiles(matched);
-  }, [searchMode, allFiles, debouncedQuery, recentFileItems, externalFiles, useExternalFiles]);
+  }, [searchMode, allFiles, debouncedQuery, recentFileItems, externalFiles, useExternalFiles, tagSearch]);
 
   // 查询词或模式变化时，重置选中项到顶部
   useEffect(() => {
@@ -354,7 +412,7 @@ export default function QuickOpen({
         </div>
 
         <div className="quick-open-results" ref={listRef}>
-          {loading && searchMode && mode === "file" && (
+          {(loading || tagSearching) && searchMode && mode === "file" && (
             <div className="quick-open-empty">{t("quickOpen.searching")}</div>
           )}
 
@@ -383,10 +441,10 @@ export default function QuickOpen({
                 >
                   <span className="quick-open-item-icon"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg></span>
                   <span className="quick-open-item-name">
-                    {highlightMatch(file.name, searchMode ? query : "")}
+                    {highlightMatch(file.name, searchMode ? tagSearch?.keyword || query : "")}
                   </span>
                   <span className="quick-open-item-path">
-                    {highlightMatch(getDisplayPath(file.path), searchMode ? query : "")}
+                    {highlightMatch(getDisplayPath(file.path), searchMode ? tagSearch?.keyword || query : "")}
                   </span>
                 </div>
               ))}

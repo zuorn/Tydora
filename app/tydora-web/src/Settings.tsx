@@ -105,7 +105,7 @@ export function loadEditorSettings(): EditorSettings {
 /** 代码块工具栏样式：minimal = 右上角浮动语言选择；classic = 顶栏 + 复制/删除 */
 export type CodeBlockToolbarStyle = "minimal" | "classic";
 
-export type SidebarTab = "files" | "search" | "outline" | "bookmarks";
+export type SidebarTab = "files" | "search" | "outline" | "bookmarks" | "tags";
 export type SidebarSide = "left" | "right";
 export type SidebarTabPlacement = Record<SidebarTab, SidebarSide>;
 
@@ -153,7 +153,7 @@ export const DEFAULT_GENERAL: GeneralSettings = {
   codeFont: "system",
   codeFontSize: 14,
   autoSave: true,
-  autoHideTopbar: true,
+  autoHideTopbar: false,
   autoHideTopbarOnCollapse: true,
   previewMaxWidth: 800,
   typewriterMode: false,
@@ -169,6 +169,7 @@ export const DEFAULT_GENERAL: GeneralSettings = {
     search: "left",
     outline: "right",
     bookmarks: "left",
+    tags: "right",
   },
 };
 
@@ -213,7 +214,7 @@ const DEFAULT_GRAPH: GraphSettings = {
 // 默认快捷键统一从 src/config/shortcuts.json 读取（设置面板中的自定义仍存储在 localStorage）
 const DEFAULT_SHORTCUTS: ShortcutItem[] = shortcutsConfig.editor as ShortcutItem[];
 
-const ALL_SIDEBAR_TABS: SidebarTab[] = ["files", "search", "outline", "bookmarks"];
+const ALL_SIDEBAR_TABS: SidebarTab[] = ["files", "search", "outline", "bookmarks", "tags"];
 
 function normalizeSidebarTabPlacement(raw: unknown): SidebarTabPlacement {
   const base = { ...DEFAULT_GENERAL.sidebarTabPlacement };
@@ -584,6 +585,12 @@ function GeneralSettingsContent({
                     {tab === "bookmarks" && (
                       <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
                         <path d="M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z" />
+                      </svg>
+                    )}
+                    {tab === "tags" && (
+                      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+                        <path d="M20.59 13.41l-7.17 7.17a2 2 0 0 1-2.83 0L2 12V2h10l8.59 8.59a2 2 0 0 1 0 2.82z" />
+                        <line x1="7" y1="7" x2="7.01" y2="7" />
                       </svg>
                     )}
                   </div>

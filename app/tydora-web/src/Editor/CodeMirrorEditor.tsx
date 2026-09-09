@@ -830,7 +830,7 @@ const CodeMirrorEditor = forwardRef<CodeMirrorEditorHandle, CodeMirrorEditorProp
           autocompletion(),
           highlightSelectionMatches(),
           // Markdown 文件空内容时提示输入 @ 插入 wiki-link
-          ...(useMarkdownHighlighting ? [placeholder("输入@插入")] : []),
+          ...(useMarkdownHighlighting ? [placeholder("入@插入双链，#插入标签")] : []),
           languageExtension,
           markdownTheme,
           ...mathExtensions,

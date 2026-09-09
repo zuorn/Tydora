@@ -1,0 +1,152 @@
+/* TagPanel.css —— 右侧栏「标签」面板 */
+
+.tag-panel {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  min-height: 0;
+  overflow: hidden;
+}
+
+.tag-panel-header {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 10px 6px;
+  flex-shrink: 0;
+}
+
+.tag-filter-input {
+  flex: 1;
+  min-width: 0;
+  height: 26px;
+  padding: 0 8px;
+  font-size: 12px;
+  color: var(--text-primary);
+  background: transparent;
+  border: 1px solid var(--border, rgba(128, 128, 128, 0.25));
+  border-radius: 6px;
+  outline: none;
+  transition: border-color 0.12s ease;
+}
+
+.tag-filter-input:focus {
+  border-color: var(--accent, #4eb289);
+}
+
+.tag-panel-graph-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 24px;
+  padding: 0;
+  border: none;
+  border-radius: 6px;
+  background: transparent;
+  color: var(--text-secondary);
+  cursor: pointer;
+  flex-shrink: 0;
+  transition: background 0.1s ease, color 0.1s ease;
+}
+
+.tag-panel-graph-btn:hover {
+  background: rgba(128, 128, 128, 0.12);
+  color: var(--text-primary);
+}
+
+.tag-panel-graph-btn.active {
+  background: rgba(78, 178, 137, 0.15);
+  color: var(--accent, #4eb289);
+}
+
+/* ── 列表视图 ─────────────────────────────── */
+
+.tag-list {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  overscroll-behavior-y: contain;
+  padding: 2px 6px 8px;
+}
+
+.tag-item {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding: 5px 8px;
+  border-radius: 6px;
+  cursor: pointer;
+  transition: background 0.1s ease;
+}
+
+.tag-item:hover {
+  background: rgba(78, 178, 137, 0.12);
+}
+
+.tag-item-hash {
+  color: var(--accent, #4eb289);
+  font-size: 12px;
+  font-weight: 600;
+  flex-shrink: 0;
+}
+
+.tag-item-name {
+  flex: 1;
+  min-width: 0;
+  font-size: 12px;
+  color: var(--text-primary);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.tag-item-count {
+  flex-shrink: 0;
+  min-width: 18px;
+  padding: 0 5px;
+  font-size: 10px;
+  line-height: 16px;
+  text-align: center;
+  color: var(--text-secondary);
+  background: rgba(128, 128, 128, 0.14);
+  border-radius: 8px;
+}
+
+/* ── 图谱视图 ─────────────────────────────── */
+
+.tag-graph-host {
+  position: relative;
+  flex: 1;
+  min-height: 0;
+}
+
+.tag-graph-hint {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 6px;
+  text-align: center;
+  font-size: 11px;
+  color: var(--text-secondary);
+  opacity: 0.75;
+  pointer-events: none;
+  padding: 0 12px;
+}
+
+/* ── 空状态 ─────────────────────────────── */
+
+.tag-panel-empty {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 0;
+  padding: 16px;
+}
+
+.tag-panel-empty-text {
+  font-size: 12px;
+  color: var(--text-secondary);
+  text-align: center;
+}

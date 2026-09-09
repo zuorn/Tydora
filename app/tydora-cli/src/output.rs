@@ -1,15 +1,15 @@
 //! `--json` 与人类可读输出的统一 schema。
 //!
-//! 设计参考：`D:\code\flowix\app\flowix-cli\src\output.rs` 与 `fmt.rs`
+//! 设计参考：见 docs/cli-implementation-plan.md 与 `fmt.rs`
 //!
 //! ## Schema 演进规则（与 MCP 衔接）
 //!
 //! 每个 model 都带 `"schema": "tydora.<model>.v<N>"`，未来 schema 不兼容时
 //! 升 v 即可，MCP 与稳定消费者按 v 索引。
 //!
-//! ## 人类可读输出原则（参考 Flowix）
+//! ## 人类可读输出原则
 //!
-//! - 颜色：完全不用 ANSI（CI / 截图 / 管道都不会被着色干扰）。Flowix 也是这样做的。
+//! - 颜色：完全不用 ANSI（CI / 截图 / 管道都不会被着色干扰）。
 //! - 宽度：不依赖 `crossterm`（保持零非必要依赖）；CJK 宽度通过 [`fmt`]
 //!   的简易估算（半角=1，全角=2）。
 //! - 退出：所有错误诊断走 stderr，成功结果走 stdout。

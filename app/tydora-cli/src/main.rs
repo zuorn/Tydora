@@ -1,6 +1,6 @@
 // Tydora CLI 二进制入口。
 //
-// 设计参考：D:\code\flowix\app\flowix-cli\src\main.rs
+// 设计参考：见 docs/cli-implementation-plan.md
 //   - Windows 上启动即把 console codepage 切到 UTF-8
 //   - main() -> ExitCode，4 档错误码（2 用法 / 3 找不到 / 5 IO / 1 其他）
 //   - 不带 windows_subsystem = "windows" 属性 —— CLI 必须能看到 stdout/stderr

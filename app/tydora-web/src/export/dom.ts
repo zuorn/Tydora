@@ -329,12 +329,13 @@ export function prepareExportElement(
   raw
     .querySelectorAll(
       ".mermaid-toolbar, .mermaid-source, .code-block-toolbar, .bullet-list-mindmap-icon, " +
-        ".image-resize-handle, .image-hover-toolbar, .image-source-editor",
+        ".image-resize-handle, .image-hover-toolbar, .image-source-editor, " +
+        ".column-resize-handle",
     )
     .forEach((el) => el.remove());
   raw
-    .querySelectorAll(".ProseMirror-selectednode, .has-focus, .cm-editor")
-    .forEach((el) => el.classList.remove("ProseMirror-selectednode", "has-focus"));
+    .querySelectorAll(".ProseMirror-selectednode, .has-focus, .cm-editor, .selectedCell")
+    .forEach((el) => el.classList.remove("ProseMirror-selectednode", "has-focus", "selectedCell"));
   // 清理思维导图编辑器专属类
   raw
     .querySelectorAll(".bullet-list-mindmap-heading, .bullet-list-mindmap-list-container")

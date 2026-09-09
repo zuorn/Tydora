@@ -13,7 +13,7 @@ Tydora CLI — 单原生二进制命令行入口，读取同一份 Tydora Markdo
 | 维度 | Flowix | Tydora |
 |---|---|---|
 | 业务核心位置 | Rust（`flowix-core`） | 前端 React/TS（CLI 只覆盖"无 GUI 也能跑"的部分） |
-| 工程结构 | 新 Cargo workspace | **新建 `app/` workspace**，src-tauri/ 暂保留原位（Phase 5+ 再搬） |
+| 工程结构 | 新 Cargo workspace | **`app/` Cargo workspace**（2026-09-09 落地）：`src-tauri/` → `tydora-desktop/`、仓库根 `src/` → `tydora-web/`，与 core/cli 同 workspace |
 | 解析库 | clap v4 builder | clap v4 builder（一致） |
 | 退出码 | 2/3/5/1（严格） | 2/3/5/1（一致） |
 | MCP | `flowix mcp` + 受限 CLI 语法 | `tydora mcp` 待 Phase 4 |
@@ -47,8 +47,8 @@ cd app
 cargo build --release --bin tydora-cli
 ```
 
-产物：`D:\code\Tydora\target\release\tydora-cli.exe`（与 src-tauri/target
-平级，互不影响）。
+产物：`D:\code\Tydora\target\release\tydora-cli.exe`（workspace 所有 crate
+统一 target 目录，见 `app/.cargo/config.toml`）。
 
 ### Run
 
@@ -175,9 +175,9 @@ tydora mcp                             # [Phase 4] MCP over stdio
    不会冲突但 GUI 端不感知 CLI 写入原因（除非前端区分"我们自己写的"vs"CLI 写的"）。
 2. **PowerShell 5.1 管道 ASCII 损坏**：见 `src/main.rs` 的注释，调用方需提前
    `chcp 65001 > $null` 或 `Out-File -Encoding utf8`。
-3. **当前架构阶段**：src-tauri/ 仍在原位，本 crate 暂未通过 `path = "../src-tauri"` 引入
-   tydora_lib（避免一次性引入 Tauri 全部依赖）。Phase 5 做"抽 tydora-core + 搬 src-tauri/"
-   时再接入。
+3. **架构阶段（2026-09-09）**：`src-tauri/` 已并入 `app/tydora-desktop/`。CLI
+   仍**不**直接以 path 依赖 `tydora_lib`（避免引入 Tauri 全家桶）；共享业务在
+   `app/tydora-core/`（Phase 5 抽离，本 README 顶部 blockquote）。
 4. **slug 大小写保留**：slugify 保留 ASCII 大写与中文（CJK），导致 Windows / macOS
    默认大小写不敏感文件系统下"Hello" 与 "hello" 命中同一文件。Phase 3 可以再
    统一大小写化，但不强制。

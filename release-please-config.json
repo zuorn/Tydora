@@ -23,13 +23,13 @@
         },
         {
           "type": "json",
-          "path": "src-tauri/tauri.conf.json",
+          "path": "app/tydora-desktop/tauri.conf.json",
           "jsonpath": "$.version"
         },
         {
           "type": "toml",
-          "path": "src-tauri/Cargo.toml",
-          "jsonpath": "$.package.version"
+          "path": "app/Cargo.toml",
+          "jsonpath": "$.workspace.package.version"
         },
         {
           "type": "generic",

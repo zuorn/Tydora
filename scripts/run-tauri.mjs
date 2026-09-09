@@ -45,7 +45,19 @@ if (args[0] === "build:msix") {
 }
 
 // Run tauri CLI
-const result = spawnSync("npx", ["tauri", ...args], {
+// 2026-09-09 重构后：tauri.conf.json 已随 src-tauri/ 搬到 app/tydora-desktop/，
+// 不再是 Tauri 默认查找位置，所以显式传 --config。
+//
+// ⚠️ Tauri CLI 的 `--config` 是 dev/build 的【子命令级】参数（clap 只接受
+// `tauri dev --config <file>`，不接受 `tauri --config <file> dev`），因此
+// 必须插在子命令名之后。其它子命令（--version / icon / signer …）不需要
+// 配置，原样透传。
+const TYDIR = resolve(projectRoot, "app", "tydora-desktop", "tauri.conf.json");
+const needsConfig = args[0] === "dev" || args[0] === "build";
+const tauriArgs = needsConfig
+  ? [args[0], "--config", TYDIR, ...args.slice(1)]
+  : args;
+const result = spawnSync("npx", ["tauri", ...tauriArgs], {
   shell: true,
   stdio: "inherit",
 });

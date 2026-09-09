@@ -70,14 +70,15 @@ Tydora 的发布系统由两条 GitHub Actions 工作流 + 本地工具链共同
 
 ### sync-version.mjs —— 版本同步脚本
 
-`scripts/sync-version.mjs` 负责将 `VERSION` 中的版本号同步到以下 4 个目标文件：
+`scripts/sync-version.mjs` 负责将 `VERSION` 中的版本号同步到以下目标文件：
 
 | 目标文件 | 路径 | 用途 |
 |---------|------|------|
 | `package.json` | 项目根目录 | npm 包版本 |
-| `tauri.conf.json` | `src-tauri/` | Tauri 应用版本 |
-| `Cargo.toml` | `src-tauri/` | Rust crate 版本 |
+| `Cargo.toml` | `app/`（`[workspace.package]`） | workspace 根版本；`tydora-core` / `tydora-cli` / `tydora-desktop` 通过 `version.workspace = true` 继承 |
+| `tauri.conf.json` | `app/tydora-desktop/` | Tauri 应用版本 |
 | `index.html` | `website/landing/` | 落地页版本显示 |
+| `02-关于.md` / `02-About.md` | `website/docs_zh/…` / `website/docs_en/…` | 文档站点版本表格 |
 
 **用法：**
 

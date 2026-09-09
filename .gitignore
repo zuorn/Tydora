@@ -1,4 +1,3 @@
-```gitignore
 # Dependencies
 node_modules/
 
@@ -6,6 +5,8 @@ node_modules/
 dist/
 build/
 target/
+.target/
+.build/
 website/site/
 
 # Python
@@ -35,6 +36,10 @@ yarn-error.log*
 .env.*
 !.env.example
 
+# Tencent Cloud EdgeOne
+.edgeone/*
+.tef_dist/*
+
 # IDE and editor files
 .vscode/
 .idea/
@@ -58,7 +63,6 @@ htmlcov/
 .mypy_cache/
 .hypothesis/
 
-
 # agents
 .claude/
 .mimocode/
@@ -69,7 +73,6 @@ htmlcov/
 # Temporary files
 *.tmp
 *.temp
-.DS_Store
 *.bak
 *.backup
 
@@ -81,15 +84,8 @@ htmlcov/
 .Trashes
 ehthumbs.db
 Thumbs.db
-```
 
-
-# Tencent Cloud EdgeOne
-.env
-.edgeone/*
-.tef_dist/*
-
-
+# 站点构建残留
 dist-test/
 website/dist/
 website/.obsidian/

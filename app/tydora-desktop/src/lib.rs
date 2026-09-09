@@ -990,12 +990,14 @@ async fn run_markdown_publish(
     }
 
     // 定位 markdown-publish CLI。依次尝试以下来源：
-    // 1. 应用资源目录中随安装包打包的 CLI（生产环境优先）
-    // 2. 项目 node_modules（开发环境：Tauri 的 cwd 是 src-tauri，往上一级即项目根）
-    // 3. 全局 npm 安装的 markdown-publish 命令
+    // 1. 应用资源目录中随安装包打包的 CLI（0.2.6 起已不再随包分发，保留仅为兼容）
+    // 2. 项目 vendor / node_modules（开发环境：沿 cwd 向上找 package.json 定位仓库根）
+    // 3. 全局 npm 安装的 markdown-publish 命令（生产环境实际生效路径）
     //
-    // 用户安装包（NSIS/便携/商店版）不携带 node_modules，前两种途径在生产环境
-    // 通常找不到，需要引导用户通过 npm 全局安装 CLI。见下方缺失时的提示。
+    // 自 0.2.6 起安装包不再携带 markdown-publish（其 node_modules 原始体积 81MB、
+    // 压缩后仍占安装包约 14MB）。发布功能改为依赖用户全局安装：
+    //     npm install -g @abstractwebunit/markdown-publish
+    // 三种途径都找不到时，下方会给出安装指引。
     let Some(launch) = find_markdown_publish_launcher(&app) else {
         let install_hint = r#"未找到 markdown-publish CLI。
 
@@ -1083,6 +1085,7 @@ struct MarkdownPublishLauncher {
 /// 返回 None 表示未安装，调用方应引导用户安装。
 fn find_markdown_publish_launcher(app: &tauri::AppHandle) -> Option<MarkdownPublishLauncher> {
     // 1. 应用资源目录中随安装包打包的 CLI：resources/markdown-publish/...
+    //    注：0.2.6 起安装包已不再随包分发该 CLI，此分支仅为兼容旧安装而保留。
     if let Ok(res_dir) = app.path().resource_dir() {
         let bundled = res_dir
             .join("markdown-publish")
@@ -1131,6 +1134,15 @@ fn find_markdown_publish_launcher(app: &tauri::AppHandle) -> Option<MarkdownPubl
     // 3. 全局 npm 安装的 markdown-publish 命令（Windows 下为 markdown-publish.cmd）
     for name in ["markdown-publish", "markdown-publish.cmd", "markdown-publish.exe"] {
         if let Some(path) = find_on_path(name) {
+            // 尽量反解出真实的 cli.mjs：上层检测到 args 里带有脚本路径时，会生成
+            // 临时 wrapper 绕过 Node.js v24 在 Windows 上的 realpathSync EISDIR 问题。
+            // 直接用 .cmd 启动则拿不到这个保护，所以这里优先走 node <cli.mjs>。
+            if let Some(cli) = global_cli_mjs(&path) {
+                return Some(MarkdownPublishLauncher {
+                    program: "node".to_string(),
+                    args: vec![cli.into_os_string()],
+                });
+            }
             return Some(MarkdownPublishLauncher {
                 program: path.to_string_lossy().into_owned(),
                 args: vec![],
@@ -1141,9 +1153,57 @@ fn find_markdown_publish_launcher(app: &tauri::AppHandle) -> Option<MarkdownPubl
     None
 }
 
+/// 从 npm 全局 shim 路径反解出真正的 `tools/cli/cli.mjs`。
+///
+/// npm 的全局布局：
+/// - Windows：`<prefix>\markdown-publish.cmd` → 包在 `<prefix>\node_modules\<pkg>`
+/// - POSIX  ：`<prefix>/bin/markdown-publish` → 包在 `<prefix>/lib/node_modules/<pkg>`，
+///            且 shim 本身通常就是指向 cli.mjs 的符号链接
+fn global_cli_mjs(shim: &Path) -> Option<PathBuf> {
+    let pkg_sub = PathBuf::from("node_modules")
+        .join("@abstractwebunit")
+        .join("markdown-publish")
+        .join("tools")
+        .join("cli")
+        .join("cli.mjs");
+
+    if let Some(dir) = shim.parent() {
+        // Windows：<prefix>\markdown-publish.cmd 与 node_modules 同级
+        let candidate = dir.join(&pkg_sub);
+        if candidate.is_file() {
+            return Some(candidate);
+        }
+        // POSIX：<prefix>/bin/markdown-publish → <prefix>/lib/node_modules/...
+        if let Some(prefix) = dir.parent() {
+            let candidate = prefix.join("lib").join(&pkg_sub);
+            if candidate.is_file() {
+                return Some(candidate);
+            }
+        }
+    }
+
+    // POSIX 下 shim 多为指向真实 cli.mjs 的符号链接，直接解引用
+    if let Ok(real) = shim.canonicalize() {
+        if real.file_name().and_then(|n| n.to_str()) == Some("cli.mjs") {
+            return Some(real);
+        }
+    }
+
+    None
+}
+
 /// 返回当前工作目录的上一级（项目根目录），用于开发环境下定位 node_modules / postbuild。
 fn current_project_root() -> Option<PathBuf> {
+    // 开发环境：Tauri 把 app 进程 cwd 设为 tauri.conf.json 所在目录
+    // （app/tydora-desktop/，迁移前是 src-tauri/），其 parent 不再是仓库根；
+    // 生产环境：cwd 是用户启动目录。所以沿祖先链找 package.json（仓库根标记），
+    // 找不到再退回旧的 "cwd 的上一级" 行为。
     let cwd = std::env::current_dir().ok()?;
+    for dir in cwd.ancestors() {
+        if dir.join("package.json").is_file() {
+            return Some(dir.to_path_buf());
+        }
+    }
     cwd.parent().map(|p| p.to_path_buf())
 }
 

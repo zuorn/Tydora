@@ -3,17 +3,13 @@ resolver = "2"
 members = [
     "tydora-core",
     "tydora-cli",
+    "tydora-desktop",
 ]
 
-# Tydora 是一个多 crate Cargo workspace。
-# Phase 1（本次）：仅含 tydora-cli。
-# 未来 phases：
-#   - 拆出 tydora-core（从 src-tauri/src/commands/ 抽离无 GUI 依赖的纯逻辑）
-#   - 把 src-tauri/ 搬到 tydora-desktop/
-# 当前实现不在 workspace 内纳入 src-tauri/，tydora-cli 通过 path = "../src-tauri"
-# 直接消费 tydora_lib（详见 tydora-cli/Cargo.toml）。
-#
-# 独立保留 src-tauri/ 的现有 target/ 目录与 CI 行为，避免一次 PR 改动过宽。
+# Tydora 是单 Cargo workspace（2026-09-09 重构后）：
+# - tydora-core:  业务纯逻辑（vault 扫描 / frontmatter / note id 解析）
+# - tydora-cli:   CLI 二进制 (sidecar 形式)
+# - tydora-desktop: Tauri v2 桌面端（原 src-tauri/ 搬入）
 
 [workspace.package]
 version = "0.2.5"
@@ -22,6 +18,10 @@ license = "MIT"
 publish = false
 
 [workspace.dependencies]
+# 内部 crate（path 形式集中管控，成员用 `{ workspace = true }` 引用）
+tydora-core = { path = "tydora-core" }
+tydora-cli = { path = "tydora-cli" }
+
 # CLI 解析：builder 风格 + derive 两种用法都允许
 clap = { version = "4.5", features = ["std"] }
 clap_complete = "4.5"
@@ -38,15 +38,33 @@ serde = { version = "1", features = ["derive"] }
 serde_json = "1"
 serde_yaml = "0.9"
 
-# 日志（Phase 1 留接口，默认走 eprintln）
+# 日志（tydora-cli 留接口，默认走 eprintln）
 env_logger = "0.11"
 
-# 跨平台 console codepage（Windows 专用）：见 tydora-cli/Cargo.toml 中
-# `target.'cfg(windows)'.dependencies`，workspace 根不允许 target section。
-
-# 与 src-tauri 一致的 release profile（CLI 二进制体积优先）
+# workspace 统一 release profile（二进制体积优先）
 [profile.release]
 lto = "thin"
 codegen-units = 1
 strip = "symbols"
 opt-level = "z"
+
+# ----------------------------------------------------------------------------
+# 本地 patch wry（仅 tydora-desktop 经 tauri 间接依赖）
+#
+# 修复 Windows 上窗口销毁瞬间仍有 WebResourceRequested 回调在途时，wry 向
+# 已失效窗口句柄 PostMessageW 失败并打印误导性错误
+# （"PostMessage failed; is the messages queue full?" 0x80070578）的问题。
+# 参见 tydora-desktop/vendor/wry/src/webview2/mod.rs 的 dispatch_handler。
+#
+# ⚠️ 关键：PostMessageW 失败分支绝不能 drop 闭包！其返回值与消息队列实际
+# 入队状态存在竞态窗口期（窗口销毁瞬间可能返回失败但消息已入队），提前释放
+# 会导致主线程 dispatcher 再次 Box::from_raw 同一指针 → 双重释放 → 堆损坏
+# 0xc0000374（STATUS_HEAP_CORRUPTION）。此 patch 仅静默窗口销毁竞态下的
+# 误导性错误日志，内存释放遵循官方 wry 行为（不释放）。
+#
+# ⚠️ Cargo 只在 workspace 根的 manifest 生效 [patch]（成员级 [patch] 会被忽略，
+# 所以 tydora-desktop/ 里的同名 patch 已移除），vendored 副本路径相对本文件
+# （app/），即 tydora-desktop/vendor/wry。
+# ----------------------------------------------------------------------------
+[patch.crates-io]
+wry = { path = "tydora-desktop/vendor/wry" }

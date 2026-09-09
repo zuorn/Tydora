@@ -22,11 +22,11 @@
     "noFallthroughCasesInSwitch": true,
     "paths": {
       "@/*": [
-        "./src/*"
+        "./app/tydora-web/src/*"
       ]
     }
   },
   "include": [
-    "src"
+    "app/tydora-web/src"
   ]
 }

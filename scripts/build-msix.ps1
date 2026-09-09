@@ -102,8 +102,15 @@ if (-not $SkipBuild) {
 }
 
 # ── 3. 定位构建产物 exe ───────────────────────────────────────────────────
-$releaseDir = "$repoRoot/src-tauri/target/release"
-$appExe = Join-Path $releaseDir "tydora.exe"
+# target 统一在仓库根 target/（app/.cargo/config.toml 的 target-dir="../target"）；
+# `tauri build` 会把 cargo 产物（bin 名 tydora-desktop）改名为 productName=Tydora.exe。
+$releaseDir = "$repoRoot/target/release"
+# tauri build 通常会把主二进制改名为 productName（Tydora.exe）；--no-bundle 时
+# 也可能保留 cargo 原名 tydora-desktop.exe，两个都探测。
+$appExe = Join-Path $releaseDir "Tydora.exe"
+if (-not (Test-Path $appExe)) {
+    $appExe = Join-Path $releaseDir "tydora-desktop.exe"
+}
 if (-not (Test-Path $appExe)) {
     # 兜底：取 release 目录下最大的 exe（排除构建工具）
     $candidates = Get-ChildItem -Path "$releaseDir/*.exe" -ErrorAction SilentlyContinue |
@@ -111,13 +118,13 @@ if (-not (Test-Path $appExe)) {
         Sort-Object Length -Descending
     if (-not $candidates) { throw "在 $releaseDir 找不到 app exe" }
     $appExe = $candidates[0].FullName
-    Write-Host "exe 名称不是 tydora.exe，使用：$appExe"
+    Write-Host "exe 名称不是 Tydora.exe / tydora-desktop.exe，使用：$appExe"
 }
 $exeName = Split-Path $appExe -Leaf
 Write-Host "App exe: $appExe ($([math]::Round((Get-Item $appExe).Length / 1MB, 2)) MB)"
 
 # ── 4. 准备暂存目录 ───────────────────────────────────────────────────────
-$staging = "$repoRoot/src-tauri/target/msix-staging"
+$staging = "$repoRoot/target/msix-staging"
 if (Test-Path $staging) { Remove-Item $staging -Recurse -Force }
 New-Item -ItemType Directory -Path $staging -Force | Out-Null
 New-Item -ItemType Directory -Path "$staging/Assets" -Force | Out-Null
@@ -129,7 +136,7 @@ New-Item -ItemType Directory -Path "$staging/Assets" -Force | Out-Null
 # 特别是「宁」字 UTF-8 末字节 0x81 会与下一个字符 '<'(0x3C) 组成 GBK 字符，
 # 吃掉 '</PublisherDisplayName>' 的 '<'，触发 MakeAppx C00CEE3B schema 错误。
 $manifestTemplate = [System.IO.File]::ReadAllText(
-    "$repoRoot/src-tauri/msix/AppxManifest.xml",
+    "$repoRoot/app/tydora-desktop/msix/AppxManifest.xml",
     [System.Text.Encoding]::UTF8
 )
 $manifest = $manifestTemplate
@@ -150,7 +157,7 @@ Write-Host "AppxManifest.xml written"
 # ── 6. 复制 exe 和图标 ────────────────────────────────────────────────────
 Copy-Item $appExe "$staging/" -Force
 
-$iconSrc = "$repoRoot/src-tauri/icons"
+$iconSrc = "$repoRoot/app/tydora-desktop/icons"
 $icons = @(
     "StoreLogo.png", "Square30x30Logo.png", "Square44x44Logo.png",
     "Square71x71Logo.png", "Square89x89Logo.png", "Square107x107Logo.png",
@@ -187,7 +194,7 @@ if (-not $makeAppx) { throw "找不到 MakeAppx.exe，请安装 Windows SDK（Wi
 Write-Host "MakeAppx: $makeAppx"
 
 # ── 8. 打包 ───────────────────────────────────────────────────────────────
-$outDir = "$repoRoot/src-tauri/target/msix"
+$outDir = "$repoRoot/target/msix"
 if (-not (Test-Path $outDir)) { New-Item -ItemType Directory -Path $outDir -Force | Out-Null }
 $msixName = "Tydora_$($Version)_x64.msix"
 $msixPath = Join-Path $outDir $msixName

@@ -1,21 +1,20 @@
-# 统一定义 target-dir，把 Tydora crate 家族的 build artifact 集中在
-# `<repo-root>/target/`（与 src-tauri/target/ 平级，互不影响）。
+# ----------------------------------------------------------------------------
+# 统一 build artifact 目录：整个 Tydora Cargo workspace（app/）的产物都落到
+# `<repo-root>/target/`（app/ 的相对上一级）。.gitignore 里 target/ 已忽略。
+# ----------------------------------------------------------------------------
 [build]
 target-dir = "../target"
 
 # ----------------------------------------------------------------------------
-# MSVC 工具链定位
+# Windows MSVC linker：统一用 rust-lld
 #
-# 这台机器装了 Visual Studio 18 BuildTools（路径 C:/Program Files (x86)/...）
-# 但 MSVC 的 bin 目录不在默认 PATH 里，且 PATH 里的第一个 `link` 实际是
-# Git Bash 的 coreutils link 工具（创建硬链接用，不是 MSVC linker）。结果：
-# cargo 默认调用 `link` 时被 Git Bash 劫持到 coreutils，报 `extra operand`。
+# 背景：这台机器装了 Visual Studio BuildTools，但 MSVC bin 不在默认 PATH；
+# 而 Git Bash 的 PATH 里第一个 `link` 是 coreutils 的 link（建硬链接用），
+# 会让 cargo 误调到它并报 `extra operand`。旧解法是在这里硬编码 MSVC
+# link.exe 路径 + cli-env.sh 导出 LIB/INCLUDE，机器相关且脆弱。
 #
-# 通过 `linker = "..."` 让 cargo 显式调用 MSVC link.exe。同时配合 INCLUDE/LIB
-# 环境变量（用户在执行 cargo 前 `export LIB/INCLUDE` 或运行 `vcvars64.bat`）。
-#
-# 注：此配置对 `src-tauri/` 不生效，因为本 config.toml 只作用于 `app/`。
+# rust-lld 是 rustup 工具链自带的 LLVM lld 前端，rustc 能从 sysroot 找到它，
+# 无需依赖 MSVC bin 目录，也与迁移前 src-tauri/.cargo 的行为一致。
 # ----------------------------------------------------------------------------
 [target.x86_64-pc-windows-msvc]
-linker = "C:/Program Files (x86)/Microsoft Visual Studio/18/BuildTools/VC/Tools/MSVC/14.51.36231/bin/Hostx64/x64/link.exe"
-
+linker = "rust-lld"

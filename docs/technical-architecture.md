@@ -677,31 +677,35 @@ npm run tauri
 
 ```
 Tydora/
-├── src/                          # 前端源码
-│   ├── App.tsx                   # 应用主组件
-│   ├── main.tsx                  # 入口
-│   ├── themes.tsx                # 主题 Context
-│   ├── ThemeManager.ts           # 内置主题定义
-│   ├── Sidebar.tsx               # 侧栏组件
-│   ├── Editor/                   # 编辑器模块
-│   │   ├── TipTapEditor.tsx      # TipTap 编辑器
-│   │   ├── SourceEditor.tsx      # CodeMirror 编辑器
-│   │   ├── extensions/           # 自定义扩展
-│   │   └── types.ts              # 类型定义
-│   ├── LinkIndexService.ts       # 链接索引服务
-│   ├── LinkParser.ts             # WikiLink 解析器
-│   └── ...                       # 其他模块
-├── src-tauri/                    # Rust 后端
-│   ├── src/
-│   │   ├── main.rs               # 入口
-│   │   ├── lib.rs                # 核心逻辑
-│   │   └── commands/             # 自定义命令
-│   ├── Cargo.toml                # Rust 依赖
-│   └── tauri.conf.json           # Tauri 配置
+├── app/                          # Cargo workspace（tydora-core / tydora-cli / tydora-desktop）
+│   ├── tydora-web/src/           # 前端源码（React，2026-09-09 由仓库根 src/ 搬入）
+│   │   ├── App.tsx               # 应用主组件
+│   │   ├── main.tsx              # 入口
+│   │   ├── themes.tsx            # 主题 Context
+│   │   ├── ThemeManager.ts       # 内置主题定义
+│   │   ├── Sidebar.tsx           # 侧栏组件
+│   │   ├── Editor/               # 编辑器模块
+│   │   │   ├── TipTapEditor.tsx  # TipTap 编辑器
+│   │   │   ├── SourceEditor.tsx  # CodeMirror 编辑器
+│   │   │   ├── extensions/       # 自定义扩展
+│   │   │   └── types.ts          # 类型定义
+│   │   ├── LinkIndexService.ts   # 链接索引服务
+│   │   ├── LinkParser.ts         # WikiLink 解析器
+│   │   └── ...                   # 其他模块
+│   ├── tydora-desktop/           # Rust 后端（Tauri v2，原 src-tauri/ 搬入）
+│   │   ├── src/
+│   │   │   ├── main.rs           # 入口
+│   │   │   ├── lib.rs            # 核心逻辑（lib 名 tydora_lib）
+│   │   │   └── commands/         # 自定义命令
+│   │   ├── Cargo.toml            # Rust 依赖
+│   │   └── tauri.conf.json       # Tauri 配置
+│   ├── tydora-core/              # 业务复用层（vault 扫描 / frontmatter / note 解析）
+│   ├── tydora-cli/               # CLI（原生二进制 + Tauri sidecar 范式）
+│   └── .cargo/config.toml        # linker=rust-lld，target-dir 指向仓库根 target/
 ├── docs/                         # 技术文档
 ├── website/                      # MkDocs 文档站点
 ├── .github/workflows/            # CI/CD 配置
-└── package.json                  # 前端依赖
+└── package.json                  # npm scripts / 前端依赖（vite root = app/tydora-web）
 ```
 
 ### TypeScript 配置

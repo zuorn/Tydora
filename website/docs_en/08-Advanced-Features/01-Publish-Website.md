@@ -10,6 +10,22 @@ Tydora can turn your note repository (Vault) into a **static website with a sing
 > [!NOTE]
 > The publish feature is operated from the "Publish" tab in Settings (or the publish panel). Under the hood, it builds a static site using `@abstractwebunit/markdown-publish`.
 
+## Prerequisites
+
+Publishing relies on the `@abstractwebunit/markdown-publish` CLI, which is **not bundled** with the installer. Install it once manually:
+
+1. Install [Node.js](https://nodejs.org) (18 or newer recommended).
+2. Run in a terminal:
+
+   ```bash
+   npm install -g @abstractwebunit/markdown-publish
+   ```
+
+3. Restart Tydora.
+
+> [!IMPORTANT]
+> If the CLI is missing, clicking "Publish" shows "markdown-publish CLI not found". The CLI pulls in large dependencies such as Angular; shipping it inside the installer would grow the package from ~7 MB to over 20 MB, so it is installed on demand instead.
+
 ## Publish Workflow
 
 1. **Configure publish settings**: Fill in basic information such as site name, description, and language.

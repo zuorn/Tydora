@@ -20,7 +20,7 @@ const SKIP_PREFIX = BASE_HREF === "/";
 mkdirSync(siteDir, { recursive: true });
 
 // Copy icon files to site directory
-const iconSrc = resolve(__dirname, "../src-tauri/icons/icon.png");
+const iconSrc = resolve(__dirname, "../app/tydora-desktop/icons/icon.png");
 const iconDest = resolve(siteDir, "icon.png");
 try {
   writeFileSync(iconDest, readFileSync(iconSrc));

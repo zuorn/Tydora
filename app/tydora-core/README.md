@@ -3,8 +3,8 @@
 Pure-logic crate shared by `tydora-cli` (and — when wired — future `tydora-desktop`).
 
 > **Scope (2026-09-07)**: 业务逻辑去重的种子层。当前包含 vault 扫描
-> （与 `src/services/vault-file-scanner.ts` 对齐）、frontmatter 解析
-> （与 `src/Editor/frontmatter.ts` 对齐）、note id/title/slug 解析。
+> （与 `app/tydora-web/src/services/vault-file-scanner.ts` 对齐）、frontmatter 解析
+> （与 `app/tydora-web/src/Editor/frontmatter.ts` 对齐）、note id/title/slug 解析。
 
 ## Why this crate exists
 
@@ -52,14 +52,14 @@ Tydora 是一个 Tauri v2 桌面 + 前端应用。在 tydora-core 之前，
 ## 测试
 
 ```bash
-eval "$(bash scripts/cli-env.sh)"
 cd app
 cargo test -p tydora-core
 # 期望：25 passed; 0 failed
 ```
 
-## 与 src-tauri 的关系
+## 与原 src-tauri（现 app/tydora-desktop）的关系
 
-tydora-core **不是**从 src-tauri/ 抽出来的——而是**从 CLI 重写抽出来**的。
-参见 `D:\code\Tydora\docs\cli-implementation-plan.md` §"src-tauri/commands/ 详细盘点"
-了解为什么 src-tauri 没有可下沉业务。
+tydora-core **不是**从原 src-tauri/（2026-09-09 已并入 `app/tydora-desktop/`）
+抽出来的——而是**从 CLI 重写抽出来**的。参见
+`docs/cli-implementation-plan.md` §"src-tauri/commands/ 详细盘点"了解为什么
+桌面 Rust 端没有可下沉业务。

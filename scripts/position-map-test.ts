@@ -10,7 +10,7 @@ import {
   mdOffsetToPmPos,
   pmPosToMdOffset,
   type MarkdownPositionMap,
-} from "../src/Editor/markdown-position-map";
+} from "../app/tydora-web/src/Editor/markdown-position-map";
 
 const schema = new Schema({
   nodes: {

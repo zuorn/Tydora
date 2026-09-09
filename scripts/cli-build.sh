@@ -13,8 +13,8 @@
 #
 # 后续分发：
 #   产物落到 app/tydora-cli/binaries/<TARGET>/tydora-cli[.exe]
-#   Tauri 桌面端通过 externalBin（src-tauri/tauri.conf.json）引用 dev 模式下的
-#   bin/tydora-cli（symlink/copy）。
+#   Tauri 桌面端通过 externalBin（app/tydora-desktop/tauri.conf.json）引用 dev
+#   模式下的 bin/tydora-cli（symlink/copy）。
 
 set -euo pipefail
 
@@ -112,9 +112,9 @@ if [[ "$BUILD_MODE" == "host" ]]; then
   if [[ "$(uname -s 2>/dev/null || echo Windows)" == *MINGW* ]]; then SRC="${SRC}.exe"; fi
   copy_to_binaries "$SRC" "$HOST_TRIPLE"
 
-  # dev symlink（仅 host 模式）：让 `cargo tauri dev` 在 src-tauri/binaries/tydora-cli 找到 sidecar
-  if [[ "${TYDORA_TAURI_DEV:-0}" == "1" && -d "$REPO_ROOT/src-tauri/binaries" ]]; then
-    local_link="$REPO_ROOT/src-tauri/binaries/tydora-cli$([[ "$HOST_TRIPLE" == *windows* ]] && echo .exe)"
+  # dev symlink（仅 host 模式）：让 `cargo tauri dev` 在 app/tydora-desktop/binaries/tydora-cli 找到 sidecar
+  if [[ "${TYDORA_TAURI_DEV:-0}" == "1" && -d "$REPO_ROOT/app/tydora-desktop/binaries" ]]; then
+    local_link="$REPO_ROOT/app/tydora-desktop/binaries/tydora-cli$([[ "$HOST_TRIPLE" == *windows* ]] && echo .exe)"
     if command -v symlink-target >/dev/null 2>&1 || command -v ln >/dev/null 2>&1; then
       cp -f "$SRC" "$local_link" || true
       echo "  (dev: copied $local_link for cargo tauri dev to discover)"

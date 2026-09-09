@@ -52,8 +52,8 @@ VERSION                    # 纯文本文件，只包含版本号（如 0.0.7）
 
 # 同步脚本
 npm run sync-version       # 将 VERSION 中的版本号同步到以下文件：
-                          # - src-tauri/tauri.conf.json
-                          # - src-tauri/Cargo.toml
+                          # - app/Cargo.toml（[workspace.package] version，成员 crate 继承）
+                          # - app/tydora-desktop/tauri.conf.json
                           # - package.json
 ```
 
@@ -107,14 +107,18 @@ npm run sync-version       # 将 VERSION 中的版本号同步到以下文件：
 
 **Vault 概念**：用户选择一个本地文件夹作为"仓库"，应用展示该文件夹内的文件树。支持多仓库切换，仓库列表持久化到 localStorage。
 
-### 后端 (src-tauri/)
+### 后端 (app/tydora-desktop/)
 
-**入口**: `main.rs` → 调用 `tydora_lib::run()`
+2026-09-09 重构后，原 `src-tauri/` 整体搬入 Cargo workspace 成员 `app/tydora-desktop/`
+（包名 `tydora-desktop`，lib 名保留 `tydora_lib`；`vendor/wry` 的 [patch] 上移到
+workspace 根 `app/Cargo.toml`，成员级 [patch] 会被 cargo 忽略）。
+
+**入口**: `src/main.rs` → 调用 `tydora_lib::run()`（`src/lib.rs`）
 
 **源码结构**:
 
 ```
-src-tauri/src/
+app/tydora-desktop/src/
 ├── main.rs
 ├── lib.rs
 └── commands/
@@ -204,13 +208,15 @@ Tydora 采用多窗口架构，主进程通过 Tauri Window API 管理多个独�
 
 ### Tauri 配置 (tauri.conf.json)
 
-- **标识符**: `com.tydora.editor`，版本 `0.0.5`
+- **位置**: `app/tydora-desktop/tauri.conf.json`
+- **标识符**: `com.tydora.editor`；版本与 `VERSION` 同步（当前 0.2.5）
 - **窗口**: 1200×800，居中，无装饰，可调整大小
 - **打包**: Windows (NSIS)、macOS (DMG)、Linux (AppImage)
 - **CSP**: 设为 `null`（允许加载本地资源）
 - **自动更新**: 配置了公钥签名验证，端点指向 GitHub Releases
-- **beforeDevCommand**: `npm run dev`，**beforeBuildCommand**: `npm run build`
-- **capabilities** (`src-tauri/capabilities/default.json`): 授予文件系统全路径读写、窗口控制、对话框、更新器、进程管理权限
+- **beforeDevCommand**: `npm run sync-version && npm run dev`，**beforeBuildCommand**: `npm run sync-version && npm run build`（hooks 在仓库根执行）
+- **frontendDist**: `../../.build/web-dist`（Vite 产物，相对 tauri.conf.json 所在目录）
+- **capabilities** (`app/tydora-desktop/capabilities/default.json`): 授予文件系统全路径读写、窗口控制、对话框、更新器、进程管理权限
 
 ### 构建配置
 
@@ -280,7 +286,7 @@ Obsidian 风格的 `[[双向链接]]` 由三个模块协作实现：
 
 - 代码：`app/tydora-cli/`（独立 Cargo workspace 成员）
 - 方案文档：`docs/cli-implementation-plan.md`
-- Rust 端已经在的 vault 扫描 / file IO 等命令：`src-tauri/src/commands/`（CLI Phase 1 暂不直接复用，自己用 Rust 重写；Phase 5 整合）
+- Rust 端已有的 vault 扫描 / file IO 等命令：`app/tydora-desktop/src/commands/`（CLI 用自研 Rust 实现——见 Phase 5：src-tauri 几乎没有可下沉业务，core 是从 CLI 抽的）
 
 ### 编译与运行
 
@@ -332,10 +338,12 @@ eval "$(bash scripts/cli-env.sh)" && cd app && cargo build --bin tydora-cli
 - ⏳ Phase 3（CLI 进阶）：search / publish / completion + 构建脚本产物接入
   Tauri externalBin + 桌面端 PATH 安装 + ≥30 天的 trash 自动清理
 - ⏳ Phase 4（MCP）：`tydora mcp` + 受限 CLI 语法 + 唯一工具 `tydora_note`
-- ⏳ Phase 6（`src-tauri/` 物理搬迁 —— 已 deferred）：抽 core 时所做的事
-  终态表明不搬更优。搬运需改 14 文件 × 26 处硬路径 + 3 处隐式坑（Tauri
-  CLI 默认配置、tauri.conf.json beforeDevCommand cwd、vendor/wry 相对路径）。
-  调研见 Phase 5 PR 描述。如未来要做，独立 PR，不要和 Phase 5 混。
+- ✅ **Phase 6**（`src-tauri/` → `app/tydora-desktop/` 物理搬迁）：2026-09-09
+  flowix 式结构重构已落地，`src-tauri/` 与仓库根 `src/` 全部并入 `app/` Cargo
+  workspace（tydora-core / tydora-cli / tydora-desktop / tydora-web）。关键经验：
+  wry [patch] 必须放 workspace 根 `app/Cargo.toml`（成员级被忽略）；tauri.conf.json
+  的相对路径（frontendDist `.build/web-dist`、resources `../../vendor/...`）以配置
+  文件所在目录为基准；Tauri CLI 的 `--config` 是 dev/build 子命令级参数。
 - Linux 依赖: `libwebkit2gtk-4.1-dev`、`libappindicator3-dev`、`librsvg2-dev`、`patchelf`、`libgtk-3-dev`
 
 **`.github/workflows/deploy-docs.yml`**:
@@ -506,6 +514,9 @@ TypeError: Cannot destructure property 'isEditable' of 'editor' as it is undefin
 **建议**：使用 `immediatelyRender: false` 让编辑器在 `useEffect` 中创建，避免首帧渲染时的竞态条件。
 
 ## 文件结构速查
+
+> 前端源码位于 `app/tydora-web/src/`（2026-09-09 由仓库根 `src/` 整体搬入）；
+> 下文以 `src/` 为根列出，实际路径请加前缀 `app/tydora-web/`。
 
 ```
 src/

@@ -24,8 +24,8 @@ function writeIfChanged(path, next) {
 const version = readFileSync(join(root, "VERSION"), "utf-8").trim();
 console.log(`Syncing version: ${version}`);
 
-// 更新 tauri.conf.json
-const tauriConfPath = join(root, "src-tauri", "tauri.conf.json");
+// 更新 tauri.conf.json（桌面端，2026-09-09 重构后位于 app/tydora-desktop/）
+const tauriConfPath = join(root, "app", "tydora-desktop", "tauri.conf.json");
 const tauriConf = JSON.parse(readFileSync(tauriConfPath, "utf-8"));
 tauriConf.version = version;
 if (writeIfChanged(tauriConfPath, JSON.stringify(tauriConf, null, 2) + "\n")) {
@@ -34,14 +34,23 @@ if (writeIfChanged(tauriConfPath, JSON.stringify(tauriConf, null, 2) + "\n")) {
   console.log(`tauri.conf.json already at ${version}`);
 }
 
-// 更新 Cargo.toml
-const cargoTomlPath = join(root, "src-tauri", "Cargo.toml");
-let cargoToml = readFileSync(cargoTomlPath, "utf-8");
-const nextCargoToml = cargoToml.replace(/^version\s*=\s*".*"/m, `version = "${version}"`);
-if (writeIfChanged(cargoTomlPath, nextCargoToml)) {
-  console.log(`Updated Cargo.toml`);
+// 更新 Cargo workspace 根版本：tydora-core / tydora-cli / tydora-desktop 都通过
+// version.workspace = true 继承 app/Cargo.toml 的 [workspace.package]，改一处即全仓生效。
+const workspaceTomlPath = join(root, "app", "Cargo.toml");
+const workspaceToml = readFileSync(workspaceTomlPath, "utf-8");
+const wpIdx = workspaceToml.indexOf("[workspace.package]");
+if (wpIdx === -1) {
+  throw new Error("app/Cargo.toml: [workspace.package] not found");
+}
+const nextWorkspaceToml =
+  workspaceToml.slice(0, wpIdx) +
+  workspaceToml
+    .slice(wpIdx)
+    .replace(/^version\s*=\s*".*"/m, `version = "${version}"`);
+if (writeIfChanged(workspaceTomlPath, nextWorkspaceToml)) {
+  console.log(`Updated app/Cargo.toml (workspace version)`);
 } else {
-  console.log(`Cargo.toml already at ${version}`);
+  console.log(`app/Cargo.toml already at ${version}`);
 }
 
 // 更新 package.json

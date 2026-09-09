@@ -66,7 +66,7 @@ jobs:
       - name: Rust cache
         uses: swatinem/rust-cache@v2
         with:
-          workspaces: './src-tauri -> target'
+          workspaces: './app -> target'
 
       - name: Install Linux dependencies
         if: matrix.platform == 'ubuntu-22.04' || matrix.platform == 'ubuntu-22.04-arm'
@@ -88,6 +88,8 @@ jobs:
           # 跳过 AppleScript/Finder 步骤（该步骤在 CI 上常因 window server 无响应而超时失败）
           TAURI_BUNDLER_DMG_IGNORE_CI: false
         with:
+          # 2026-09-09 重构后：tauri.conf.json 在 app/tydora-desktop/，必须显式传
+          configPath: app/tydora-desktop/tauri.conf.json
           args: ${{ matrix.args }}
 
       # Windows: 额外生成便携版（免安装）zip，内容为 release 构建出的 Tydora.exe
@@ -96,7 +98,7 @@ jobs:
         shell: pwsh
         run: |
           $version = (Get-Content VERSION).Trim()
-          $exe = 'src-tauri/target/release/Tydora.exe'
+          $exe = 'target/release/Tydora.exe'
           if (-not (Test-Path $exe)) { throw "Release exe not found: $exe" }
           New-Item -ItemType Directory -Force -Path 'release-assets' | Out-Null
           $zip = Join-Path 'release-assets' "Tydora_${version}_x64_portable.zip"
@@ -108,7 +110,7 @@ jobs:
         shell: bash
         run: |
           mkdir -p release-assets
-          find src-tauri/target -path '*/bundle/*' -type f \
+          find target -path '*/bundle/*' -type f \
             \( -name '*.exe' -o -name '*.exe.sig' \
                -o -name '*.msi' -o -name '*.msi.sig' \
                -o -name '*.dmg' -o -name '*.app.tar.gz' -o -name '*.app.tar.gz.sig' \

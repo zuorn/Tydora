@@ -1,10 +1,14 @@
 [package]
-name = "tydora"
-version = "0.2.5"
+name = "tydora-desktop"
 description = "A modern Markdown editor built with Tauri"
-authors = ["you"]
-edition = "2021"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+publish.workspace = true
 
+# 原 src-tauri/ 保留的 lib 名 tydora_lib：
+# - main.rs 通过 tydora_lib::run() 入口
+# - staticlib/cdylib 适配移动端（gen/icons/android 等仍在）
 [lib]
 name = "tydora_lib"
 crate-type = ["staticlib", "cdylib", "rlib"]
@@ -48,22 +52,3 @@ objc2-quartz-core = { version = "0.3", default-features = false, features = [
   "CAMediaTiming",
   "objc2-core-foundation",
 ] }
-
-[profile.release]
-lto = true
-codegen-units = 1
-strip = true
-opt-level = "z"
-
-# 本地 patch wry：修复 Windows 上窗口销毁瞬间仍有 WebResourceRequested
-# 回调在途时，wry 向已失效窗口句柄 PostMessageW 失败并打印误导性错误
-# （"PostMessage failed; is the messages queue full?" 0x80070578）的问题。
-# 参见 vendor/wry/src/webview2/mod.rs 的 dispatch_handler。
-#
-# 注意：PostMessageW 失败分支绝不能 drop 闭包！其返回值与消息队列实际
-# 入队状态存在竞态窗口期（窗口销毁瞬间可能返回失败但消息已入队），提前
-# 释放会导致主线程 dispatcher 再次 Box::from_raw 同一指针 → 双重释放 →
-# 堆损坏 0xc0000374（STATUS_HEAP_CORRUPTION，ntdll）。此 patch 仅静默
-# 窗口销毁竞态下的误导性错误日志，内存释放遵循官方 wry 行为（不释放）。
-[patch.crates-io]
-wry = { path = "vendor/wry" }

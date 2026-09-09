@@ -4,6 +4,11 @@
 >
 > **状态**：✅ 决策已定（v0.2，2026-09-07） — 工程结构=候选 X、范围=保守、面向=AI Agent
 >
+> **执行进度**：候选 X 结构已于 2026-09-09 落地——原 `src-tauri/` → `app/tydora-desktop/`、
+> 仓库根 `src/` → `app/tydora-web/src/`，与 `tydora-core` / `tydora-cli` 共处一个 Cargo
+> workspace（`vite.config.ts` root = `app/tydora-web`，产物 → 仓库根 `.build/web-dist`）。
+> 正文中决策时点之前的 `src-tauri/` / `src/` 字样指搬迁前布局，请以 `app/` 下实际路径为准。
+>
 > **已拍板的关键决策**：
 >
 > - 工程结构 → **候选 X**：新建 `app/` Cargo workspace，一次到位

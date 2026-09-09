@@ -3,8 +3,8 @@ import { execSync } from 'child_process';
 import { fileURLToPath } from 'url';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
-const sourcePath = path.join(__dirname, '../src/assets/icon.png');
-const iconsDir = path.join(__dirname, '../src-tauri/icons');
+const sourcePath = path.join(__dirname, '../app/tydora-web/src/assets/icon.png');
+const iconsDir = path.join(__dirname, '../app/tydora-desktop/icons');
 
 console.log(`Using source image: ${sourcePath}`);
 

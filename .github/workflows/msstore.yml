@@ -31,7 +31,7 @@ jobs:
       - name: Rust cache
         uses: swatinem/rust-cache@v2
         with:
-          workspaces: './src-tauri -> target'
+          workspaces: './app -> target'
 
       - name: Install frontend dependencies
         run: npm ci
@@ -47,14 +47,14 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: tydora-msix
-          path: src-tauri/target/msix/*.msix
+          path: target/msix/*.msix
           if-no-files-found: error
 
       - name: Attach MSIX to GitHub Release
         if: startsWith(github.ref, 'refs/tags/v')
         uses: softprops/action-gh-release@v2
         with:
-          files: src-tauri/target/msix/*.msix
+          files: target/msix/*.msix
 
       # ── 发布到微软商店（仅当配置了 MSSTORE_PRODUCT_ID 时执行）──────────────
       - name: Setup Microsoft Store CLI
@@ -75,6 +75,6 @@ jobs:
         if: vars.MSSTORE_PRODUCT_ID
         shell: pwsh
         run: |
-          $msix = Get-ChildItem src-tauri/target/msix/*.msix | Select-Object -First 1
+          $msix = Get-ChildItem target/msix/*.msix | Select-Object -First 1
           Write-Host "Publishing: $($msix.FullName)"
           msstore publish $msix.FullName -id ${{ vars.MSSTORE_PRODUCT_ID }}

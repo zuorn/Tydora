@@ -1,0 +1,52 @@
+[workspace]
+resolver = "2"
+members = [
+    "tydora-core",
+    "tydora-cli",
+]
+
+# Tydora 是一个多 crate Cargo workspace。
+# Phase 1（本次）：仅含 tydora-cli。
+# 未来 phases：
+#   - 拆出 tydora-core（从 src-tauri/src/commands/ 抽离无 GUI 依赖的纯逻辑）
+#   - 把 src-tauri/ 搬到 tydora-desktop/
+# 当前实现不在 workspace 内纳入 src-tauri/，tydora-cli 通过 path = "../src-tauri"
+# 直接消费 tydora_lib（详见 tydora-cli/Cargo.toml）。
+#
+# 独立保留 src-tauri/ 的现有 target/ 目录与 CI 行为，避免一次 PR 改动过宽。
+
+[workspace.package]
+version = "0.2.5"
+edition = "2021"
+license = "MIT"
+publish = false
+
+[workspace.dependencies]
+# CLI 解析：builder 风格 + derive 两种用法都允许
+clap = { version = "4.5", features = ["std"] }
+clap_complete = "4.5"
+
+# 受限 CLI 语法（MCP / 用户输入解析）：
+shell-words = "1.1"
+
+# 错误处理
+thiserror = "1"
+anyhow = "1"
+
+# 序列化
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+serde_yaml = "0.9"
+
+# 日志（Phase 1 留接口，默认走 eprintln）
+env_logger = "0.11"
+
+# 跨平台 console codepage（Windows 专用）：见 tydora-cli/Cargo.toml 中
+# `target.'cfg(windows)'.dependencies`，workspace 根不允许 target section。
+
+# 与 src-tauri 一致的 release profile（CLI 二进制体积优先）
+[profile.release]
+lto = "thin"
+codegen-units = 1
+strip = "symbols"
+opt-level = "z"

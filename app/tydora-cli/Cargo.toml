@@ -1,0 +1,70 @@
+[package]
+name = "tydora-cli"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+publish.workspace = true
+description = "Tydora CLI — command-line interface for Tydora vaults"
+readme = "README.md"
+
+[[bin]]
+name = "tydora-cli"
+path = "src/main.rs"
+
+[lints.rust]
+# main.rs 里有 windows-sys FFI（SetConsoleCP / SetConsoleOutputCP），FFI 本质
+# 上需要 unsafe。改为 warn 让 CI 仍能在 review 时看到，但本 crate 内允许。
+unsafe_code = "warn"
+
+[dependencies]
+# CLI 解析（builder 风格，参考 Flowix flowix-cli/src/cli.rs）
+clap = { workspace = true }
+clap_complete = { workspace = true }
+thiserror = { workspace = true }
+anyhow = { workspace = true }
+
+# 序列化（--json 输出 + frontmatter 解析）
+serde = { workspace = true }
+serde_json = { workspace = true }
+serde_yaml = { workspace = true }
+
+# 日志
+env_logger = { workspace = true }
+
+# 受限 CLI 语法（MCP 阶段会用到，Phase 1 仅占位）
+shell-words = { workspace = true }
+
+# 业务逻辑复用层（vault 扫描 / frontmatter / note id 解析）。
+# 详细约束见 `app/tydora-core/README.md`（占位，待 #18 文档同步补）。
+tydora-core = { path = "../tydora-core" }
+
+[target.'cfg(windows)'.dependencies]
+# console codepage 切换（CP_UTF8 = 65001）
+windows-sys = { version = "0.59", features = [
+    "Win32_System_Console",
+    "Win32_Foundation",
+] }
+
+[dev-dependencies]
+assert_cmd = "2"
+predicates = "3"
+tempfile = "3"
+serde_json = { workspace = true }
+
+# ----------------------------------------------------------------------------
+# 复用现有 src-tauri 的 Rust 代码：当前 tydora-cli 暂不依赖 tydora_lib（Phase 1
+# 用 stub 数据 + 直接文件系统 IO），后续 phase 引入：
+#
+#   tydora_lib = { path = "../../src-tauri", package = "tydora" }
+#
+# 但因为 src-tauri 的 [lib] name = "tydora_lib" 且 crate-type 包含 staticlib/
+# cdylib（适配移动端），直接 path 引入会带上全部 tauri 依赖、且 main 二进制
+# 容易与 tauri 共用符号。Phase 4 实际接入前需做"先把 core 抽离"的拆分工作。
+# ----------------------------------------------------------------------------
+
+[profile.release]
+# 二进制大小优先：tydora-cli 跑在终端/PATH，分发体积敏感
+lto = "thin"
+codegen-units = 1
+strip = "symbols"
+opt-level = "z"

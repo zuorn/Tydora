@@ -1,0 +1,27 @@
+# tydora-core — pure-logic crate shared by tydora-cli, tydora-desktop (future).
+#
+# 与 Tauri runtime 完全解耦（不引入 `tauri` / `tauri-plugin-*`），可独立
+# 编译、单独测速、单独发布（虽然发布 = false）。
+#
+# 设计原则（2026-09-07 决策）：
+#   1. 依赖严格：std + serde + serde_json + thiserror，不引入 serde_yaml
+#      （frontmatter 解析保持"简化 YAML 子集"，不强行追平 frontmatter.ts
+#      的复杂语义）
+#   2. 数据模型对齐前端 TS：vault 扫描与 src/services/vault-file-scanner.ts
+#      语义一致（skip `.` 开头、单目录 IO 错误 swallow 等）
+#   3. CLI 通过 `From<CoreError> for CliError` 桥接，不让 core 知道退出码
+
+[package]
+name = "tydora-core"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+publish.workspace = true
+
+[dependencies]
+serde = { workspace = true }
+serde_json = { workspace = true }
+thiserror = { workspace = true }
+
+[dev-dependencies]
+tempfile = "3"

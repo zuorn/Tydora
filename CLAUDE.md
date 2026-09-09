@@ -269,6 +269,73 @@ Obsidian 风格的 `[[双向链接]]` 由三个模块协作实现：
 - 跨平台构建矩阵: `windows-latest`、`macos-latest` (aarch64 + x86\_64)、`ubuntu-22.04`
 - 使用 `dtolnay/rust-toolchain@stable`、`swatinem/rust-cache@v2`、`tauri-apps/tauri-action@v0`
 - 创建 Draft GitHub Release，使用 `TAURI_SIGNING_PRIVATE_KEY` 进行代码签名
+
+---
+
+## CLI（tydora-cli）
+
+> **2026-09-07 启动**：参考 `D:\code\flowix\app\flowix-cli\` 的 Rust 原生二进制 + Tauri sidecar 范式，给 Tydora 加 CLI 和后续 MCP。详见 `docs/cli-implementation-plan.md`。
+
+### 位置
+
+- 代码：`app/tydora-cli/`（独立 Cargo workspace 成员）
+- 方案文档：`docs/cli-implementation-plan.md`
+- Rust 端已经在的 vault 扫描 / file IO 等命令：`src-tauri/src/commands/`（CLI Phase 1 暂不直接复用，自己用 Rust 重写；Phase 5 整合）
+
+### 编译与运行
+
+```bash
+# 单 host release（默认目标）
+cd app
+cargo build --release --bin tydora-cli
+
+# 单元 + 冒烟测试
+cargo test --bin tydora-cli --test cli_smoke
+
+# 通过 npm scripts（与上层工具链统一）
+npm run cli:test
+npm run cli:run -- --version
+npm run build:cli              # = bash scripts/cli-build.sh
+npm run build:cli:win          # Windows 包装版
+```
+
+### MSVC 环境小坑（仅 Windows）
+
+这台机器装了 VS BuildTools 18 + Windows SDK 26100，但 MSVC bin 不在
+默认 PATH，且 `PATH` 里的 `link` 实际是 Git Bash 自带的 GNU coreutils（不是
+MSVC linker），cargo 调 link 时报 "extra operand"。
+
+已通过 `app/.cargo/config.toml` 把 linker 显式指向 MSVC link.exe，并提供
+`scripts/cli-env.sh` 导出 `LIB` / `INCLUDE`：
+
+```bash
+eval "$(bash scripts/cli-env.sh)" && cd app && cargo build --bin tydora-cli
+```
+
+未来若需把 src-tauri 也切到同一 workspace，可顺势让 cargo 通过 vswhere 自动
+发现 MSVC，移除此 work-around。
+
+### Phase 进度
+
+- ✅ **Phase 1**（CLI 只读地基）：notebooks / list / show + 4 档退出码 +
+  Windows UTF-8 console + --json。14 个冒烟测试全过。
+- ✅ **Phase 2**（CLI 写路径）：create / edit / write / delete + 原子写 + trash
+  回收（`$TYDORA_HOME/trash/vaults/<hash8>/<flat>-<ts>.md`）+ `--dry-run` + `--new-stdin`。
+  13 个新冒烟测试全过（共 27 个）。4 个新 JSON schema：`tydora.create.v1` /
+  `tydora.edit.v1` / `tydora.write.v1` / `tydora.delete.v1`。
+- ✅ **Phase 5**（`tydora-core` 业务复用层抽离）：原 CLI `store.rs` 1054 行
+  删到 772 行（-27%）。抽出 4 模块：`error` / `frontmatter` / `note` /
+  `vault`。**关键反转**：src-tauri/ 里几乎没有可下沉业务，所以 seed 是
+  CLI 重写而非 src-tauri。`vault::scan_vault` 严格对齐 `vault-file-scanner.ts`
+  语义（跳过 `.` 开头、单目录 IO 错误 swallow、16 个 IMAGE_EXTENSIONS
+  逐字一致）。25 个 core 单测 + 27 个 CLI 集成测试全过。二进制大小不变。
+- ⏳ Phase 3（CLI 进阶）：search / publish / completion + 构建脚本产物接入
+  Tauri externalBin + 桌面端 PATH 安装 + ≥30 天的 trash 自动清理
+- ⏳ Phase 4（MCP）：`tydora mcp` + 受限 CLI 语法 + 唯一工具 `tydora_note`
+- ⏳ Phase 6（`src-tauri/` 物理搬迁 —— 已 deferred）：抽 core 时所做的事
+  终态表明不搬更优。搬运需改 14 文件 × 26 处硬路径 + 3 处隐式坑（Tauri
+  CLI 默认配置、tauri.conf.json beforeDevCommand cwd、vendor/wry 相对路径）。
+  调研见 Phase 5 PR 描述。如未来要做，独立 PR，不要和 Phase 5 混。
 - Linux 依赖: `libwebkit2gtk-4.1-dev`、`libappindicator3-dev`、`librsvg2-dev`、`patchelf`、`libgtk-3-dev`
 
 **`.github/workflows/deploy-docs.yml`**:

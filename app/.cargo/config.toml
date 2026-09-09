@@ -1,0 +1,21 @@
+# 统一定义 target-dir，把 Tydora crate 家族的 build artifact 集中在
+# `<repo-root>/target/`（与 src-tauri/target/ 平级，互不影响）。
+[build]
+target-dir = "../target"
+
+# ----------------------------------------------------------------------------
+# MSVC 工具链定位
+#
+# 这台机器装了 Visual Studio 18 BuildTools（路径 C:/Program Files (x86)/...）
+# 但 MSVC 的 bin 目录不在默认 PATH 里，且 PATH 里的第一个 `link` 实际是
+# Git Bash 的 coreutils link 工具（创建硬链接用，不是 MSVC linker）。结果：
+# cargo 默认调用 `link` 时被 Git Bash 劫持到 coreutils，报 `extra operand`。
+#
+# 通过 `linker = "..."` 让 cargo 显式调用 MSVC link.exe。同时配合 INCLUDE/LIB
+# 环境变量（用户在执行 cargo 前 `export LIB/INCLUDE` 或运行 `vcvars64.bat`）。
+#
+# 注：此配置对 `src-tauri/` 不生效，因为本 config.toml 只作用于 `app/`。
+# ----------------------------------------------------------------------------
+[target.x86_64-pc-windows-msvc]
+linker = "C:/Program Files (x86)/Microsoft Visual Studio/18/BuildTools/VC/Tools/MSVC/14.51.36231/bin/Hostx64/x64/link.exe"
+

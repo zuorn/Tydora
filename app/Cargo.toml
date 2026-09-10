@@ -12,7 +12,7 @@ members = [
 # - tydora-desktop: Tauri v2 桌面端（原 src-tauri/ 搬入）
 
 [workspace.package]
-version = "0.2.5"
+version = "0.2.6"
 edition = "2021"
 license = "MIT"
 publish = false

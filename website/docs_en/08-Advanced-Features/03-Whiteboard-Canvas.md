@@ -1,119 +1,108 @@
-﻿---
+---
 title: Whiteboard Canvas
-tags: [feature]
+tags: [features]
 ---
 
 # Whiteboard Canvas
 
-The Whiteboard Canvas is built on **React Flow** and provides an **infinite canvas** where you can freely organize ideas, notes, images, media, and links using nodes — like spreading them out on paper, yet infinitely extendable and easily connected.
+The whiteboard canvas is built on **React Flow** and provides an **infinite canvas** where you can freely arrange ideas, notes, images, media, and links as nodes — like spreading things out on paper, except it extends forever and connects with a line.
 
 > [!NOTE]
-> Whiteboard files are saved with the `.canvas` extension and use the Obsidian-compatible JSON Canvas format.
+> Canvas files are saved with the `.canvas` extension, using the Obsidian-compatible **JSON Canvas** format.
 
-## Opening a Whiteboard
+## Opening a Canvas
 
-1. Right-click in the file tree and select "New Whiteboard"; or
-2. Search for "Whiteboard" in the command palette (`Ctrl+P`) and create one; or
-3. Open an existing `.canvas` file.
+- Right-click in the file tree → "New canvas" to create and open a new whiteboard
+- Click an existing `.canvas` file in the file tree
+- Canvases can also open in their own window, handy for a second monitor
 
-A whiteboard opens in the main area and participates in the file tree and recent files management like a normal note.
+Where new canvases are stored is determined by [[07-Settings/07-Canvas-Settings]] (vault root / current folder / a specified attachment folder).
 
 ## Node Types
 
-The whiteboard supports several node types to cover different organizational needs:
+The canvas is compatible with the JSON Canvas spec and supports **7 node types**:
 
-### Text Node
+| Type | Description |
+| --- | --- |
+| **Text card (text)** | A freely editable text block using TipTap live rendering; supports Markdown syntax |
+| **Note card (note)** | References a Markdown file in the vault, showing the note content and interworking with the WikiLink system |
+| **File reference (file)** | References a file in the vault (including images, PDFs, etc.); images display directly |
+| **Media (media)** | Video / audio and similar media files, shown with a player or an icon |
+| **Canvas (canvas)** | Nested reference to another canvas file |
+| **Link (link)** | Embeds an external URL, opened in the browser when clicked |
+| **Group (group)** | Groups several nodes together, with a configurable background and label |
 
-A freely editable text block, rendered instantly with the TipTap editor.
+> [!TIP]
+> **Drag an image file into the canvas** to create an image node.
 
-- Supports Markdown syntax
-- Can be dragged and resized freely
-- Suitable for annotations, explanations, and quick notes
+## Toolbar
 
-### Note Card
+The canvas top toolbar provides three add buttons (click, or drag onto the canvas to place):
 
-References a Markdown file in the Vault.
+| Tool | Description |
+| --- | --- |
+| Add card | Create a text card |
+| Add note | Create a note card (chosen from the vault) |
+| Add media file | Insert an image / video / audio / canvas and similar media |
 
-- Displays the note's title and summary
-- Click to jump to the original note
-- Interoperates with the `[[03-Knowledge-Management/01-Wiki-Links]]` system
+## Context Menu
 
-### File Reference
+Right-click on empty canvas space:
 
-References media files such as images, videos, audio, and PDFs.
-
-- Images display a thumbnail directly
-- Videos / audio show a play icon
-- PDFs show a file icon
-
-### Image Node
-
-Displays image content directly.
-
-- Supports zooming and cropping
-- Images can be dragged in from the Vault or locally
-
-### URL Node
-
-Embeds an external link.
-
-- Displays the site title and description
-- Click to open the link in your browser
-
-### Group Node
-
-Groups multiple nodes together.
-
-- Drag a node into a group to add it
-- Internal nodes follow when the group is moved
-- Supports nested groups to build hierarchy
+| Command | Description |
+| --- | --- |
+| Add card | Create a text card |
+| Add note | Create a note card |
+| Add media file | Insert media |
+| Add link | Enter a URL to create a link node |
+| Add group | Create a group container |
+| Undo / Redo | Operation history |
 
 ## Canvas Operations
 
 | Action | Description |
 | --- | --- |
-| Wheel zoom | Zoom in / out the view |
-| Middle-button drag | Pan the canvas |
-| Right-button drag | Pan the canvas |
-| Box selection | Hold and drag to select multiple nodes (hold `Shift` to add to selection) |
-| Alignment guides | Alignment lines appear automatically when dragging nodes for tidy arrangement |
+| Scroll wheel | Zoom (the bounds are configurable in Settings) |
+| Drag empty space | Pan the canvas |
+| Drag a node | Move it; with snapping enabled, alignment guides appear |
+| Select a node | Handles appear to resize, edit content, and draw connections |
+| Minimap | A minimap can be shown in a corner (enabled in Settings) |
 
-## Toolbar
+## Shortcuts
 
-The toolbar at the top of the whiteboard provides:
-
-| Tool | Description |
+| Shortcut | Action |
 | --- | --- |
-| Select | Select and move nodes |
-| Text | Add a text node |
-| Note | Add a note card |
-| Image | Add an image |
-| Media | Add a media file |
-| URL | Add a link node |
-| Group | Create a group |
-| Undo / Redo | Operation history |
+| `Ctrl+Z` / `Ctrl+Y` | Undo / redo |
+| `Ctrl+Shift+Z` | Redo (alternate) |
+| `Ctrl+C` / `Ctrl+V` | Copy / paste nodes |
+| `Ctrl+A` | Select all |
+| `Esc` | Deselect |
+| Arrow keys | Move the selected node |
 
 ## File Format
 
-Whiteboards use the **JSON Canvas** format (`.canvas`), compatible with the Obsidian whiteboard format:
+The canvas uses the **JSON Canvas** format (`.canvas`), compatible with Obsidian's whiteboard format:
 
-- **Cross-platform compatibility**: Interoperable between tools that support the format
-- **Version controllable**: Pure-text JSON, suitable for inclusion in Git
-- **Human-readable**: Can be viewed and hand-edited directly
+- **Cross-platform compatible**: interoperable with tools that support the format
+- **Version-controllable**: plain-text JSON, well suited to Git
+- **Human-readable**: inspect and hand-edit it directly
+- **Relative paths**: referenced file paths are relative to the vault root, so they stay valid after moving the canvas file
 
-## Pop-out Window Mode
+## Separate Windows
 
-A whiteboard can be opened in a separate Tauri window:
+A canvas can open in its own Tauri window:
 
-- Supports multiple monitors, so you can place the whiteboard on a secondary screen
-- Operating it independently does not affect editing in the main window
-- Window position and size are automatically saved and restored
+- Supports multiple monitors — put the canvas on a second screen
+- Independent operation does not disturb editing in the main window
+- Window position and size are saved and restored automatically
 
-> [!TIP]
-- Use "Note Cards" to connect the whiteboard with your knowledge base: the whiteboard handles ideation and layout, while notes store the details; the two reference each other.
+## Related Settings
+
+- [[07-Settings/07-Canvas-Settings]] — Default location, snapping, minimap, and zoom range
 
 ## Related Documents
 
 - [[04-File-Management/02-File-Tree]] — File management
-- [[01-Getting-Started/01-Quick-Start]] — Getting started guide
 - [[03-Knowledge-Management/01-Wiki-Links]] — Bidirectional links
+- [[03-Knowledge-Management/02-Embedded-Content]] — Canvas thumbnail previews
+- [[08-Advanced-Features/01-Publish-Website]] — How canvases appear on a published site

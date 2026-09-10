@@ -1,76 +1,67 @@
-﻿---
+---
 title: Image Settings
-tags: [Settings]
+tags: [settings]
 ---
 
 # Image Settings
 
-Image settings determine the **storage method, naming rules, and default behavior** when pasting or dragging images, letting you freely choose between "managed with repository" and "centralized storage".
+Image settings determine the **storage location and naming rules** for images you paste or drag in, letting you choose freely between "managed with the vault" and "stored centrally."
 
 > [!NOTE]
-> Press `Ctrl+,` to open Settings, then switch to the "Image" tab.
+> Press `Ctrl+,` to open Settings and switch to the "Image" tab.
 
-## Storage Mode
+## Storage Location
 
-### Repository Assets (Recommended)
+### Vault assets directory (default)
 
-Images are saved in a **designated folder within the current repository** (e.g., `assets/`).
+Images are saved in the **`assets/` folder under the current vault's root**.
 
-- Pros: Images are managed, moved, and backed up together with the repository; links are less likely to break
-- Cons: Repository size grows as more images are added
+- Pros: images travel with the vault when you manage, move, or back it up, so links rarely break
+- Cons: the vault grows as images accumulate
 
-### Fixed Directory
+Related option:
 
-Images are saved in a **fixed local directory**, decoupled from specific repositories.
+| Option | Description |
+| --- | --- |
+| Auto-create the assets directory | Create the directory if it doesn't exist (on by default) |
 
-- Pros: Multiple repositories can share the same image library
-- Cons: Paths depend on the local environment; they may break when switching machines or moving directories
+### Fixed local directory
 
-### Image Hosting
+Images are saved to a **fixed local directory**, decoupled from any particular vault.
 
-Images are uploaded to a **third-party image hosting service**, with only the web link kept in notes.
+- Pros: multiple vaults can share one image library
+- Cons: the path depends on your local environment and may break after switching machines or moving directories
 
-- Pros: Does not consume local or repository space
-- Cons: Requires internet access; some hosting services may incur costs; depends on external service availability
+After choosing this mode, specify the directory under "Storage path" (you can pick it with the "Choose directory…" button).
+
+### Image host upload (planned)
+
+Image host mode is **not implemented yet**; Settings shows "Image host upload (planned)" with an explanatory note. For now, use one of the two local storage modes above.
 
 ## File Naming Format
 
-Set the auto-generated filename when pasting / dragging images:
+Configure the file name generated automatically when pasting an image:
 
-- `YYYYMMDDHHmmss` — e.g., `20240101120000.png`, uniquely named by timestamp
-- `Random String` — e.g., `a1b2c3.png`, short and non-repeating
-- `Original Filename` — Preserves the image's original filename
+| Format | Example | Description |
+| --- | --- | --- |
+| Original name | `screenshot.png` | Keep the image's own file name |
+| Timestamp | `20240101120000.png` | A unique name based on time |
+| Original name + timestamp (default) | `screenshot-20240101120000.png` | Keeps the meaning and avoids duplicates |
 
 > [!TIP]
-> For multi-person collaboration or traceability, "Original Filename" is more intuitive; for personal notes, "YYYYMMDDHHmmss" avoids naming collisions.
-
-## Fixed Directory Path
-
-When the storage mode is set to "Fixed Directory", set the image save path here.
-
-## Paste Behavior
-
-Set the default action when pasting images:
-
-- **Auto-save to repository** — Directly write to disk and create a link
-- **Ask for save location** — Prompt for confirmation each time
-- **Insert reference only** — Do not copy the file; only insert a reference to an existing path
+> For collaboration or provenance, "Original name" is more intuitive; for personal notes the default "Original name + timestamp" avoids same-named images overwriting each other.
 
 ## Supported Formats
 
-Pasting and dragging supports the following image formats:
+Pasting and dragging recognize the following image formats:
 
-- PNG
-- JPG / JPEG
-- GIF
-- WebP
-- BMP
+PNG, JPG / JPEG, GIF, WebP, BMP, SVG, AVIF, ICO
 
 > [!NOTE]
-> For image preview methods, see [[04-File-Management/04-File-Preview]]; for embedding images in notes, see [[03-Knowledge-Management/02-Embedded-Content]].
+> For how images are previewed, see [[04-File-Management/04-File-Preview]]; for embedding images in notes, see [[03-Knowledge-Management/02-Embedded-Content]].
 
 ## Related Documents
 
 - [[04-File-Management/04-File-Preview]] — Image preview
-- [[04-File-Management/03-File-Operations]] — File management
+- [[03-Knowledge-Management/02-Embedded-Content]] — Embedding images
 - [[07-Settings/01-General-Settings]] — Basic settings

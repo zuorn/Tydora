@@ -1,61 +1,76 @@
-﻿---
+---
 title: Context Menu
-tags: [Editor]
+tags: [editor]
 ---
 
 # Context Menu
 
-**Right-clicking** in the editing area opens a context menu that centrally provides commonly used formatting and insertion commands. It complements the toolbar and keyboard shortcuts, serving as an efficient entry point for mouse-oriented users.
+**Right-clicking** in the editing area opens a context menu that gathers the most common formatting and insertion commands. It complements the toolbar and keyboard shortcuts, and is a fast route for mouse-driven users.
 
-> [!NOTE]
-> Most commands in the context menu also have corresponding keyboard shortcuts, with default bindings shown in parentheses. See the full list in [[07-Settings/04-Keyboard-Shortcuts]].
+> [!NOTE] Most commands in the context menu also have shortcuts; the default binding is shown in parentheses. See the full list in [[07-Settings/04-Shortcut-Reference]].
 
-## Basic Operations
+## Menu Structure
 
-- **Undo** / **Redo** — Revert or restore the previous action
-- **Cut** / **Copy** / **Paste** — Standard clipboard operations
+The menu consists of three rows of icon buttons plus two submenus:
+
+| Section | Contents |
+| --- | --- |
+| Row 1 · Clipboard | Cut, copy, paste, delete |
+| Row 2 · Inline formatting | Bold, italic, strikethrough, inline code, link |
+| Row 3 · Block formatting | Quote, bullet list, ordered list, task list, highlight |
+| Submenu · Heading | Heading levels 1–6, paragraph |
+| Submenu · Insert | Image, horizontal rule, table, code block, formula block, WikiLink |
+
+## Clipboard
+
+- **Cut** / **Copy** / **Paste** — standard clipboard operations
+- **Delete** — delete the current selection or the block the cursor is in
 
 ## Formatting
 
-| Command | Default Shortcut | Description |
+| Command | Default shortcut | Description |
 | --- | --- | --- |
-| Bold | `Ctrl+B` | Wraps selected text as bold |
-| Italic | `Ctrl+I` | Wraps selected text as italic |
-| Strikethrough | `Ctrl+D` | Wraps selected text as strikethrough |
-| Inline Code | `Ctrl+E` | Wraps selected text as `inline code` |
-| Highlight | `Ctrl+=` | Wraps selected text as `==highlight==` |
+| Bold | `Ctrl+B` | Wrap the selection in bold |
+| Italic | `Ctrl+I` | Wrap the selection in italics |
+| Strikethrough | `Ctrl+D` | Wrap the selection in strikethrough |
+| Inline code | `Ctrl+E` | Wrap the selection in `inline code` |
+| Link | `Ctrl+K` | Open the "Insert link" dialog to fill in link text and URL |
+| Highlight | `Ctrl+=` | Wrap the selection in `==highlight==` |
 
 ## Headings
 
-After selecting text (or placing the cursor in a paragraph), you can quickly set it to heading levels 1–6, or convert back to a normal paragraph.
+With text selected (or the cursor in a paragraph), quickly set a level 1–6 heading, or convert back to a normal paragraph.
 
-> Shortcuts: `Ctrl+Alt+1` ~ `Ctrl+Alt+6`, paragraph is `Ctrl+Alt+0`.
+> Shortcuts: `Ctrl+1` through `Ctrl+6`, and `Ctrl+0` for a paragraph.
 
-## Lists
+## Lists and Quotes
 
-- **Unordered List** — Bullet list (`Ctrl+L`)
-- **Ordered List** — Numbered list (`Ctrl+O`, may be affected by global shortcuts, see [[07-Settings/04-Keyboard-Shortcuts]])
-- **Task List** — Checkbox list (`Ctrl+J`)
+| Command | Default shortcut |
+| --- | --- |
+| Quote | `Ctrl+;` |
+| Bullet list | `Ctrl+L` |
+| Ordered list | No default binding |
+| Task list | `Ctrl+J` |
 
-## Block-level Elements
+> [!TIP] "Ordered list" has no shortcut bound by default (`Ctrl+O` belongs to "Quick Open"). To add one, assign it yourself in [[07-Settings/03-Keyboard-Shortcuts]].
 
-- **Blockquote** — Add a blockquote (also the carrier for Callouts, `Ctrl+;`)
-- **Code Block** — Insert a code block (`Ctrl+U`)
-- **Table** — Insert a table (`Ctrl+T`)
-- **Horizontal Rule** — Insert a divider (`Ctrl+Shift+H`)
+## Insert Submenu
 
-## Insert
+| Command | Default shortcut | Description |
+| --- | --- | --- |
+| Image | None | Open a file picker and insert an image (stored per the rules in [[07-Settings/06-Image-Settings]]) |
+| Horizontal rule | `Ctrl+Shift+H` | Insert `---` |
+| Table | `Ctrl+T` | Insert a table |
+| Code block | `Ctrl+U` | Insert a code block |
+| Formula block | None | Open the formula dialog and insert a block formula on confirm |
+| WikiLink | None | Insert `[[` and immediately bring up the autocomplete list |
 
-- **Hyperlink** — Insert a link (`Ctrl+K`)
-- **Image** — Insert an image (`Ctrl+Shift+I`)
-- **Wiki Link** — Insert a <a data-note="03-Knowledge-Management/01-Wiki-Links">03-Knowledge-Management/01-Wiki-Links</a>
-
-> [!TIP]
-> When you want to batch-apply formatting, select a piece of text first and then right-click — the menu commands will act directly on the selection; if nothing is selected, they act on the block where the cursor is currently located.
+> [!TIP] To apply formatting in bulk, select the text first and then right-click — the menu command applies to the selection. With nothing selected, it applies to the block the cursor is in.
 
 ## Related Documents
 
-- [[02-Editor/02-Markdown-Syntax]] — Syntax details
+- [[02-Editor/02-Markdown-Syntax]] — Syntax in detail
 - [[02-Editor/08-Table-Operations]] — Table editing
 - [[02-Editor/03-Code-Blocks]] — Code blocks
-- [[07-Settings/04-Keyboard-Shortcuts]] — Shortcut list
+- [[03-Knowledge-Management/01-Wiki-Links]] — WikiLink syntax
+- [[07-Settings/04-Shortcut-Reference]] — Shortcut list

@@ -1,28 +1,28 @@
-﻿---
+---
 title: Math Formulas
-tags: [Editor]
+tags: [editor]
 ---
 
 # Math Formulas
 
-Tydora supports **KaTeX** and **MathJax**, two math formula rendering engines, allowing you to write LaTeX formulas in both inline and block positions.
+Tydora renders math with **KaTeX**, and you can write LaTeX formulas inline or as a block.
 
 > [!NOTE]
-> Formula rendering is enabled by default. If not needed, you can disable it in [[07-Settings/02-Editor-Settings]], or switch between KaTeX and MathJax engines.
+> Formula rendering is on by default. Tydora uses **KaTeX only** — there is no MathJax engine to switch to.
 
 ## Inline Formulas
 
-Wrap with a single dollar sign `$ ... $`:
+Wrap the formula in single dollar signs `$ ... $`:
 
 ```markdown
-The mass-energy equation $E=mc^2$ is fundamental to physics.
+The mass–energy relation $E=mc^2$ is fundamental to physics.
 ```
 
-Display effect: The mass-energy equation $E=mc^2$ is fundamental to physics.
+Rendered: The mass–energy relation $E=mc^2$ is fundamental to physics.
 
 ## Block Formulas
 
-Wrap with double dollar signs `$$ ... $$`; the formula will occupy its own line and be centered:
+Wrap the formula in double dollar signs `$$ ... $$` and it takes its own centered line:
 
 ```markdown
 $$
@@ -30,14 +30,24 @@ $$
 $$
 ```
 
+## The Formula Dialog
+
+In live preview mode, **click a rendered formula** to open the formula dialog and preview as you type:
+
+- Typing LaTeX shows the rendered result immediately in the dialog
+- Syntax errors are reported without affecting the document
+- You can also open a blank dialog via the right-click menu "Insert" → "Formula Block", then confirm to insert a block formula
+
+> For complex formulas, prefer the dialog over hand-writing — the preview catches unbalanced braces immediately.
+
 ## Common Syntax
 
 ### Superscripts and Subscripts
 
 ```markdown
-$x^2$        → Superscript
-$H_2O$       → Subscript
-$x_i^{2n}$   → Combined superscript and subscript
+$x^2$        → superscript
+$H_2O$       → subscript
+$x_i^{2n}$   → combined
 ```
 
 ### Fractions
@@ -46,19 +56,19 @@ $x_i^{2n}$   → Combined superscript and subscript
 $\frac{a}{b}$
 ```
 
-### Square Roots
+### Roots
 
 ```markdown
-$\sqrt{x}$       → Square root
+$\sqrt{x}$       → square root
 $\sqrt[n]{x}$    → nth root
 ```
 
-### Summation, Integration, and Product
+### Sums, Integrals, and Products
 
 ```markdown
-$\sum_{i=1}^{n}$   → Summation
-$\int_{a}^{b}$     → Integration
-$\prod_{i=1}^{n}$  → Product
+$\sum_{i=1}^{n}$   → summation
+$\int_{a}^{b}$     → integral
+$\prod_{i=1}^{n}$  → product
 ```
 
 ### Greek Letters
@@ -90,19 +100,15 @@ a &= b + c \\
 $$
 ```
 
-## Engine Switching
+## Troubleshooting
 
-You can switch the rendering engine in the "Math Formulas" option of [[07-Settings/02-Editor-Settings]]:
-
-- **KaTeX** — Fast rendering speed, good syntax compatibility, recommended for daily writing
-- **MathJax** — More comprehensive functionality, supports more extended LaTeX syntax
+- Inline formulas must be written as `$...$`; block formulas as `$$...$$` on their own lines
+- Wrap multi-character subscripts in braces: `$x_{ij}$`, not `$x_ij$`
+- Don't omit backslash commands such as `\frac` and `\sum`
+- If a formula errors under KaTeX, it likely uses macros from a package KaTeX doesn't implement — rewrite it with equivalent basic syntax
 
 > [!TIP]
-> Most common formulas render correctly with both engines. If a complex formula errors under KaTeX, try switching to MathJax.
-
-## Related Settings
-
-- [[07-Settings/02-Editor-Settings]] — Formula engine selection and enable/disable
+> Markdown superscript / subscript syntax (`X^2^`, `H~2~O`) does **not** render in Tydora. For math, always use formula syntax.
 
 ## Related Documents
 

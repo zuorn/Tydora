@@ -1,78 +1,81 @@
-﻿---
+---
 title: Editing Modes
-tags: [Editor]
+tags: [editor]
 ---
 
 # Editing Modes
 
-Tydora supports two editing modes, corresponding to two different needs: "writing smoothly" and "viewing precisely." You can switch between them at any time during writing without affecting each other.
+Tydora offers two editing modes, matching the two needs of "writing comfortably" and "seeing precisely." You can switch at any point while writing, with no effect on either.
 
-> [!NOTE]
-> Press `Ctrl+/` to toggle between the two modes with one key. You can also specify a default mode in settings (see [[07-Settings/02-Editor-Settings]]).
+> [!NOTE] Press `Ctrl+/` to toggle between the two modes. Opening a file always starts in **live preview (IR)** mode.
 
-## Two Modes
+## The Two Modes
 
-### Instant Rendering (IR / WYSIWYG)
+### Live Preview (IR / WYSIWYG)
 
-In Instant Rendering mode, the Markdown syntax you type is **immediately rendered**, giving you a what-you-see-is-what-you-get experience. The underlying engine is powered by TipTap 3.x.
+In live preview, the Markdown you type **immediately becomes the rendered result** — what you see is what you get. It is powered by the TipTap 3.x engine.
 
-**Features:**
+**Characteristics:**
 
-- Headings, bold text, lists, etc. are displayed directly in their formatted styles
-- Supports drag-to-resize for images
-- Natively supports rich elements such as Callout blocks, Mermaid diagrams, and code block highlighting
-- Markdown markers at the cursor position are shown on demand and hidden when the cursor leaves
-- Ideal for daily writing, note-taking, and quick editing
+- Headings, bold, lists, and so on are shown with their typeset styling
+- Images can be resized by dragging
+- Native support for callout blocks, Mermaid diagrams, highlighted code blocks, math formulas, and other rich elements
+- Markdown markers near the cursor are revealed as needed and hidden again once you move away
+- Tables show a floating toolbar supporting row/column insertion and deletion, alignment, and cell merge/split
+- Frontmatter appears as an inline-editable YAML block
+- Best for everyday writing, note-taking, and quick edits
 
-> [!TIP]
-> Instant Rendering is the recommended mode for most scenarios. Its experience is closest to Typora / Obsidian's "Live Preview."
+> [!TIP] Live preview is the recommended mode for most situations. It feels closest to Typora / Obsidian's "live preview."
 
-### Source View (SV)
+### Source Mode (SV)
 
-Source View displays **pure Markdown text**, with professional syntax highlighting and editing experience provided by CodeMirror 6.
+Source mode shows **plain Markdown text**, with professional syntax highlighting and editing from CodeMirror 6.
 
-**Features:**
+**Characteristics:**
 
-- Fully preserves all Markdown markers for precise control
-- CodeMirror 6 syntax highlighting, supporting 36 programming languages
-- Code folding, bracket matching, auto-completion
-- Ideal for fine-tuning formatting, batch rewriting, and editing code blocks
+- Keeps every Markdown marker intact for precise control
+- CodeMirror 6 syntax highlighting
+- Code folding and bracket matching
+- Best for fine-grained formatting, bulk rewrites, and editing code blocks
 
 ## How to Switch
 
 | Method | Action |
 | --- | --- |
-| Shortcut | `Ctrl+/` cycles between IR ↔ SV |
-| Status Bar | Click the mode indicator on the bottom status bar (showing the current mode); it is clickable to switch |
-| Settings | Set the default mode in [[07-Settings/02-Editor-Settings]] |
+| Shortcut | `Ctrl+/` toggles IR ↔ SV |
+| Status bar | Click the mode indicator at the bottom status bar (it shows the current mode) |
+| Command Palette | `Ctrl+P` → "Switch to live preview mode / Switch to source mode" |
 
-> [!NOTE]
-> Switching modes does not change the file content — only the way it is presented and edited. What is saved is always standard Markdown text.
+> [!NOTE] Switching modes does not change the file contents — only how they are presented and edited. What gets saved is always standard Markdown text.
+
+> [!NOTE] Tydora always opens files in live preview mode; there is currently no "default editing mode" setting in the UI. To start in source mode, open the file and press `Ctrl+/`.
 
 ## Mode Comparison
 
-| Feature | IR / WYSIWYG | SV (Source View) |
+| Feature | IR / WYSIWYG | SV (Source) |
 | --- | --- | --- |
-| Formatted Display | Rendered immediately | Shows syntax markers |
-| Syntax Visibility | Low (partial display at cursor) | High |
-| Editing Experience | What You See Is What You Get | Full plain text control |
-| Image Handling | Drag to resize | Shows markers and paths |
-| Best For | Daily writing, reading | Fine-tuning, code editing |
+| Formatting display | Rendered immediately | Syntax markers visible |
+| Syntax visibility | Low (shown locally near the cursor) | High |
+| Editing feel | What you see is what you get | Full control over plain text |
+| Tables | Visual editing via floating toolbar | Hand-edit pipe tables |
+| Frontmatter | Inline editable block | Plain YAML text |
+| Images | Drag to resize | Shows markers and paths |
+| Best for | Everyday writing, reading | Fine-tuning, code editing |
 
-## Complementary Features
+## Relationship to Vim Mode
 
-- **Typewriter Mode**: Keeps the cursor centered at all times → [[02-Editor/10-Typewriter-Mode]]
-- **Context Menu**: Quickly apply formatting in Instant Rendering → [[02-Editor/09-Context-Menu]]
-- **Table Floating Toolbar**: Appears when hovering over a table in Instant Rendering → [[02-Editor/08-Table-Operations]]
+Vim mode is **not** a third editing mode — it is a keybinding layer on top of the other two. Once enabled, both source mode and live preview support the full normal / insert / visual triad. See [[02-Editor/11-Vim-Mode]].
 
-## Related Settings
+## Features That Pair Well
 
-- [[07-Settings/02-Editor-Settings]] — Set the default editing mode
-- [[02-Editor/10-Typewriter-Mode]] — Auto-centering cursor
+- **Typewriter mode**: keeps the cursor vertically centered → [[02-Editor/10-Typewriter-Mode]]
+- **Context menu**: apply formatting quickly in live preview → [[02-Editor/09-Context-Menu]]
+- **Table floating toolbar**: appears when you hover a table in live preview → [[02-Editor/08-Table-Operations]]
+- **Splits**: `Ctrl+\` splits left/right, so you can open two files in different modes in two panes → [[05-Navigation-Search/04-Split-and-Panes]]
 
 ## Related Documents
 
 - [[02-Editor/02-Markdown-Syntax]] — Supported syntax
 - [[02-Editor/09-Context-Menu]] — Formatting commands
 - [[02-Editor/03-Code-Blocks]] — Code highlighting
-- [[07-Settings/04-Keyboard-Shortcuts]] — Mode switching shortcuts
+- [[07-Settings/04-Shortcut-Reference]] — Mode switching shortcut

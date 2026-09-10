@@ -1,66 +1,65 @@
-﻿---
+---
 title: Command Palette
-tags: [Navigation & Search]
+tags: [navigation-search]
 ---
 
 # Command Palette
 
-The Command Palette lets you search for and execute virtually any command in Tydora using the keyboard — from formatting text to opening the graph view, switching modes, and more — without digging through menus.
+The Command Palette lets you search and run almost any command in Tydora from the keyboard — from formatting text to opening the graph, splitting panes, or exporting — without hunting through menus.
 
 > [!NOTE]
 > Shortcut: `Ctrl+P`.
 
-## Usage
+## How to Use It
 
 1. Press `Ctrl+P` to open the Command Palette.
-2. Type command keywords for fuzzy search.
-3. Use the arrow keys to select, then press `Enter` to execute; or click the result.
-4. Press `Esc` to close.
+2. Type a keyword to fuzzy search commands.
+3. Use the arrow keys to choose and press `Enter` to run, or click a result.
+4. Press `Esc` to close it.
 
-## Supported Commands
+## Command Groups
 
-### Editing Commands
+Commands are organized by category, and keywords match both **command names and aliases**:
 
-Undo, redo, cut, copy, paste, select all, etc.
+| Group | Examples |
+| --- | --- |
+| File | Save file, open file, open in new window, vaults |
+| Edit | Undo, redo |
+| Format | Bold, italic, strikethrough, inline code, code block, hyperlink, quote, horizontal rule |
+| List | Bullet list, ordered list, task list |
+| Heading | Heading 1–6, paragraph |
+| Insert | Insert image, insert footnote, insert table of contents, insert formula, table |
+| View | Toggle sidebar, toggle editing mode, typewriter mode, mind map, knowledge graph, new terminal, split horizontally / vertically |
+| Mode | Switch to live preview mode / switch to source mode (the current mode is marked with ✓) |
+| Tools | Publish as website |
+| Export | Copy as Markdown, copy for WeChat, export to PDF / HTML / Word / image / social cards |
+| Window | Minimize window, maximize window, close window |
+| Settings | Open Settings, and jump directly to the General / Theme / Shortcuts / Mind map / Knowledge graph / Image / Canvas settings pages |
 
-### Formatting Commands
+## Aliases and Search Tips
 
-Bold, italic, strikethrough, inline code, code block, links, various heading levels, lists, task lists, etc.
+Commands have both Chinese and English aliases, so either works:
 
-### View Commands
-
-Toggle edit mode, toggle sidebar, open mind map, open knowledge graph, typewriter mode, etc.
-
-### File Commands
-
-New file, save file, close file, quick open, etc.
-
-### Mode Commands
-
-Switch directly to "Live Preview" or "Source Code" mode.
-
-## Search Scope
-
-The Command Palette searches across all available commands, including:
-
-- Regular commands from menus
-- Commands with keyboard shortcuts
-- Commands provided by editor extensions
+- "Vaults" can also be found via `仓库` or `vault`
+- "Export to Word" can also be found via `word`, `docx`, or `document`
+- "Export as social cards" can also be found via `xiaohongshu`, `xhs`, or `card`
+- "Open knowledge graph" can also be found via `graph`
 
 > [!TIP]
-> You can search using either Chinese or English keywords. For example, "graph", "mind", or "图谱" can all locate the command to open the knowledge graph.
+> Commands that already have a shortcut show the keybinding on the right, so you pick it up as you go.
 
-## Recent Commands
+## Recently Used Commands
 
-The palette remembers your recently executed commands and pins them to the top, making repeated operations even faster.
+The palette remembers the commands you **ran most recently** and puts them at the top, making repeated actions faster.
 
 ## Difference from Quick Open
 
-- Command Palette (`Ctrl+P`) searches for **commands**.
-- Quick Open (`Ctrl+O`) searches for **files**.
+- The Command Palette (`Ctrl+P`) searches **commands**.
+- Quick Open (`Ctrl+O`) searches **files**.
 
 ## Related Documents
 
-- [[05-Navigation-Search/01-Quick-Open]] — File quick open
-- [[07-Settings/04-Shortcut-Reference]] — Keyboard shortcut reference
-- [[07-Settings/03-Keyboard-Shortcuts]] — Custom keyboard shortcuts
+- [[05-Navigation-Search/01-Quick-Open]] — Opening files quickly
+- [[07-Settings/04-Shortcut-Reference]] — Shortcut list
+- [[07-Settings/03-Keyboard-Shortcuts]] — Customizing shortcuts
+- [[08-Advanced-Features/04-Export-and-Copy]] — Export commands in detail

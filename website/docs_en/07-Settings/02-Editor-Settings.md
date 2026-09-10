@@ -1,80 +1,75 @@
-﻿---
-title: Editor Settings
-tags: [Settings]
+---
+title: Editor Behavior and Rendering
+tags: [settings]
 ---
 
-# Editor Settings
+# Editor Behavior and Rendering
 
-Editor settings manage **editing behavior, rendering options, and syntax highlighting** — the configurations that determine your detailed writing experience.
+This page explains which settings control Tydora's **rendering capabilities and editing behavior**, and where to adjust them.
 
 > [!NOTE]
-> Press `Ctrl+,` to open Settings, then switch to the "Editor" tab.
+> The Settings panel tabs are: General, Theme, Shortcuts, Image, Mind map, Knowledge graph, Canvas, Terminal, Publish, Vim Mode, About. There is **no separate "Editor" tab** — editing-related configuration is spread across the "General" and "Theme" tabs.
 
-## Default Editing Mode
+## Where Editing Settings Live
 
-Set the default mode when opening new files:
+| What you want to change | Where to go |
+| --- | --- |
+| Body font size, code font size | General → Appearance → Body font size / Code font size |
+| Line height, paragraph spacing, code line height | General → Appearance |
+| Editor font, code font | General → Appearance |
+| Maximum content width | General → Appearance → Preview area width |
+| Show line numbers | General → Appearance → Show line numbers |
+| Code block toolbar style | General → Appearance → Code block toolbar |
+| Menu item density | General → Appearance → Menu item height |
+| Typewriter mode | General → Appearance → Typewriter mode |
+| Auto save | General → Behavior → Auto save |
+| Code highlighting colors | Theme → Code highlight theme |
+| UI colors | Theme → Built-in themes / Custom themes |
+| Keyboard shortcuts | Shortcuts |
+| Vim keybindings and conflict handover | Vim Mode |
 
-- **Instant Rendering (IR / WYSIWYG)** — What you see is what you get; recommended for daily writing
-- **Source Code Mode (SV)** — Pure Markdown text; suitable for fine-tuning
+## Rendering Toggles
 
-> You can always temporarily switch with `Ctrl+/`. See [[02-Editor/01-Editing-Modes]] for details.
+The following capabilities are **on by default** in Tydora, and there is currently no UI toggle for them (they are permanently enabled in the configuration):
 
-## Typewriter Mode
+| Capability | Description |
+| --- | --- |
+| Math formulas | KaTeX rendering, inline `$...$` and block `$$...$$`. See [[02-Editor/04-Math-Formulas]] |
+| Mermaid diagrams | Live rendering of `mermaid` code blocks. See [[02-Editor/05-Mermaid-Diagrams]] |
+| Callouts | 15 `[!TYPE]` callout types. See [[02-Editor/06-Callout-Blocks]] |
+| Frontmatter | Inline editing and highlighting of the top YAML metadata block. See [[02-Editor/07-Frontmatter]] |
+| WikiLink | `[[Note Name]]` bidirectional links and autocomplete. See [[03-Knowledge-Management/01-Wiki-Links]] |
+| Table floating toolbar | The toolbar that appears when the cursor enters a table. See [[02-Editor/08-Table-Operations]] |
+| Tags | `#tag` inline tags and autocomplete. See [[03-Knowledge-Management/06-Tags]] |
 
-When enabled, the cursor always stays at the center of the screen. You can also toggle it at any time with `Ctrl+Alt+T`.
+> [!NOTE]
+> The technical configuration options for these capabilities exist in the app's internal settings (stored in `localStorage` under `zmd-editor-settings`), but the Settings panel does not yet expose toggles for them. If you genuinely need to disable one, please file a request on GitHub Issues.
 
-> See [[02-Editor/10-Typewriter-Mode]] for details.
+## Editing Behavior Notes
 
-## Markdown Rendering
+### Default Editing Mode
 
-### Math Formulas
+Files open in **live preview (IR)** mode by default. There is currently no "default editing mode" setting in the UI; to start in source mode, open the file and press `Ctrl+/`. See [[02-Editor/01-Editing-Modes]].
 
-Enable / disable formula rendering and choose an engine:
+### Word Count
 
-- **KaTeX** — Fast, great compatibility (recommended)
-- **MathJax** — More feature-rich
+The status bar at the bottom of the editor **always shows the current document's word count** — no need to enable it. With a split view, only the active pane is counted.
 
-> See [[02-Editor/04-Math-Formulas]] for details.
+### About Caching
 
-### Code Highlighting
+Tydora has **no** "Clear cache" button. If you hit a rendering anomaly (styles not refreshing, diagrams not updating), try this order:
 
-Enable / disable code syntax highlighting and choose a highlight theme.
+1. Toggle the editing mode once (`Ctrl+/`) to force a repaint
+2. Fully quit and restart Tydora
+3. File it on GitHub Issues with a screenshot
 
-> See [[06-Themes-Appearance/03-Code-Highlight-Themes]] and [[02-Editor/03-Code-Blocks]] for details.
+### About XSS Filtering
 
-### Mermaid Diagrams
-
-Enable / disable real-time rendering of Mermaid diagrams.
-
-> See [[02-Editor/05-Mermaid-Diagrams]] for details.
-
-### Footnotes
-
-Enable / disable `[^1]` footnote syntax support.
-
-### Table of Contents
-
-Enable / disable the `[toc]` syntax. When enabled, `[toc]` in the document renders as the current document's table of contents.
-
-## Word Count
-
-When enabled, displays the current document's **word count, character count, and line count** somewhere in the editor (usually the bottom status bar), making it easy to track document length.
-
-## Cache Settings
-
-Provides a "Clear Cache" operation to resolve occasional rendering anomalies (e.g., styles not refreshing, diagrams not updating). If you encounter display issues, try clearing the cache first.
-
-## XSS Filtering
-
-When enabled, filters potentially malicious cross-site scripting (XSS) code in Markdown, improving security when opening untrusted notes. It is recommended to keep this enabled.
-
-> [!WARNING]
-> Disabling XSS filtering allows scripts in notes to execute. Only consider turning it off when you fully trust the source of your notes.
+Tydora has **no** standalone "XSS filtering" toggle. Markdown rendering runs through a local pipeline, and HTML attribute values generated by WikiLinks and similar are escaped; even so, stay cautious when opening Markdown files from untrusted sources.
 
 ## Related Documents
 
-- [[02-Editor/01-Editing-Modes]] — Editing mode details
-- [[02-Editor/04-Math-Formulas]] — Formula support
-- [[02-Editor/03-Code-Blocks]] — Code highlighting
-- [[02-Editor/05-Mermaid-Diagrams]] — Diagram rendering
-- [[07-Settings/01-General-Settings]] — Basic settings
+- [[07-Settings/01-General-Settings]] — Fonts, typography, and behavior
+- [[02-Editor/01-Editing-Modes]] — The two editing modes
+- [[02-Editor/02-Markdown-Syntax]] — Supported syntax
+- [[07-Settings/04-Shortcut-Reference]] — Shortcut list

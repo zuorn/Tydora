@@ -1,61 +1,121 @@
-﻿---
+---
 title: General Settings
-tags: [Settings]
+tags: [settings]
 ---
 
 # General Settings
 
-General settings manage the application's **appearance, fonts, and auto-save** — the first place you should look after every installation.
+General settings manage the app's **fonts, typography, editing behavior, window behavior, sidebar placement, and UI language** — the first place worth a look after any fresh install.
 
 > [!NOTE]
-> Press `Ctrl+,` to open Settings, which defaults to the "General" tab.
+> Press `Ctrl+,` to open Settings; it lands on the "General" tab by default. Appearance mode (light / dark) is set in the "Theme" tab — see [[06-Themes-Appearance/01-Built-in-Themes]].
 
-## Appearance Mode
-
-Configure the app's light / dark appearance:
-
-- **Follow System** — Automatically match the operating system's appearance setting
-- **Light** — Force light mode
-- **Dark** — Force dark mode
-
-> A single theme's look and feel changes with the appearance mode; dark themes (such as Mint Dark) look best in "Dark" mode. See [[06-Themes-Appearance/01-Built-in-Themes]].
-
-## Font Settings
+## Appearance
 
 ### Editor Font
 
-Select the font used in the editor:
+Choose the font used for body text and Markdown source. The font picker supports search and groups fonts by source:
 
-- System Default
-- LXGW WenKai (Xiawu Wenkai, ideal for Chinese writing)
-- Monospace (suitable for code and table alignment)
-- Other system-installed fonts
+| Group | Description |
+| --- | --- |
+| Built-in | Fonts bundled with Tydora (such as LXGW WenKai, well suited to Chinese writing) |
+| Monospace | Monospace fonts suited to code and aligned tables |
+| System fonts | Fonts installed on your system, searchable |
+| System default | Use the operating system's default font |
 
-### Font Size
+### Code Font
 
-Adjust the editor body font size, ranging from **12–32 px**. Drag the slider or enter a value directly.
+Set the **monospace font** used by code blocks and inline code separately.
 
-> [!TIP]
-> For Chinese writing, we recommend LXGW WenKai at 16–18 px; for code-heavy scenarios, use a monospace font.
+### Font Sizes
 
-## Auto-Save
+- **Body font size**: the size of editor body text and Markdown source
+- **Code font size**: the size of code blocks and inline code (default 14)
 
-When enabled, files are **automatically written to disk** approximately 1 second after you stop typing, eliminating the need to frequently press `Ctrl+S`.
+### Line and Paragraph Spacing
 
-### Delay Time
+- **Line height**: body line height (default 1.6)
+- **Paragraph spacing**: vertical space between paragraphs (default 0.5 em)
+- **Code line height**: line height inside code blocks (default 1.5)
 
-Set the auto-save wait duration (in seconds) to avoid triggering a write on every keystroke. The default value balances timeliness and performance.
+### Preview Area Width
+
+The maximum width of the editor content area (default 800 px). Smaller makes long prose easier to read; larger suits wide screens and table-heavy documents.
+
+### Show Line Numbers
+
+Show editor line numbers in live preview (IR) mode; on by default.
+
+### Code Block Toolbar
+
+Choose the display style of the code block language picker and action buttons:
+
+- **Floating (minimal)** — shows only the language picker in the top-right corner (default)
+- **Top bar (with copy/delete)** — a full toolbar across the top
+
+### Menu Item Height
+
+Adjust the vertical spacing of entries in context menus and dropdowns: Compact / Standard / Relaxed.
+
+## Behavior
+
+### Auto Save
+
+Saves files automatically while editing; **on by default**. When enabled, the file is written to disk about 1 second after you stop typing; `Ctrl+S` still saves immediately.
 
 > [!NOTE]
-> Even with auto-save enabled, `Ctrl+S` can still be used for immediate saving.
+> The auto-save delay is fixed at 1 second; there is no configurable delay setting.
 
-## Theme Resource Directory
+### Expand Outline on Startup
 
-View and modify the storage location of theme files. Imported [[06-Themes-Appearance/02-Typora-Themes]] themes and custom themes are all saved in this directory, where you can directly manage their CSS files.
+When enabled, double-clicking a `.md` file to open it in this app expands the sidebar and switches to the outline view automatically; when disabled, the original collapsed-sidebar behavior is kept.
+
+### Language
+
+The UI display language. Supported:
+
+- **简体中文**
+- **English**
+
+Takes effect immediately, with no restart required.
+
+### Anonymous Usage Analytics
+
+The "Walk a little further with you 🌿" toggle. When on, it anonymously collects feature usage and error information to improve the product:
+
+- Reports only behavior event names and a few properties
+- **Never collects** file paths, file names, or document content
+- Can be turned off at any time; once off, no data is sent
+
+See [[01-Getting-Started/Privacy-Policy]].
+
+## Window
+
+| Setting | Description |
+| --- | --- |
+| Hide the top bar when the sidebar is expanded | The top bar also hides while the sidebar is expanded; hovering the top edge reveals it temporarily |
+| Hide the top bar when the sidebar is collapsed | Whether the top bar hides when the sidebar collapses; when off, the top bar stays visible with the sidebar collapsed |
+
+> Window position and size are remembered automatically by Tydora and restored on the next launch; no manual configuration needed.
+
+## Sidebar Settings
+
+Configure whether each sidebar tab appears in the **left sidebar** or the **right sidebar**:
+
+| Tab | Default position |
+| --- | --- |
+| Files | Left sidebar |
+| Search | Left sidebar |
+| Outline | Right sidebar |
+| Bookmarks | Left sidebar |
+| Tags | Right sidebar |
+
+> [!TIP]
+> You can also **drag a tab** in the sidebar to move it to the other side; the setting syncs accordingly.
 
 ## Related Documents
 
-- [[06-Themes-Appearance/01-Built-in-Themes]] — Theme selection
-- [[07-Settings/02-Editor-Settings]] — Editor configuration
-- [[07-Settings/03-Keyboard-Shortcuts]] — Keyboard shortcut configuration
-- [[06-Themes-Appearance/02-Typora-Themes]] — Theme resource directory guide
+- [[06-Themes-Appearance/01-Built-in-Themes]] — Appearance modes and themes
+- [[07-Settings/02-Editor-Settings]] — Where rendering toggles and editing behavior live
+- [[07-Settings/03-Keyboard-Shortcuts]] — Configuring shortcuts
+- [[07-Settings/06-Image-Settings]] — Image storage and naming

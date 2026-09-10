@@ -1,60 +1,53 @@
-﻿---
-title: Mind Map Settings
-tags: [Settings]
+---
+title: Mind Map and Knowledge Graph Settings
+tags: [settings]
 ---
 
-# Mind Map Settings
+# Mind Map and Knowledge Graph Settings
 
-This page configures the display parameters of [[08-Advanced-Features/02-Mind-Map]] and [[03-Knowledge-Management/04-Knowledge-Graph]], allowing you to adjust node density, line thickness, and physics layout to your preference.
+This page configures the display parameters for the [[08-Advanced-Features/02-Mind-Map]] and the [[03-Knowledge-Management/04-Knowledge-Graph]]. They are two **independent** settings tabs:
+
+- The "Mind map" tab — the Markmap mind map
+- The "Knowledge graph" tab — the D3 force-directed knowledge graph
 
 > [!NOTE]
-> Press `Ctrl+,` to open Settings, then switch to the "Mind Map" tab. The "Relationship Graph" group corresponds to the Knowledge Graph.
+> Press `Ctrl+,` to open Settings, then pick the corresponding tab in the list on the left.
 
 ## Mind Map Settings
 
-Based on Markmap rendering, adjustable parameters:
+Rendered with Markmap; adjustable parameters:
 
-### Max Width
+| Setting | Description | Default |
+| --- | --- | --- |
+| Max node width | Node text wraps once it exceeds this width | 200 |
+| Horizontal spacing | Horizontal distance between sibling nodes | 80 |
+| Vertical spacing | Vertical distance between parent and child nodes | 5 |
+| Link width | Thickness of the lines between nodes | 1.5 |
+| Initial expand depth | How many levels are expanded when the mind map opens (can be "all") | 2 |
+| Animation duration | Animation time for expanding / collapsing nodes (ms) | 300 |
+| Color freeze depth | The level from which fixed colors are used (can be "no freeze") | No freeze |
 
-Set the **maximum width** of mind map nodes. Overly wide content will wrap, preventing a single node from stretching the canvas horizontally.
-
-### Spacing
-
-Set the **spacing** between nodes, controlling overall density.
-
-### Animation Duration
-
-Set the animation duration for expanding / collapsing nodes (in milliseconds). Lower values are snappier; higher values are smoother.
-
-### Line Width
-
-Set the thickness of connecting lines.
-
-### Color Freeze Level
-
-Set "from which level to start using different colors" to differentiate layers. For example, if set to 2, the root node and first-level nodes share the same color, while levels 2 and below use a color gradient to distinguish them, making depth easier to perceive.
+> [!TIP]
+> With many nodes and deep structure, lowering "Initial expand depth" lets the map open in a condensed state, then you expand the branches you care about.
 
 ## Knowledge Graph Settings
 
-Based on D3.js force-directed graph, adjustable parameters:
+Based on a D3 force-directed layout plus WebGL rendering; adjustable parameters:
 
-### Node Size
-
-Set the default radius of graph nodes. Notes with more links are rendered larger in the graph; this parameter sets the base size.
-
-### Link Thickness
-
-Set the default thickness of links. Higher-frequency links appear thicker.
-
-### Force Strength
-
-Adjust the **physics simulation strength** (charge force) of the force-directed graph. The more negative the value, the stronger the repulsion between nodes and the looser the layout; the closer to 0, the more easily they cluster together.
+| Setting | Description | Default |
+| --- | --- | --- |
+| Open in a new window | When on, `Ctrl+G` and the toolbar button open the graph in a separate window | Off |
+| Max node size | The maximum size of a node in the graph | 15 |
+| Label font size | Text size of node labels | 11 |
+| Link distance | The ideal distance between nodes | 160 |
+| Repulsion strength | The repulsive force between nodes; **a larger negative value spreads nodes further apart** | -200 |
+| Edge opacity | How visible the links are | 0.8 |
 
 > [!TIP]
-> When the repository has many links, increasing the absolute value of "Force Strength" makes clusters clearer; when links are sparse, reducing it prevents nodes from scattering too far apart.
+> With many links in the vault, increasing the absolute value of "Repulsion strength" makes clusters clearer; with sparse links, decreasing it keeps nodes from flying apart. When nodes are too dense to read labels, lower "Label font size" or raise "Link distance".
 
 ## Related Documents
 
-- [[08-Advanced-Features/02-Mind-Map]] — Mind map usage
-- [[03-Knowledge-Management/04-Knowledge-Graph]] — Knowledge graph
+- [[08-Advanced-Features/02-Mind-Map]] — Using mind maps
+- [[03-Knowledge-Management/04-Knowledge-Graph]] — The knowledge graph
 - [[07-Settings/01-General-Settings]] — Basic settings

@@ -1,137 +1,133 @@
 ---
-title: Shortcut Quick Reference
-tags: [Shortcuts]
+title: Shortcut Reference
+tags: [shortcuts]
 ---
 
-# Shortcut Quick Reference
+# Shortcut Reference
 
-Tydora comes with 40+ keyboard shortcuts. The table below shows the **default configuration**. All shortcuts can be viewed, modified, or reset to defaults in [[07-Settings/03-Keyboard-Shortcuts]].
+Tydora ships 48 customizable editing shortcuts. The tables below show the **default configuration**. Every shortcut can be viewed, changed, or reset in [[07-Settings/03-Keyboard-Shortcuts]].
 
-> [!NOTE]In the tables, Ctrl corresponds to Cmd (⌘) on macOS. Some combinations use Ctrl+Alt+Number — use the main keyboard number row directly; a numeric keypad is not required.
+> [!NOTE]
+> In these tables, Ctrl corresponds to Cmd (⌘) on macOS.
 
-## Global Shortcuts
+## App-Level Shortcuts
 
-The following shortcuts are available anywhere in the application (system-level bindings):
+These are fixed in the program and are not in the shortcut settings panel:
 
-| Shortcut | Function | Related Document |
+| Shortcut | Action | Related page |
 | --- | --- | --- |
-| `Ctrl+S` | Save current file |  |
-| `Ctrl+O` | Quick open file |  |
-| `Ctrl+P` | Command palette |  |
-| `Ctrl+/` | Toggle editing mode (IR ↔ SV) |  |
-| `Ctrl+M` | Open mind map |  |
-| `Ctrl+G` | Open knowledge graph |  |
-| `Ctrl+\` | Toggle sidebar | — |
-| `Ctrl+W` | Close current window | — |
-| `Ctrl+Alt+T` | Toggle typewriter mode |  |
-| `Ctrl+E` | Inline code |  |
+| `Ctrl+S` | Save the current file | [[04-File-Management/03-File-Operations]] |
+| `Ctrl+W` | Close the current window | — |
+| `Ctrl+F` | Find within the current document | [[02-Editor/12-Find-and-Replace]] |
+| `Ctrl+H` | Replace within the current document | [[02-Editor/12-Find-and-Replace]] |
+| `Ctrl+G` | Open the knowledge graph | [[03-Knowledge-Management/04-Knowledge-Graph]] |
 
 ## Format
 
-| Shortcut | Function |
+| Shortcut | Action |
 | --- | --- |
 | `Ctrl+B` | Bold |
 | `Ctrl+I` | Italic |
 | `Ctrl+D` | Strikethrough |
 | `Ctrl+E` | Inline code |
 | `Ctrl+U` | Code block |
-| `Ctrl+K` | Insert link |
+| `Ctrl+K` | Hyperlink |
 | `Ctrl+=` | Highlight |
-| `Ctrl+;` | Blockquote |
+| `Ctrl+;` | Quote |
 | `Ctrl+Shift+H` | Horizontal rule |
 
 ## List
 
-| Shortcut | Function |
+| Shortcut | Action |
 | --- | --- |
-| `Ctrl+L` | Unordered list |
-| `Ctrl+O` | Ordered list *（see note below）* |
+| `Ctrl+L` | Bullet list |
+| — | Ordered list (**no default binding**) |
 | `Ctrl+J` | Task list |
 | `Ctrl+Shift+O` | Increase indent |
 | `Ctrl+Shift+I` | Decrease indent |
-| `Ctrl+Shift+J` | Toggle task completion status |
+| `Ctrl+Shift+J` | Toggle task completion |
 
-## Headings
+## Heading
 
-| Shortcut | Function |
+| Shortcut | Action |
 | --- | --- |
-| `Ctrl+Alt+1` | Heading level 1 |
-| `Ctrl+Alt+2` | Heading level 2 |
-| `Ctrl+Alt+3` | Heading level 3 |
-| `Ctrl+Alt+4` | Heading level 4 |
-| `Ctrl+Alt+5` | Heading level 5 |
-| `Ctrl+Alt+6` | Heading level 6 |
-| `Ctrl+Alt+0` | Paragraph (clear heading level) |
+| `Ctrl+1` | Heading 1 |
+| `Ctrl+2` | Heading 2 |
+| `Ctrl+3` | Heading 3 |
+| `Ctrl+4` | Heading 4 |
+| `Ctrl+5` | Heading 5 |
+| `Ctrl+6` | Heading 6 |
+| `Ctrl+0` | Paragraph (clear heading level) |
 
 ## Insert
 
-| Shortcut | Function |
+| Shortcut | Action |
 | --- | --- |
 | `Ctrl+T` | Insert table |
-| `Ctrl+Shift+B` | Insert content above |
-| `Ctrl+Shift+E` | Insert content below |
+| `Ctrl+Shift+B` | Insert above |
+| `Ctrl+Shift+E` | Insert below |
 
 ## Table
 
-| Shortcut | Function |
+| Shortcut | Action |
 | --- | --- |
 | `Ctrl+Shift+F` | Insert row above |
 | `Ctrl+Shift+.` | Insert row below |
-| `Ctrl+Shift+G` | Insert column to the left |
-| `Ctrl+Shift+=` | Insert column to the right |
-| `Ctrl+-` | Delete row |
+| `Ctrl+Shift+G` | Insert column left |
+| `Ctrl+Shift+=` | Insert column right |
+| `Ctrl+-` | Delete row (inside a table) |
 | `Ctrl+Shift+-` | Delete column |
-| `Ctrl+Shift+L` | Cell align left |
-| `Ctrl+Shift+C` | Cell align center |
-| `Ctrl+Shift+R` | Cell align right |
+| `Ctrl+Shift+L` | Align cell left |
+| `Ctrl+Shift+C` | Align cell center |
+| `Ctrl+Shift+R` | Align cell right |
 
-> In instant rendering mode, you can also use `Tab` / `Shift+Tab` to move within a table and automatically add rows. See [[02-Editor/08-Table-Operations]] for details.
+> In live preview mode you can also use `Tab` / `Shift+Tab` to move within a table and add rows automatically. See [[02-Editor/08-Table-Operations]].
 
 ## Edit
 
-| Shortcut | Function |
+| Shortcut | Action |
 | --- | --- |
 | `Ctrl+Z` | Undo |
 | `Ctrl+Y` | Redo |
-| `Ctrl+A` | Select all (within code block) |
+| `Ctrl+A` | Select all (inside code blocks) |
 
-## View & Mode
+## View
 
-| Shortcut | Function |
+| Shortcut | Action |
 | --- | --- |
-| `Ctrl+\` | Toggle sidebar |
+| `Ctrl+Tab` | Toggle the sidebar |
 | `Ctrl+Alt+T` | Typewriter mode |
-| `Ctrl+M` | Open mind map |
-| `Ctrl+/` | Toggle mode (IR ↔ SV) |
+| `Ctrl+M` | Open the mind map |
+| `Ctrl+\` | Split horizontally |
+| `Ctrl+-` | Split vertically (outside a table) |
+| ``Ctrl+` `` | New terminal pane |
+
+## Mode
+
+| Shortcut | Action |
+| --- | --- |
+| `Ctrl+/` | Switch editing mode (live preview ↔ source) |
 
 ## System
 
-| Shortcut | Function |
+| Shortcut | Action |
 | --- | --- |
-| `Esc` | Dismiss overlay / prompt |
-| `Ctrl+O` | Quick open |
-| `Ctrl+P` | Command palette |
-| `Ctrl+,` | Open settings |
+| `Esc` | Close an overlay / hint |
+| `Ctrl+O` | Quick Open a file |
+| `Ctrl+P` | Command Palette |
+| `Ctrl+,` | Open / close Settings |
 
-## Notes on Shortcut Conflicts
+## A Note on Overlapping Shortcuts
 
-> [!WARNING]Due to historical reasons, some default shortcuts overlap. At runtime, global shortcuts take precedence:
-> `Ctrl+O` is bound to both "Ordered List" and "Quick Open File". At runtime, **Quick Open takes priority**, so `Ctrl+O` opens files rather than inserting an ordered list. If you frequently use the ordered list shortcut, consider reassigning "Ordered List" to a non-conflicting combination in [[07-Settings/03-Keyboard-Shortcuts]].
+> [!WARNING] The default configuration contains two kinds of overlap, resolved by context at runtime:
+> - **`Ctrl+-`**: with focus inside a table it deletes a row; outside a table it splits vertically.
+> - **`Ctrl+E` / `Ctrl+D` / `Ctrl+U` and similar**: with [[02-Editor/11-Vim-Mode]] enabled, they are handed to Vim by default in normal / visual mode, so the same-named app shortcut does not fire; you can change each back on the "Vim Mode" settings page.
 
-> All shortcuts can be customized in Settings and take effect immediately after assignment.
-
-## Customizing Shortcuts
-
-1. Press `Ctrl+,` to open Settings.
-2. Switch to the "Shortcuts" tab.
-3. Find the target command in the list and click the current shortcut combination.
-4. Press the new key combination and save.
-
-> See [[07-Settings/03-Keyboard-Shortcuts]] for details.
+> All customizable shortcuts can be changed in Settings, taking effect as soon as they are assigned.
 
 ## Related Documents
 
-- [[07-Settings/03-Keyboard-Shortcuts]] — Shortcut customization and reset
+- [[07-Settings/03-Keyboard-Shortcuts]] — Customizing and resetting shortcuts
 - [[05-Navigation-Search/02-Command-Palette]] — Command search
-- [[02-Editor/09-Context-Menu]] — Right-click formatting actions
-- [[02-Editor/01-Editing-Modes]] — Editing mode switching
+- [[02-Editor/09-Context-Menu]] — Right-click formatting
+- [[02-Editor/11-Vim-Mode]] — Vim keybindings and conflict handover

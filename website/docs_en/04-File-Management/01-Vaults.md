@@ -1,60 +1,61 @@
-﻿---
+---
 title: Vaults
-tags: [files]
+tags: [file-management]
 ---
 
 # Vaults
 
-Tydora uses the "Vault" concept to manage note files. **Each vault is a local folder**, and all Markdown files, subfolders, images, and media within the vault are incorporated into the file tree, link index, and knowledge graph.
+Tydora uses the "vault" concept to manage note files. **Each vault is a local folder**, and every Markdown file, canvas file, subfolder, and image inside it is picked up by the file tree, the link index, the tag index, and the knowledge graph.
 
 > [!NOTE]
-> A vault only records the **path** of the folder; it does not move, copy, or modify any of your files. You can safely add an existing Markdown folder as a vault.
+> A vault records only the folder's **path**; it never moves, copies, or modifies any of your files. You can safely add an existing Markdown folder as a vault.
 
-## Adding a Vault
+## Opening and Managing Vaults
 
-1. Click the **vault switcher** at the bottom of the left sidebar (it shows the current vault name).
-2. Select "Add vault".
-3. Pick a folder in the system file picker (you can also create a new empty folder).
-4. After confirming, the left file tree immediately loads the folder's contents.
+There is a **vault switcher** at the bottom of the sidebar showing the current vault name, next to which you can open the **Manage Vaults** window. That window provides:
+
+| Action | Description |
+| --- | --- |
+| Create vault | Create a new folder at a chosen location as a vault |
+| Open local folder | Add an existing folder as a vault |
+| Switch vault | Click a vault in the list to open it in a new window |
+| Rename | Change the vault's display name inside Tydora |
+| Move | Move the vault folder as a whole to a new location |
+| Show in file manager | Locate that folder in the system file manager |
+| Remove | Unregister the folder from Tydora (**without deleting files**) |
+
+> [!WARNING]
+> Removing a vault **only unregisters it from Tydora** — it does not delete the folder or files on disk. The confirmation dialog states this explicitly. To delete it for real, do so in your file manager.
 
 ## Switching Vaults
 
-1. Click the vault switcher.
-2. Click the target vault in the dropdown list.
-3. The file tree and the currently open notes switch to that vault.
+1. Click the vault switcher, or open the Manage Vaults window.
+2. Select the target vault from the list.
+3. The vault opens in a new window, and the file tree, link index, and graph switch along with it.
 
 > [!TIP]
-> Multiple vaults are suitable for separating notes by project, by topic, or by public/private. For example, one vault for work notes and one for your personal knowledge base.
+> Multiple vaults suit notes split by project, topic, or work/personal. For example: one vault for work notes, one for a personal wiki. The currently active vault is remembered and restored on the next launch.
 
-## Removing a Vault
+## Multi-Vault Isolation
 
-1. Click the vault switcher.
-2. Hover over the target vault in the vault list and click the delete (trash) icon that appears.
-3. Confirm removal.
-
-> [!WARNING]
-> Removing a vault **only removes Tydora's reference to it**; it does not delete the folder and files on disk. To completely delete them, operate in your file manager.
-
-## Multi-Vault Management
-
-- Manage multiple vaults simultaneously, isolating content by scenario
-- Each vault independently maintains its file tree, link index, and recent-open records
-- Switching vaults does not affect the data of other vaults
+- Each vault maintains its own file tree, link index, tag index, and bookmarks
+- When switching vaults, if the locally cached index belongs to a different vault it is rebuilt automatically, so data never crosses over
+- `[[links]]` are never resolved across vaults
 
 ## Recently Opened Files
 
-Each vault records the files it has recently opened separately, making it convenient to quickly return to the last editing position across different vaults.
+Tydora remembers recently visited files and shows them first when the [[05-Navigation-Search/01-Quick-Open]] panel opens, so you can quickly return to where you left off.
 
-## Filesystem Monitoring
+## File System Watching
 
-Tydora monitors external changes in vault folders: when you add, rename, or delete files in your file manager, the file tree and link index **update automatically**, with no need to refresh manually.
+Tydora watches the vault folder for external changes: when you add, rename, or delete files in your file manager, the file tree and indexes **update automatically** — no manual refresh needed.
 
 > [!NOTE]
-> Index updates triggered by external modifications are incremental, processing only the changed parts without stuttering the editor. See [[03-Knowledge-Management/05-Link-Index]] for details.
+> Index updates triggered by external changes are incremental; only the changed parts are processed, so the editor never stutters. See [[03-Knowledge-Management/05-Link-Index]].
 
 ## Related Documents
 
 - [[04-File-Management/02-File-Tree]] — File tree operations
 - [[04-File-Management/03-File-Operations]] — File management
-- [[05-Navigation-Search/01-Quick-Open]] — Quickly find files
-- [[03-Knowledge-Management/05-Link-Index]] — Bidirectional link index
+- [[05-Navigation-Search/01-Quick-Open]] — Finding files quickly
+- [[03-Knowledge-Management/05-Link-Index]] — The link index

@@ -5,112 +5,125 @@ tags: [navigation]
 
 # Tydora Help Documentation
 
+> **Language:** [中文](../index.md) | **English**
+
 Welcome to the **Tydora Help Documentation**.
 
-Tydora is a modern desktop Markdown editor built with Tauri v2 + React 19. It integrates WYSIWYG & source dual-mode editing, WikiLink bidirectional links, a knowledge graph, mind maps, and a whiteboard canvas — helping you manage knowledge like tending a "digital garden."
-
-> **Language:** [中文](../index.md) | **English**
+Tydora is a modern desktop Markdown editor built on Tauri v2 + React 19. It combines WYSIWYG live-preview and source editing, WikiLink bidirectional links, tags and bookmarks, a knowledge graph, mind maps, a whiteboard canvas, a built-in terminal, and multi-format export — helping you manage knowledge the way you would tend a "digital garden."
 
 ## Getting Started
 
-If you're new to Tydora, we recommend reading in the following order — about 10 minutes to get productive:
+If this is your first time using Tydora, read these in order — about 10 minutes to get productive:
 
 1. [[01-Getting-Started/01-Quick-Start]] — Download, install, open a vault, and write your first note
-2. [[02-Editor/01-Editing-Modes]] — Understand WYSIWYG (IR) and Source (SV) modes, and how to switch
-3. [[02-Editor/02-Markdown-Syntax]] — Complete Markdown and extended syntax supported by Tydora
-4. [[03-Knowledge-Management/01-Wiki-Links]] — Use `<a data-note="03-Knowledge-Management/01-Wiki-Links">03-Knowledge-Management/01-Wiki-Links</a>` to connect scattered notes into a knowledge network
-5. [[03-Knowledge-Management/04-Knowledge-Graph]] — View your knowledge universe in a force-directed graph
-6. [[08-Advanced-Features/03-Whiteboard-Canvas]] — Organize ideas, notes, and media on an infinite canvas
-7. [[08-Advanced-Features/01-Publish-Website]] — Turn your vault into a shareable static website with one click
+2. [[02-Editor/01-Editing-Modes]] — Understand live preview (IR) and source (SV) modes, and how to switch
+3. [[02-Editor/02-Markdown-Syntax]] — The complete Markdown and extended syntax Tydora supports
+4. [[03-Knowledge-Management/01-Wiki-Links]] — Use `[[Note Name]]` to weave scattered notes into a knowledge network
+5. [[03-Knowledge-Management/04-Knowledge-Graph]] — Survey your knowledge universe in a force-directed graph
+6. [[08-Advanced-Features/03-Whiteboard-Canvas]] — Organize ideas, notes, and assets freely on an infinite canvas
+7. [[08-Advanced-Features/01-Publish-Website]] — Publish your vault as a shareable static site with one click
 
 ## Documentation Map
 
-This help is divided into eight sections. Click any link to jump to the corresponding page.
+This help is organized into nine sections. Click any link to jump straight to that page.
 
 ### 1. Getting Started
 
-Essential reading to get you up and running and solve common problems.
+Essential reading — get up and running and solve common problems.
 
-- [[01-Getting-Started/01-Quick-Start]] — Install, open vaults, create & save notes, basic navigation
-- [[01-Getting-Started/02-About]] — Version info, tech stack, license, and feedback channels
-- [[01-Getting-Started/03-FAQ]] — Common troubleshooting and solutions
-- [[01-Getting-Started/Privacy-Policy]] — Privacy policy for the Microsoft Store (data collection, usage & security)
+- [[01-Getting-Started/01-Quick-Start]] — Install, open a vault, create and save notes, basic navigation
+- [[01-Getting-Started/02-About]] — Version info, tech stack, feature list, and feedback channels
+- [[01-Getting-Started/03-FAQ]] — High-frequency troubleshooting and how to debug
+- [[01-Getting-Started/Privacy-Policy]] — The privacy policy required by the Microsoft Store (local-first, anonymous analytics)
 
-### 2. Editor (Editing & Formatting)
+### 2. Editor (Writing & Formatting)
 
 Tydora's core writing capabilities, from basic syntax to advanced block elements.
 
-- [[02-Editor/01-Editing-Modes]] — IR (WYSIWYG) vs. SV (Source) mode comparison and switching
+- [[02-Editor/01-Editing-Modes]] — IR (live preview) vs. SV (source) modes, compared and switched
 - [[02-Editor/02-Markdown-Syntax]] — Complete syntax with GFM and extensions
-- [[02-Editor/03-Code-Blocks]] — Syntax highlighting, line numbers, copy — multi-language support
-- [[02-Editor/04-Math-Formulas]] — KaTeX / MathJax formula rendering
+- [[02-Editor/03-Code-Blocks]] — Syntax highlighting, language picker, copy, and toolbar styles
+- [[02-Editor/04-Math-Formulas]] — KaTeX rendering and the formula editor dialog
 - [[02-Editor/05-Mermaid-Diagrams]] — Flowcharts, sequence diagrams, Gantt charts, and more
-- [[02-Editor/06-Callout-Blocks]] — GitHub-style callout blocks
-- [[02-Editor/07-Frontmatter]] — YAML metadata and properties
-- [[02-Editor/08-Table-Operations]] — Creating, editing, aligning, and resizing tables
+- [[02-Editor/06-Callout-Blocks]] — 15 GitHub-style callout types
+- [[02-Editor/07-Frontmatter]] — YAML metadata with inline editing
+- [[02-Editor/08-Table-Operations]] — Create, edit, align, and merge cells
 - [[02-Editor/09-Context-Menu]] — Right-click formatting commands
-- [[02-Editor/10-Typewriter-Mode]] — Cursor stays centered; stay in flow
+- [[02-Editor/10-Typewriter-Mode]] — Keep the cursor centered and stay focused
+- [[02-Editor/11-Vim-Mode]] — LazyVim-style keybindings and the Leader menu
+- [[02-Editor/12-Find-and-Replace]] — Find, replace, and regex within the current document
 
 ### 3. Knowledge Management
 
-Weave notes into a network with bidirectional links and graphs, not isolated files.
+Weave notes into a network with bidirectional links, tags, and graphs instead of leaving them as isolated files.
 
-- [[03-Knowledge-Management/01-Wiki-Links]] — `<a data-note="Note Name">Note Name</a>` bidirectional link syntax and autocomplete
-- [[03-Knowledge-Management/02-Embedded-Content]] — `!<a data-note="Note Name">Note Name</a>` embed other notes and media
-- [[03-Knowledge-Management/03-Backlinks]] — See which notes reference the current page
-- [[03-Knowledge-Management/04-Knowledge-Graph]] — Visualize your note relationship network
-- [[03-Knowledge-Management/05-Link-Index]] — How the backlink index works behind the scenes
+- [[03-Knowledge-Management/01-Wiki-Links]] — `[[Note Name]]` bidirectional link syntax and autocomplete
+- [[03-Knowledge-Management/02-Embedded-Content]] — `![[Note Name]]` embeds and hover previews
+- [[03-Knowledge-Management/03-Backlinks]] — See which notes reference the current one
+- [[03-Knowledge-Management/04-Knowledge-Graph]] — Visualize the network of note relationships
+- [[03-Knowledge-Management/05-Link-Index]] — How the link index works behind the scenes
+- [[03-Knowledge-Management/06-Tags]] — Tag list and tag graph, with global `#tag` filtering
+- [[03-Knowledge-Management/07-Bookmarks]] — Bookmark frequently used files and folders, organized in groups
 
 ### 4. File Management
 
-Manage your vaults, folders, and various asset files.
+Manage your vaults, folders, and all kinds of asset files.
 
 - [[04-File-Management/01-Vaults]] — Folder-based multi-vault management
-- [[04-File-Management/02-File-Tree]] — Tree view browsing, expand / collapse, drag & drop
-- [[04-File-Management/03-File-Operations]] — Create, rename, delete, move, copy paths
+- [[04-File-Management/02-File-Tree]] — Tree browsing, sorting, multi-select, and drag & drop
+- [[04-File-Management/03-File-Operations]] — Create, rename, delete, move, copy, open in terminal
 - [[04-File-Management/04-File-Preview]] — Image, video, audio, and PDF preview
 
 ### 5. Navigation & Search
 
-Quickly locate and jump between a large number of notes.
+Locate and jump between notes quickly, even in a large vault.
 
-- [[05-Navigation-Search/01-Quick-Open]] — Fuzzy search and open files
+- [[05-Navigation-Search/01-Quick-Open]] — Fuzzy search for files and vaults
 - [[05-Navigation-Search/02-Command-Palette]] — Global command search and execution
-- [[05-Navigation-Search/03-Outline-Panel]] — Current document heading-level navigation
+- [[05-Navigation-Search/03-Outline-Panel]] — Heading-level navigation for the current document
+- [[05-Navigation-Search/04-Split-and-Panes]] — Horizontal / vertical splits and terminal panes
 
 ### 6. Themes & Appearance
 
-Tailor the editor to your aesthetic and reading preferences.
+Make the editor match your taste and reading habits.
 
-- [[06-Themes-Appearance/01-Built-in-Themes]] — Several carefully crafted built-in themes
-- [[06-Themes-Appearance/02-Typora-Themes]] — Import and use Typora theme CSS
-- [[06-Themes-Appearance/03-Code-Highlight-Themes]] — Multiple code syntax highlighting themes
+- [[06-Themes-Appearance/01-Built-in-Themes]] — 10 built-in themes and appearance modes
+- [[06-Themes-Appearance/02-Custom-Themes]] — Create, import, and edit themes and theme packs
+- [[06-Themes-Appearance/03-Code-Highlight-Themes]] — 11 code highlighting color schemes
 
 ### 7. Settings
 
-Customize every aspect of Tydora, and check the keyboard shortcut reference.
+Personalize every behavior in Tydora, and check the shortcut reference.
 
-- [[07-Settings/01-General-Settings]] — Appearance mode, fonts, auto-save
-- [[07-Settings/02-Editor-Settings]] — Editing behavior, rendering options, math engine
+- [[07-Settings/01-General-Settings]] — Appearance, fonts, typography, behavior, sidebar, and language
+- [[07-Settings/02-Editor-Settings]] — Where rendering toggles and editing behavior live
 - [[07-Settings/03-Keyboard-Shortcuts]] — Customizable keyboard shortcuts
+- [[07-Settings/04-Shortcut-Reference]] — All default shortcuts at a glance
 - [[07-Settings/05-Mind-Map-Settings]] — Mind map and knowledge graph display parameters
-- [[07-Settings/06-Image-Settings]] — Image storage mode and naming rules
-- [[07-Settings/04-Shortcut-Reference]] — Complete default keyboard shortcuts reference
+- [[07-Settings/06-Image-Settings]] — Image storage modes and naming rules
+- [[07-Settings/07-Canvas-Settings]] — Canvas file location, snapping, minimap, and zoom
+- [[07-Settings/08-Terminal-Settings]] — Terminal color scheme, font, and font size
 
 ### 8. Advanced Features
 
-Creation and distribution tools for advanced users.
+Creation and distribution tools for power users.
 
-- [[08-Advanced-Features/02-Mind-Map]] — Interactive mind map
+- [[08-Advanced-Features/01-Publish-Website]] — One-click publish to a static site
+- [[08-Advanced-Features/02-Mind-Map]] — Interactive mind maps
 - [[08-Advanced-Features/03-Whiteboard-Canvas]] — Infinite canvas creation
-- [[08-Advanced-Features/01-Publish-Website]] — One-click publish to static site
-- [[09-blog/Publish-to-Microsoft-Store]] — Full MSIX packaging and Microsoft Store listing process
-- [[09-blog/Auto-Update-Configuration]] — Set up auto-update signing (for contributors)
+- [[08-Advanced-Features/04-Export-and-Copy]] — PDF / HTML / Word / long image / WeChat / social cards
+- [[08-Advanced-Features/05-Terminal]] — Built-in terminal and shell sessions
 
-> [!TIP] Use the Command Palette (default Ctrl+P) to quickly jump to any feature page in this help, and execute almost any editor command.
+### 9. Blog (for Contributors)
+
+- [[09-blog/Auto-Update-Configuration]] — Configure auto-update signing
+- [[09-blog/Publish-to-Microsoft-Store]] — Full MSIX packaging and Microsoft Store publishing process
+- [[09-blog/Website-Analytics]] — How the documentation site's visitor analytics is wired up
+
+> [!TIP] Use the Command Palette (default `Ctrl+P`) to jump to any feature page in this help, and to run almost every command in the editor.
 
 ## Related Documents
 
-- [[01-Getting-Started/01-Quick-Start]] — The first guide from scratch
-- [[01-Getting-Started/03-FAQ]] — Look here first when you encounter issues
-- [[01-Getting-Started/02-About]] — Learn about Tydora's version and tech stack
+- [[01-Getting-Started/01-Quick-Start]] — The very first guide, from zero
+- [[01-Getting-Started/03-FAQ]] — Look here first when something goes wrong
+- [[01-Getting-Started/02-About]] — Tydora's version and tech stack

@@ -7,23 +7,28 @@ tags: [编辑器]
 
 Tydora 集成了 Mermaid 图表引擎，让你直接在 Markdown 中用文本绘制流程图、时序图、甘特图、类图、状态图等，并实时渲染预览。
 
-> [!NOTE]使用 mermaid 代码块编写。图表渲染默认开启，可在 中关闭。
+> [!NOTE]使用 `mermaid` 代码块编写。图表渲染默认开启，没有单独的开关设置项。
 
 ## 基本语法
 
 用 `mermaid` 作为代码块语言：
 
-```markdown
+````markdown
 ```mermaid
 graph TD
     A[开始] --> B{判断}
     B -->|是| C[执行]
     B -->|否| D[退出]
 ```
+````
 
-## Mermaid示例
+> [!TIP]图表主题跟随应用主题；图表本体不可直接拖拽编辑，修改请回到代码块。
 
-流程图
+## Mermaid 示例
+
+下面列出各主要图表类型的最小示例，可直接复制到笔记中查看效果。
+
+### 流程图
 
 ```mermaid
 flowchart TD
@@ -34,7 +39,7 @@ flowchart TD
     C -->|Three| F[fa:fa-car Car]
 ```
 
-类图
+### 类图
 
 ```mermaid
 classDiagram
@@ -60,7 +65,7 @@ classDiagram
     }
 ```
 
-状态图
+### 状态图
 
 ```mermaid
 stateDiagram-v2
@@ -72,7 +77,7 @@ stateDiagram-v2
     Crash --> [*]
 ```
 
-ER图
+### ER 图
 
 ```mermaid
 erDiagram
@@ -86,7 +91,7 @@ erDiagram
     PRODUCT ||--o{ ORDER-ITEM : "ordered in"
 ```
 
-XY图
+### XY 图
 
 ```mermaid
 xychart-beta
@@ -97,7 +102,7 @@ xychart-beta
     line [5000, 6000, 7500, 8200, 9500, 10500, 11000, 10200, 9200, 8500, 7000, 6000]
 ```
 
-旅行图
+### 旅行图
 
 ```mermaid
 journey
@@ -111,7 +116,7 @@ journey
       Sit down: 3: Me
 ```
 
-甘特图
+### 甘特图
 
 ```mermaid
 gantt
@@ -125,7 +130,7 @@ gantt
     another task      : 24d
 ```
 
-饼图
+### 饼图
 
 ```mermaid
 pie
@@ -133,10 +138,9 @@ pie
     "Dogs" : 386
     "Cats" : 85
     "Rats" : 15
- 
 ```
 
-四象图
+### 四象图
 
 ```mermaid
 quadrantChart
@@ -155,7 +159,7 @@ quadrantChart
     Campaign F: [0.35, 0.78]
 ```
 
-思维导图
+### 思维导图
 
 ```mermaid
 mindmap
@@ -177,7 +181,10 @@ mindmap
       Mermaid
 ```
 
-git图
+> [!TIP]
+> 这是 Mermaid 自带的思维导图语法，与 Tydora 基于 Markmap 的 [[08-高级功能/02-思维导图]] 是两套不同的能力：前者需要手写结构，后者由标题层级自动生成。
+
+### Git 图
 
 ```mermaid
 gitGraph
@@ -190,11 +197,11 @@ gitGraph
     commit
     checkout main
     merge develop
-   commit
+    commit
     commit
 ```
 
-看板图
+### 看板图
 
 ```mermaid
 kanban
@@ -202,22 +209,18 @@ kanban
     [Create Documentation]
     docs[Create Blog about the new diagram]
   [In progress]
-    id6[Create renderer so that it works in all cases. We also add som extra text here for testing purposes. And some more just for the extra flare.]
+    id6[Create renderer so that it works in all cases]
   id9[Ready for deploy]
     id8[Design grammar]@{ assigned: 'knsv' }
   id10[Ready for test]
     id4[Create parsing tests]@{ ticket: MC-2038, assigned: 'K.Sveidqvist', priority: 'High' }
-    id66[last item]@{ priority: 'Very Low', assigned: 'knsv' }
   id11[Done]
     id5[define getData]
-    id2[Title of diagram is more than 100 chars when user duplicates diagram with 100 char]@{ ticket: MC-2036, priority: 'Very High'}
+    id2[Title of diagram is more than 100 chars]@{ ticket: MC-2036, priority: 'Very High'}
     id3[Update DB function]@{ ticket: MC-2037, assigned: knsv, priority: 'High' }
-
-  id12[Can't reproduce]
-    id3[Weird flickering in Firefox]
 ```
 
-架构图
+### 架构图
 
 ```mermaid
 architecture-beta
@@ -233,7 +236,7 @@ architecture-beta
     disk2:T -- B:db
 ```
 
-数据包图
+### 数据包图
 
 ```mermaid
 packet-beta
@@ -255,3 +258,16 @@ packet-beta
 160-191: "(Options and Padding)"
 192-255: "Data (variable length)"
 ```
+
+## 排错建议
+
+- 代码块语言必须写作 `mermaid`，写成 `mermaidjs` 等不会被识别
+- 图表语法对缩进与箭头符号敏感，`-->` 写成 `->` 会报错
+- 节点文本里含 `(`、`)`、`[`、`]` 等符号时，用引号包裹，如 `A["含(括号)的文本"]`
+- 更多语法请参考 [Mermaid 官方文档](https://mermaid.js.org/)
+
+## 相关文档
+
+- [[02-编辑器/02-Markdown语法]] — 语法详解
+- [[02-编辑器/03-代码块]] — 代码块使用
+- [[08-高级功能/02-思维导图]] — 由标题自动生成的思维导图

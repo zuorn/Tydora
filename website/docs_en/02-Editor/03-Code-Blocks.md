@@ -1,17 +1,17 @@
-﻿---
+---
 title: Code Blocks
-tags: [Editor]
+tags: [editor]
 ---
 
 # Code Blocks
 
-Tydora provides full syntax highlighting support for code, covering **36 programming languages** by default, with line numbers and one-click copy.
+Tydora provides full syntax highlighting for code, with a language picker, copy, and theme switching built into every code block.
 
-## Creating Code Blocks
+## Creating a Code Block
 
 ### Method 1: Markdown Syntax
 
-Use three backticks to wrap code, and specify the language name for corresponding highlighting:
+Wrap the code in three backticks and annotate the language to get matching highlighting:
 
 ````markdown
 ```javascript
@@ -22,59 +22,76 @@ function hello() {
 ````
 
 > [!TIP]
-> Specifying a language (e.g., `js`, `python`, `rust`) enables the corresponding syntax highlighting; leaving it blank displays as plain text.
+> Annotating a language (such as `js`, `python`, `rust`) enables the corresponding highlighting; leaving it blank or writing `plaintext` shows plain text.
 
 ### Method 2: Shortcut
 
-Press `Ctrl+U` to directly insert a code block.
+Press `Ctrl+U` to insert a code block directly.
 
 ### Method 3: Context Menu
 
 1. Right-click in the editing area.
-2. Select "Insert" → "Code Block."
-3. Choose a programming language.
+2. Choose "Insert" → "Code Block".
+
+> After inserting, use the code block toolbar's language picker to switch languages.
+
+## Code Block Toolbar
+
+Move the cursor into a code block and the toolbar appears, offering:
+
+| Button | Description |
+| --- | --- |
+| Language picker | Switch the highlighting language from a dropdown |
+| Copy | Copy the code block contents to the clipboard |
+| Delete | Delete the entire code block |
+| Theme | Quickly switch the code highlighting theme |
+
+The toolbar has two styles, switchable in the "Appearance" group of [[07-Settings/01-General-Settings]]:
+
+- **Floating (minimal)** — shows only the language picker in the top-right corner; the default style
+- **Top bar (with copy/delete)** — a full toolbar across the top, with more prominent action buttons
 
 ## Supported Languages
 
-Covers mainstream languages, including but not limited to:
+The language picker includes **30 languages** (including Plain Text):
 
-JavaScript, TypeScript, Python, Java, C / C++, Go, Rust, Ruby, PHP, Swift, Kotlin, SQL, HTML, CSS, Shell, JSON, YAML, Markdown, and more — **36 languages** in total.
+Plain Text, JavaScript, TypeScript, Python, Java, C, C++, C#, Go, Rust, Ruby, PHP, Swift, Kotlin, HTML, CSS, SCSS, Less, JSON, YAML, TOML, XML, SQL, Bash, Shell, PowerShell, Markdown, Mermaid, Dockerfile, GraphQL.
+
+In addition, highlighting definitions are registered for the following languages — annotate them directly in a code block and they work:
+
+`vim`, `latex`, `nginx`, `cmake`, `scala`, `haskell`, `elixir`, `julia`, `tcl`, `properties`, `gradle`.
 
 ## Inline Code
 
-Use a single backtick to wrap code snippets, suitable for variable names, commands, etc. within body text:
+Wrap a code fragment in single backticks for variable names, commands, and so on inside prose:
 
 ```markdown
-Use `console.log()` to output logs
+Use `console.log()` to print a log line
 ```
 
 > Shortcut: `Ctrl+E`.
 
 ## Line Numbers
 
-Code blocks display line numbers by default for easy reference and citation. They can be turned off in [[07-Settings/02-Editor-Settings]].
+In IR mode you can control editor line numbers with the "Show line numbers" toggle in the "Appearance" group of [[07-Settings/01-General-Settings]]; it is on by default.
 
 ## Copying Code
 
-Hover over the top-right corner of a code block and click the **Copy** button that appears to copy the code content to the clipboard.
+Hover over a code block and click the **Copy** button in its toolbar to copy the code to the clipboard.
 
 ## Code Highlighting Themes
 
-The color scheme of code blocks is independent of the application theme and can be switched in [[07-Settings/02-Editor-Settings]]. There are 11 highlighting themes in total:
+Code block colors are independent of the app theme. Switch them from the "Theme" tab in Settings — there are 11 highlighting themes:
 
 - Light: Atom One Light, GitHub Light, VS Code Light, Solarized Light
 - Dark: Atom One Dark, GitHub Dark, VS Code Dark, Nord, Monokai, Dracula, Solarized Dark
 
-> You can also have it automatically switch between light/dark highlighting themes based on the application appearance. See [[06-Themes-and-Appearance/03-Code-Highlighting-Themes]].
-
-## Related Settings
-
-- [[07-Settings/02-Editor-Settings]] — Code highlighting themes and line number toggle
-- [[06-Themes-and-Appearance/03-Code-Highlighting-Themes]] — Highlighting theme selection
+> By default it follows the app appearance, switching automatically between a light and a dark highlighting theme. You can also pin one, or import / create your own code theme. See [[06-Themes-Appearance/03-Code-Highlight-Themes]].
 
 ## Related Documents
 
-- [[02-Editor/02-Markdown-Syntax]] — Syntax details
-- [[02-Editor/09-Context-Menu]] — Right-click operations
+- [[02-Editor/02-Markdown-Syntax]] — Syntax in detail
+- [[02-Editor/09-Context-Menu]] — Right-click actions
 - [[02-Editor/04-Math-Formulas]] — Formula rendering
 - [[02-Editor/05-Mermaid-Diagrams]] — Diagram code blocks
+- [[06-Themes-Appearance/03-Code-Highlight-Themes]] — Choosing a highlighting theme

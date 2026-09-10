@@ -1,17 +1,17 @@
 ---
 title: File Preview
-tags: [files]
+tags: [file-management]
 ---
 
 # File Preview
 
-In addition to Markdown, Tydora supports directly previewing a variety of image, video, audio, and document files, so you can view assets without leaving the app.
+Beyond Markdown, Tydora can preview a wide range of image, video, audio, and PDF files, so you can inspect assets without leaving the app.
 
 ## Supported Formats
 
-1. Images
+### Images
 
-JPG, PNG, GIF, WebP, BMP, SVG, AVIF, HEIC, ICO
+JPG, JPEG, PNG, GIF, WebP, BMP, ICO, SVG, AVIF, HEIC, HEIF
 
 ### Video
 
@@ -25,43 +25,44 @@ MP3, WAV, OGG, FLAC, AAC, M4A, WMA
 
 PDF
 
+> [!NOTE]
+> Other types show "Cannot preview this file type" and offer to open them with an external program.
+
 ## How to Preview
 
-- **Double-click** a non-Markdown file in the file tree to open the preview.
-- Click an image link in the Markdown body to preview it at the current position.
-- Images embedded with `<img src="image.png" alt="image.png" data-wiki-embed="1">` are displayed directly in the note (see [[03-Knowledge-Management/02-Embedded-Content]]).
+- **Click** a non-Markdown file in the file tree and its preview opens in the main area.
+- `.canvas` whiteboard files are not taken over by the preview — they open the whiteboard editor directly (see [[08-Advanced-Features/03-Whiteboard-Canvas]]).
+- Images embedded in a note via `![[image.png]]` are shown inline in the body (see [[03-Knowledge-Management/02-Embedded-Content]]).
 
 ## Image Preview
 
-- Supports zooming and drag-to-pan
-- Displays image dimension information
-- Supports transparent background display (for example PNG / WebP / SVG)
+- **Scroll to zoom**: the zoom ratio is bounded to 10% – 500%
+- **Zoom readout**: the current percentage is shown in the top-right corner
+- **Reset zoom**: back to 100% in one click
+- **Back**: the "◀ Back" button in the top-left closes the preview
+- Transparent backgrounds are supported (PNG / WebP / SVG)
 
 ## Video Preview
 
-- Built-in playback controls (play / pause / progress / volume)
-- Supports fullscreen playback
-- Displays a playback progress bar
+Uses the built-in player (`<video>`):
+
+- Play / pause, seek, volume control
+- Supports codecs the browser supports natively; unsupported codecs report a load failure
 
 ## Audio Preview
 
-- Built-in playback controls
-- Displays playback progress
+Uses the built-in player (`<audio>`): play / pause and seek control.
 
 ## PDF Preview
 
-- Built-in PDF viewer
-- Supports page turning and zooming
-- Suitable for comparing materials alongside notes
+Loads PDFs inline, with direct page navigation and zoom. Useful for consulting reference material next to your notes.
 
-> [!NOTE]The storage location and naming rules for images can be configured in ; the behavior when pasting / dragging in images is also controlled by that setting.
-
-## Related Settings
-
-- [[07-Settings/06-Image-Settings]] — image storage settings
+> [!NOTE]
+> Where images are stored and how they are named is configurable in [[07-Settings/06-Image-Settings]].
 
 ## Related Documents
 
 - [[04-File-Management/02-File-Tree]] — File tree operations
 - [[04-File-Management/03-File-Operations]] — File management
-- [[03-Knowledge-Management/02-Embedded-Content]] — Embedding images and media
+- [[03-Knowledge-Management/02-Embedded-Content]] — Embedding images
+- [[07-Settings/06-Image-Settings]] — Image storage settings

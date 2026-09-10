@@ -1,69 +1,73 @@
-﻿---
+---
 title: Embedded Content
-tags: [knowledge]
+tags: [knowledge-management]
 ---
 
 # Embedded Content
 
-Embedding lets you display the content of **other notes or media** directly in the current note, rather than only placing a jump link. It is often used to reuse templates, aggregate materials, and centrally manage images.
+Embeds let you display an **image or a canvas** directly inside the current note, instead of just placing a link to jump to it. They are commonly used to keep images in one place, or to place assets next to the text they belong to.
 
 > [!NOTE]
-> The syntax is to prepend `!` to a Wiki link: `![[Note Name]]`.
+> The syntax is a WikiLink prefixed with `!`: `![[filename]]`. What Tydora supports is **Obsidian-style image embedding**.
 
-## Basic Syntax
-
-```markdown
-![[Note Name]]
-```
-
-The current note will **inline-render** all the content of "Note Name".
-
-## Embedding a Heading
-
-Embed only a specific heading and its sub-content from the target note:
-
-```markdown
-![[Note Name#Heading]]
-```
-
-Suitable for extracting a single section from a long note for reuse.
-
-## Embedding an Image
+## Embedding Images
 
 ```markdown
 ![[image.png]]
 ```
 
-Images in the vault are displayed directly at the current position (the standard `![alt](path)` syntax is also supported).
+An image in the vault is **displayed inline** right where the embed is. Resolution rules:
 
-## Embedding Video / Audio
+1. First look up the **file name** across the vault (case-insensitive)
+2. If not found, resolve it as a path relative to the current file
+3. Vault-root paths starting with `/` also work, e.g. `![[/assets/image.png]]`
+
+### Specifying a Width
+
+Add a `|` after the filename to set the display width in pixels:
 
 ```markdown
-![[video.mp4]]
-![[audio.mp3]]
+![[image.png|400]]
 ```
 
-Video and audio files in the vault are rendered as inline players.
+> [!TIP]
+> In live preview mode you can also drag the image edge to resize it; the width is written back into the `![[...|width]]` syntax automatically.
+
+## Standard Markdown Images
+
+Besides the wiki embed syntax, the standard form works too:
+
+```markdown
+![Image description](assets/image.png)
+```
+
+> The difference: `![[image.png]]` looks up the image by **file name** anywhere in the vault, so it keeps working after you move the note; `![](relative/path)` depends on the path and breaks if the path changes. For images across directories, the wiki embed syntax is recommended.
+
+## Hover Preview for Notes
+
+Move your mouse over any `[[WikiLink]]` and a **preview card** appears:
+
+- A regular note: shows the rendered body
+- A `.canvas` whiteboard file: shows a thumbnail
+- If the target doesn't exist, a notice is shown
+
+Preview cards support nested hovering, so you can follow links deeper without actually opening files. See [[03-Knowledge-Management/01-Wiki-Links]].
 
 ## Use Cases
 
-- **Quoting paragraphs**: embed common descriptions and definitions from a "mother note" in multiple places; update one place and it changes everywhere
-- **Centrally managing images**: store images uniformly in an `assets`-style folder and reference them via embedding in the body text
-- **Content aggregation pages**: use embedding to combine multiple notes into a "daily / weekly report / index page"
-- **Reusing templates**: embed a template note into a new note to quickly apply its structure
+- **Centralized images**: keep images in `assets/` and reference them with `![[image.png]]`
+- **Assets next to their context**: when writing a tutorial, paste the screenshot right beside the step
+- **Quick canvas review**: use hover preview to revisit a whiteboard's structure
 
-> [!TIP]
-> Embedding works best combined with [[03-Knowledge-Management/01-Wiki-Links]]: use `[[Note]]` to jump and `![[Note]]` to inline, choosing as needed.
+## Notes and Limitations
 
-## Notes and Cautions
-
-- Embedded content is **read-only** and cannot be edited directly in the current note
-- Modifying the source note is **reflected synchronously** in all the places that embed it
-- Multimedia files such as images, video, and audio can be embedded
-- Deeply nested embedding (A embeds B, B embeds C) also expands normally
+- `![[Note Name]]` does **not** expand into another note's body — to read that note, use the hover preview, or use `[[Note Name]]` to jump to it
+- Video, audio, and PDF should be opened via standard links (see [[04-File-Management/04-File-Preview]]); inline playback is not supported
+- Where images are stored and how they are named is governed by [[07-Settings/06-Image-Settings]]
 
 ## Related Documents
 
-- [[03-Knowledge-Management/01-Wiki-Links]] — Wiki link syntax
-- [[04-File-Management/04-File-Preview]] — Multimedia file preview
-- [[03-Knowledge-Management/03-Backlinks]] — Backlinks
+- [[03-Knowledge-Management/01-Wiki-Links]] — WikiLink syntax
+- [[04-File-Management/04-File-Preview]] — Previewing media files
+- [[07-Settings/06-Image-Settings]] — Image storage and naming
+- [[08-Advanced-Features/03-Whiteboard-Canvas]] — Canvas files

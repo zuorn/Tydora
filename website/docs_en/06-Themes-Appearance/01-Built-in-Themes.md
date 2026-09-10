@@ -1,92 +1,65 @@
-﻿---
+---
 title: Built-in Themes
-tags: [Themes]
+tags: [themes]
 ---
 
 # Built-in Themes
 
-Tydora provides **9** carefully designed built-in themes covering a range of styles — fresh, understated, vibrant, futuristic, and more — all supporting both light and dark appearances. You can switch themes with a single click in settings, or import your own CSS themes (see [[06-Themes-Appearance/02-Typora-Themes]]).
+Tydora ships **10** carefully designed built-in themes covering fresh, calm, energetic, and futuristic styles. You can switch with one click in Settings, or create or import your own (see [[06-Themes-Appearance/02-Custom-Themes]]).
 
 > [!NOTE]
-> The default theme is **Mint**. Code block color schemes can be set independently from the app theme; see [[06-Themes-Appearance/03-Code-Highlight-Themes]] for details.
+> The default appearance mode is **follow system**: "White" when the system is light, "Mint Dark" when it is dark. Code block colors are independent of the app theme — see [[06-Themes-Appearance/03-Code-Highlight-Themes]].
 
 ## Theme List
 
-### White
-
-A clean and pure white background, a versatile light theme suitable for extended reading and everyday writing.
-
-### Mint *(default)*
-
-A refreshing mint green theme with a white base and mint green accent color, natural and soothing. **This is Tydora's default theme.**
-
-### Mint Dark
-
-The dark version of Mint, retaining the mint green accent on a dark background. Ideal for users who prefer a dark environment but still enjoy green tones.
-
-### Claude Code
-
-A warm-toned dark theme inspired by the Claude code editor, with an off-white background and amber accents — warm and focused.
-
-### Purple
-
-An elegant purple theme with soft violet tones, suitable for users who enjoy a romantic and serene atmosphere.
-
-### Hermes
-
-A vibrant blue/indigo theme with bold accent colors and a strong modern feel.
-
-### NexT
-
-A futuristic theme inspired by the Hexo NexT Pisces style, featuring teal accents on an off-white background — refined and restrained.
-
-### Slate
-
-A minimalist graphite gray theme with low-saturation cool grays, steady and professional, suitable for serious writing and documentation scenarios.
-
-### Ocean
-
-A cool ocean-toned theme with a light blue background and cyan accents — crisp and airy.
+| Theme | Style | Background / accent |
+| --- | --- | --- |
+| **White** | Clean, pure white background; a general-purpose light theme | `#ffffff` / `#2563eb` |
+| **Mint** | A fresh mint theme: white background with a mint-green accent | `#ffffff` / `#4eb289` |
+| **Mint Dark** | The dark version of Mint, keeping the mint accent on a dark background | `#272729` / `#4eb289` |
+| **Modern Dark** | A modern dark theme: cool-toned background with a bright blue accent | `#1b1d24` / `#74a7fe` |
+| **Claude Code** | A warm theme inspired by the Claude code editor: cream background with an amber accent | `#faf8f5` / `#c47a2a` |
+| **Purple** | An elegant purple theme — soft violet tones, a tranquil mood | `#faf5ff` / `#7c3aed` |
+| **Hermes** | An energetic indigo theme with a vivid accent and a modern feel | `#f0f1ff` / `#0000f2` |
+| **NexT** | Inspired by the Hexo NexT Pisces style: teal accent on cream, refined and restrained | `#fffef8` / `#00796b` |
+| **Slate** | A graphite-gray minimal theme with low-saturation cool grays — calm and professional | `#f8fafc` / `#475569` |
+| **Ocean** | An oceanic cool theme: pale blue background with a cyan accent — crisp and airy | `#f0f9ff` / `#0891b2` |
 
 ## Switching Themes
 
-### Method 1: Settings Panel
-
 1. Open Settings (`Ctrl+,`).
-2. Switch to the "Themes" tab.
-3. Click to select from the theme list; changes take effect immediately.
+2. Switch to the "Theme" tab.
+3. In the "Built-in themes" area, click a theme card — it applies immediately.
 
-### Method 2: Repository Switcher
-
-1. Click the repository switcher at the bottom of the sidebar.
-2. Click the settings (gear) icon.
-3. Select a theme from the popup menu.
+> [!TIP]
+> Theme cards show a representative color swatch for quick comparison. Hovering a card also offers "Duplicate & edit", which forks a built-in theme into a custom theme you can recolor item by item.
 
 ## Appearance Mode
 
-Each theme can be used with three appearance modes:
+Tydora supports three appearance modes:
 
-- **Follow System** — Automatically switches based on the operating system's light/dark setting
-- **Light** — Forces light rendering
-- **Dark** — Forces dark rendering
+| Mode | Description |
+| --- | --- |
+| **Follow system** (default) | Automatically matches the OS light / dark setting |
+| **Light** | Force light rendering |
+| **Dark** | Force dark rendering |
 
-> The appearance mode is set in [[07-Settings/01-General-Settings]]. Dark themes like Mint Dark look best in "Dark" mode.
+> Appearance mode is set at the top of the "Theme" tab, and can also be adjusted in the "Appearance" group of [[07-Settings/01-General-Settings]].
 
-## Importing More Themes
+### Light / Dark Preferences
 
-In addition to built-in themes, you can:
+Tydora stores **a separate set of preferences for light and dark**, each containing:
 
-- **Import Typora themes**: Compatible with Typora CSS theme files → [[06-Themes-Appearance/02-Typora-Themes]]
-- **Customize code highlighting**: 11 code highlight color schemes can be selected independently → [[06-Themes-Appearance/03-Code-Highlight-Themes]]
+- **App theme** (UI colors)
+- **Code theme** (code highlighting colors)
 
-## Related Settings
+In other words, you can have light mode use "White + GitHub Light" and dark mode use "Mint Dark + Dracula" — each snaps into place as you switch appearance. The top of the settings page shows the current combination, e.g. "Current: Follow system · White + GitHub Light".
 
-- [[07-Settings/01-General-Settings]] — Appearance mode and theme resource directory
-- [[06-Themes-Appearance/02-Typora-Themes]] — Typora theme import and compatibility
-- [[06-Themes-Appearance/03-Code-Highlight-Themes]] — Code highlight themes
+> [!TIP]
+> In "Follow system" mode, if the system switches between light and dark during the day, Tydora switches to the preference set you configured for that appearance — rather than simply inverting the UI.
 
 ## Related Documents
 
-- [[06-Themes-Appearance/02-Typora-Themes]] — Import third-party themes
-- [[06-Themes-Appearance/03-Code-Highlight-Themes]] — Code highlight themes
-- [[07-Settings/01-General-Settings]] — Appearance and font settings
+- [[06-Themes-Appearance/02-Custom-Themes]] — Creating, importing, and editing themes
+- [[06-Themes-Appearance/03-Code-Highlight-Themes]] — Code highlighting colors
+- [[07-Settings/01-General-Settings]] — Appearance mode and font settings

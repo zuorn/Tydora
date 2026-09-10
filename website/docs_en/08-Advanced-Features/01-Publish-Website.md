@@ -1,20 +1,20 @@
-﻿---
+---
 title: Publish Website
-tags: [feature]
+tags: [features]
 ---
 
 # Publish Website
 
-Tydora can turn your note repository (Vault) into a **static website with a single click**, letting you share your knowledge base, documentation, or digital garden with anyone without setting up a server.
+Tydora can turn your note vault into a **static website** with one click — no server to set up, so you can share a wiki, documentation set, or digital garden with anyone. The generated site includes search, a relationship graph, and Canvas whiteboards.
 
 > [!NOTE]
-> The publish feature is operated from the "Publish" tab in Settings (or the publish panel). Under the hood, it builds a static site using `@abstractwebunit/markdown-publish`.
+> Publishing has two entry points: the "Publish" tab in Settings, and "Publish as website" in the Command Palette (`Ctrl+P`). Under the hood, `@abstractwebunit/markdown-publish` builds the static site.
 
 ## Prerequisites
 
-Publishing relies on the `@abstractwebunit/markdown-publish` CLI, which is **not bundled** with the installer. Install it once manually:
+The publish feature depends on the `@abstractwebunit/markdown-publish` CLI. **The installer does not bundle this CLI** — install it once manually first:
 
-1. Install [Node.js](https://nodejs.org) (18 or newer recommended).
+1. Install [Node.js](https://nodejs.org) (18 or later recommended).
 2. Run in a terminal:
 
    ```bash
@@ -24,72 +24,75 @@ Publishing relies on the `@abstractwebunit/markdown-publish` CLI, which is **not
 3. Restart Tydora.
 
 > [!IMPORTANT]
-> If the CLI is missing, clicking "Publish" shows "markdown-publish CLI not found". The CLI pulls in large dependencies such as Angular; shipping it inside the installer would grow the package from ~7 MB to over 20 MB, so it is installed on demand instead.
+> Without it installed, clicking "Publish" reports "markdown-publish CLI not found" and provides a one-click copyable install command. The CLI pulls in large dependencies such as Angular; bundling it would inflate the installer from roughly 7 MB to over 20 MB, so it is installed on demand instead.
 
-## Publish Workflow
+> [!TIP]
+> Tydora looks for the CLI in this order: ① the installer's resource directory (for compatibility with older installs) → ② the project's `vendor/` and `node_modules/` (development) → ③ the global npm installation. In development you don't need a global install.
 
-1. **Configure publish settings**: Fill in basic information such as site name, description, and language.
-2. **Choose a publish mode**: Full publish, or public notes only.
-3. **Start publishing**: Build the static website with a single click.
-4. **Preview or deploy**: Preview locally, or upload the output to any static hosting service.
+## The Publishing Workflow
 
-## Publish Modes
+1. **Configure publish settings**: fill in the site name, description, language, and other basics, then save.
+2. **Choose a build mode**: publish everything, or public notes only.
+3. **Start publishing**: click "Start publishing" / "Generate site" and the UI shows build progress.
+4. **Preview or deploy**: click "Preview website" to view it in a browser, or upload the output directory to any static host.
 
-### Full Publish
+## Build Modes
 
-Publishes **all** Markdown files in the Vault. Suitable for scenarios where the entire library should be exposed, such as personal knowledge bases and project documentation.
+| Mode | Description |
+| --- | --- |
+| **Publish all** | Publishes **every** note in the vault — suited to a personal wiki, project docs, or anything you share wholesale |
+| **Public notes only** | Publishes only notes with `publish: public` in Frontmatter — suited to selective sharing from one vault |
 
-### Public Notes Only
-
-Publishes only files with `publish: public` in their Frontmatter. Suitable for "selective sharing from a single repository" scenarios — keep private notes local and only release curated content.
-
-> How to mark a note as public: write `publish: public` at the top of the file. See [[02-Editor/07-Frontmatter]].
+> How to mark a note public: add `publish: public` at the top of the file. See [[02-Editor/07-Frontmatter]].
 
 ## Publish Configuration
 
-| Setting | Description |
-| --- | --- |
-| Site name | Website title (`<title>`) |
-| Site description | Website description, used for SEO |
-| Language | Website language (Chinese / English / Japanese / Korean) |
-| Site URL | The final deployed website address (used for absolute links and sitemap) |
-| Footer | Custom footer content |
-| Vault directory | The directory within the Vault to publish (subdirectories can be specified) |
-| Build mode | Full publish / Public notes only |
-| Base Path | Fill in when deploying to a subpath, e.g., `/<repo>/` for GitHub Pages |
-| Output directory | The output location of the build artifacts |
+| Setting | Description | Default |
+| --- | --- | --- |
+| Site name | The site title, e.g. "My Notes" | My Notes |
+| Site description | A short description for SEO | Notes and ideas |
+| Site language | The site's default language: Chinese / English / Japanese / Korean | Chinese |
+| Site URL | The deployment address, used for absolute links and the sitemap | — |
+| Footer credit | Text shown at the bottom of pages; hidden when empty | Empty |
+| Notes directory | Relative to the vault root; the root (`.`) by default | `.` |
+| Build mode | Publish all / Public notes only | Publish all |
+| Base path | GitHub Pages uses `/<repo>/`; other platforms usually `/` | `/` |
+| Output directory | Where build artifacts go, relative to the vault root | `dist` |
+
+The configuration is written to `markdown-publish.config.json` inside the vault. The UI also offers "Reset to defaults" and a "Browse" button to pick the output directory.
 
 > [!TIP]
-> When deploying to GitHub Pages, remember to set the "Site URL" to `https://<username>.github.io/<repo>/` and the "Base Path" to `/<repo>/`, otherwise resource paths will return 404.
+> When deploying to GitHub Pages, remember to set "Site URL" to `https://<username>.github.io/<repo>/` and "Base path" to `/<repo>/`, otherwise asset paths will 404.
 
-## Preview the Site
+## Preview and Output
 
-After the build completes, you can:
+| Action | Description |
+| --- | --- |
+| Preview website | Starts a built-in HTTP server and opens the build result in a browser |
+| Stop preview | Shuts down the preview server |
+| Open output directory | Opens the build artifact directory in the system file manager |
 
-- **Preview locally**: Start the built-in HTTP server and view the result in your browser
-- **Open directory**: Open the output directory in your file manager to inspect the artifacts
-- **Deploy directly**: Upload the entire output directory to a static hosting service
-
-## Technical Implementation
-
-- Built using the `@abstractwebunit/markdown-publish` CLI
-- Generates a static site (with client-side routing)
-- Preserves the ability to navigate within the site using `[[03-Knowledge-Management/01-Wiki-Links]]`
-- Callout, Mermaid, math formulas, and other rich elements render correctly after publishing
-
-## Deployment Suggestions
-
-The built static site can be hosted on any service that supports static files:
+The build output is plain static files, so it can be hosted anywhere that serves static content:
 
 | Platform | Description |
 | --- | --- |
 | GitHub Pages | Free, supports custom domains |
-| Vercel | One-click deployment, global CDN |
+| Vercel | One-click deploy with a global CDN |
 | Netlify | Supports forms and functions |
 | Your own server | Any HTTP server (Nginx / Apache, etc.) |
 
+## What the Published Site Can Do
+
+- Preserves [[03-Knowledge-Management/01-Wiki-Links]] navigation within the site
+- Built-in search
+- Relationship graph
+- Canvas whiteboards
+- Callouts, Mermaid, math formulas, and other rich elements render normally
+
 ## Related Documents
 
-- [[02-Editor/07-Frontmatter]] — Use `publish` to control the publish scope
-- [[07-Settings/02-Editor-Settings]] — Editor configuration
-- [[01-Getting-Started/03-FAQ]] — Troubleshooting for publishing
+- [[02-Editor/07-Frontmatter]] — Using `publish` to control scope
+- [[03-Knowledge-Management/01-Wiki-Links]] — The bidirectional links site navigation relies on
+- [[08-Advanced-Features/03-Whiteboard-Canvas]] — How canvases appear on the published site
+- [[01-Getting-Started/03-FAQ]] — Publish-related troubleshooting
+- [[09-blog/Website-Analytics]] — Adding visitor analytics to a published site

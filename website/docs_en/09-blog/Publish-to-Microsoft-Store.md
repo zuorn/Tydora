@@ -100,7 +100,7 @@ After the reservation succeeds, enter the app page → **Product identity** tab 
 
 ### 2.1 AppxManifest.xml Template
 
-Tauri does not generate an `MSIX` manifest, so we write our own and place it at `src-tauri/msix/AppxManifest.xml`. Key points:
+Tauri does not generate an `MSIX` manifest, so we write our own and place it at `app/tydora-desktop/msix/AppxManifest.xml`. Key points:
 
 ```xml
 <Identity Name="{{PACKAGE_IDENTITY_NAME}}"
@@ -157,12 +157,12 @@ Core workflow:
 1. **Determine the mode**: check whether `MSSTORE_PACKAGE_IDENTITY_NAME` and `MSSTORE_PUBLISHER` are both present
    - Both present → **Store mode** (unsigned, artifact for Partner Center)
    - Either missing → **Local test mode** (self-signed, installable locally)
-2. **Read the release exe**: `src-tauri/target/release/tydora.exe`
-3. **Staging directory**: `src-tauri/target/msix-staging/`, put the exe + icons + generated manifest inside
-4. **MakeAppx pack**: package into `src-tauri/target/msix/Tydora_<version>_x64.msix`
+2. **Read the release exe**: `target/release/Tydora.exe` (the repo-root `target/` directory, set by `target-dir` in `app/.cargo/config.toml`; falls back to probing `tydora-desktop.exe`)
+3. **Staging directory**: `target/msix-staging/`, put the exe + icons + generated manifest inside
+4. **MakeAppx pack**: package into `target/msix/Tydora_<version>_x64.msix`
 5. **Sign** (local mode only, or explicitly `-Sign`): create a self-signed certificate and sign using `Sign-AppxPackage`
 
-**Version number source**: read from the `VERSION` file, converted to the four-part form `0.1.4.0` (MSIX requires `Major.Minor.Build.Revision` with four segments; empty slots are padded with 0).
+**Version number source**: read from the repository-root `VERSION` file, converted to the four-part form `0.1.4.0` (MSIX requires `Major.Minor.Build.Revision` with four segments; empty slots are padded with 0).
 
 ### 2.5 Hook into the npm Script
 
@@ -229,7 +229,7 @@ PublisherDisplayName: <your publisher display name>
 Mode:                 Store (unsigned)
 Package creation succeeded.
 
-✓ MSIX generated: D:\code\Tydora\src-tauri\target\msix\Tydora_0.1.4.0_x64.msix
+✓ MSIX generated: D:\code\Tydora\target\msix\Tydora_0.1.4.0_x64.msix
   Size: 6.09 MB
 ```
 
@@ -407,12 +407,12 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: tydora-msix
-          path: src-tauri/target/msix/*.msix
+          path: target/msix/*.msix
       - name: Attach MSIX to GitHub Release
         if: startsWith(github.ref, 'refs/tags/v')
         uses: softprops/action-gh-release@v2
         with:
-          files: src-tauri/target/msix/*.msix
+          files: target/msix/*.msix
       # The following steps only run when MSSTORE_PRODUCT_ID is configured
       - name: Setup Microsoft Store CLI
         if: vars.MSSTORE_PRODUCT_ID
@@ -428,7 +428,7 @@ jobs:
       - name: Publish package to Store
         if: vars.MSSTORE_PRODUCT_ID
         run: |
-          $msix = Get-ChildItem src-tauri/target/msix/*.msix | Select-Object -First 1
+          $msix = Get-ChildItem target/msix/*.msix | Select-Object -First 1
           msstore publish $msix.FullName -id ${{ vars.MSSTORE_PRODUCT_ID }}
 ```
 
@@ -522,13 +522,10 @@ npm run tauri build:msix
 # Skip compilation, only re-package
 npm run tauri build:msix -- -SkipBuild
 
-# Skip signing
+# Skip signing (store mode never signs anyway; in local mode this yields an uninstallable unsigned package)
 npm run tauri build:msix -- -SkipBuild -NoSign
 
-# Force signing even in store mode (for visual verification when installing a store-identity package locally)
-npm run tauri build:msix -- -SkipBuild -Sign
-
-# Local test mode (without configuring MSSTORE_* variables)
+# Local test mode (without configuring MSSTORE_* variables; the script falls back to self-signed mode)
 Remove-Item Env:MSSTORE_PACKAGE_IDENTITY_NAME, Env:MSSTORE_PUBLISHER, Env:MSSTORE_PUBLISHER_DISPLAY_NAME -ErrorAction SilentlyContinue
 npm run tauri build:msix -- -SkipBuild
 ```
@@ -537,7 +534,7 @@ npm run tauri build:msix -- -SkipBuild
 
 - [[01-Getting-Started/Privacy-Policy]] — the privacy policy page required by the Microsoft Store
 - [[08-Advanced-Features/01-Publish-Website]] — Tydora's built-in static website publishing feature
-- [[08-Advanced-Features/04-Auto-Update-Configuration]] — GitHub Releases auto-update signing configuration
+- [[09-blog/Auto-Update-Configuration]] — GitHub Releases auto-update signing configuration
 - [[01-Getting-Started/02-About]] — Tydora version information and tech stack
 
 ## References

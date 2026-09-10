@@ -5,82 +5,89 @@ tags: [getting-started]
 
 # Quick Start
 
-1. Tydora is a modern desktop Markdown editor built with Tauri v2 + React 19. It features WYSIWYG live preview, dual-mode editing, WikiLink bidirectional links, a knowledge graph, mind maps, and a whiteboard canvas. This page gets you from installation to your first note in about 5 minutes.
+Tydora is a modern desktop Markdown editor built on Tauri v2 + React 19. It supports WYSIWYG live preview, dual-mode (live preview / source) editing, WikiLink bidirectional links, tags and bookmarks, a knowledge graph, mind maps, a whiteboard canvas, a built-in terminal, and multi-format export. This page takes you from installation to your first note in about 5 minutes.
 
-> [!NOTE] If you've used Obsidian or Typora, many interactions in Tydora will feel familiar: the Vault concept, bidirectional link syntax, and WYSIWYG editing all share the same philosophy.
+> [!NOTE] If you already use Obsidian or Typora, much of Tydora will feel familiar: the vault concept, the `[[...]]` link syntax, and live-preview editing all come from the same lineage.
 
 ## 1. Installation
 
-1. Go to the [GitHub Releases](https://github.com/zuorn/Tydora/releases) page.
-2. Download the appropriate installer for your system:
-   - **Windows**: `Tydora_x.x.x_x64-setup.exe`
-   - **macOS**: `Tydora_aarch64.app.tar.gz` (Apple Silicon) or `Tydora_x64.app.tar.gz` (Intel)
-   - **Linux**: `Tydora_amd64.AppImage`
-3. Run the installer and follow the prompts.
-4. Launch Tydora.
+Open the [GitHub Releases](https://github.com/zuorn/Tydora/releases) page.
 
-> [!TIP] After the first launch, Tydora checks for available updates automatically. You can also manually check in Settings at any time.
+1. Download the installer for your system:
+   - **Windows**: `Tydora_x.x.x_x64-setup.exe` (also available from the Microsoft Store)
+   - **macOS**: `Tydora_aarch64.dmg` (Apple silicon) or `Tydora_x64.dmg` (Intel)
+   - **Linux**: `Tydora_amd64.AppImage`
+2. Run the installer and follow the prompts.
+3. Launch Tydora.
+
+> [!TIP] After the first launch, Tydora checks for available updates in the background (see "Check for Updates" in [[01-Getting-Started/02-About]]). You can also check manually any time from the "About" tab in Settings.
 
 ## 2. Open a Vault
 
-Tydora uses the "Vault" concept to manage your notes. **Each vault corresponds to a local folder.** All Markdown files in the vault are included in the file tree, link index, and knowledge graph.
+Tydora uses the "vault" concept to manage your notes. **Each vault is a folder on your disk.** Every Markdown file and canvas file inside it is picked up by the file tree, the link index, the tag index, and the knowledge graph.
 
-1. Click the **vault switcher** at the bottom of the left sidebar (showing the current vault name).
-2. Select "Add Vault."
-3. In the file picker, choose a folder as your note vault (or create an empty folder).
-4. After confirmation, the left sidebar immediately shows the **file tree** for that folder.
+1. Click the **vault switcher** at the bottom of the left sidebar (it shows the current vault name).
+2. Choose "Manage Vaults" or "Add Vault".
+3. In the system file picker, choose a folder to be your note vault (you can also create an empty folder).
+4. After you confirm, the left sidebar immediately shows that folder's **file tree**.
 
-> [!ABSTRACT] Vaults only record folder paths — Tydora does not move or copy your files. You can add multiple vaults at any time and manage them by project or topic. See .
+> [!ABSTRACT] A vault only records a folder path — Tydora never moves or copies your files. You can add multiple vaults at any time and organize them by project or topic. See [[04-File-Management/01-Vaults]].
 
 ## 3. Create Your First Note
 
-1. In the left **file tree**, right-click a target folder (or the root directory).
-2. Choose "New File."
-3. Enter a filename, e.g., `my-first-note` (the `.md` extension can be omitted — Tydora adds it automatically).
+1. In the left **file tree**, right-click the target folder (or the root).
+2. Choose "New File".
+3. Type a filename, e.g. `my-first-note.md` (the `.md` extension is optional — Tydora adds it for you).
 4. Press `Enter` to confirm, and the editor opens the file.
 5. Start writing in Markdown!
 
-> [!TIP] Right-click empty space in the file tree to "New Folder" — organize your notes by category first to keep your knowledge from becoming chaos.
+> [!TIP] You can also right-click empty space in the file tree to "New Folder" or "New Canvas". Sort your notes into folders first so your knowledge doesn't turn into a tangle.
 
 ## 4. Basic Editing
 
-Tydora offers two editing modes for different scenarios:
+Tydora offers two editing modes for different situations:
 
-- **Live Preview (IR / WYSIWYG)**: See the final rendered result directly in the editor — what you see is what you get. Great for daily writing.
-- **Source Mode (SV)**: Shows plain Markdown text with syntax highlighting powered by CodeMirror 6. Great for fine-tuning formatting.
+- **Live preview (IR / WYSIWYG)**: you see the final rendered result directly in the editor. Best for everyday writing.
+- **Source mode (SV)**: shows plain Markdown text with syntax highlighting from CodeMirror 6. Best for fine-grained formatting.
 
-> Press `Ctrl+/` to switch between the two modes at any time. See [[02-Editor/01-Editing-Modes]].
+> Press `Ctrl+/` to switch between the two at any time. See [[02-Editor/01-Editing-Modes]].
+
+If you are used to Vim keybindings, you can enable Vim support from the "Vim Mode" tab in Settings (off by default). See [[02-Editor/11-Vim-Mode]].
 
 ## 5. Saving Files
 
-- Manual save: Press `Ctrl+S`.
-- Auto-save: Enable "Auto Save" in [[07-Settings/01-General-Settings]]. After that, files are automatically written to disk about 1 second after you stop typing.
+- Manual save: press `Ctrl+S`.
+- Auto-save: **enabled by default**. The file is written to disk about 1 second after you stop typing. You can turn it off in the "Behavior" group of [[07-Settings/01-General-Settings]].
 
-> [!WARNING] File deletion is irreversible — proceed with caution. For important notes, consider backing up or using version control (e.g., Git).
+> [!WARNING] Deleting a file is irreversible — it does not go to the system recycle bin. Back up important notes, or keep them under version control (e.g. Git).
 
 ## 6. Quick Navigation
 
-Master these shortcuts to boost your productivity:
+These shortcuts will noticeably speed up your work:
 
-| Shortcut | Function |
+| Shortcut | Action |
 | --- | --- |
-| `Ctrl+O` | [[05-Navigation-Search/01-Quick-Open]] — Open a file |
-| `Ctrl+P` | [[05-Navigation-Search/02-Command-Palette]] — Search and execute commands |
-| `Ctrl+\` | Toggle left sidebar |
+| `Ctrl+O` | [[05-Navigation-Search/01-Quick-Open]] a file |
+| `Ctrl+P` | [[05-Navigation-Search/02-Command-Palette]] — search and run commands |
+| `Ctrl+Tab` | Toggle the left sidebar |
 | `Ctrl+/` | Switch editing mode (IR ↔ SV) |
-| `Ctrl+G` | Open [[03-Knowledge-Management/04-Knowledge-Graph]] |
-| `Ctrl+M` | Open [[08-Advanced-Features/02-Mind-Map]] |
+| `Ctrl+G` | Open the [[03-Knowledge-Management/04-Knowledge-Graph]] |
+| `Ctrl+M` | Open the [[08-Advanced-Features/02-Mind-Map]] |
+| `Ctrl+F` / `Ctrl+H` | [[02-Editor/12-Find-and-Replace]] |
+| `Ctrl+\` / `Ctrl+-` | Horizontal / vertical split |
+| ``Ctrl+` `` | Open the [[08-Advanced-Features/05-Terminal]] |
 
 > Full list: [[07-Settings/04-Shortcut-Reference]].
 
 ## 7. Next Steps
 
-After writing your first note, explore further:
+Once your first note is written, explore further:
 
-- Use `<a data-note="Another Note">Another Note</a>` to create bidirectional links → [[03-Knowledge-Management/01-Wiki-Links]]
-- Open the backlinks panel on the right to see who references the current note → [[03-Knowledge-Management/03-Backlinks]]
-- Press `Ctrl+G` to see your knowledge graph → [[03-Knowledge-Management/04-Knowledge-Graph]]
-- Want to share? Publish as a website with one click → [[08-Advanced-Features/01-Publish-Website]]
+- Use `[[Another Note]]` to create bidirectional links and connect notes → [[03-Knowledge-Management/01-Wiki-Links]]
+- Use `#tag` to tag notes, then browse the tag graph in the sidebar "Tags" tab → [[03-Knowledge-Management/06-Tags]]
+- Bookmark frequently used files for one-click access → [[03-Knowledge-Management/07-Bookmarks]]
+- Press `Ctrl+G` to see what your knowledge graph looks like → [[03-Knowledge-Management/04-Knowledge-Graph]]
+- Want to share? Export to PDF / Word, or publish as a website → [[08-Advanced-Features/04-Export-and-Copy]], [[08-Advanced-Features/01-Publish-Website]]
 
 ## Related Documents
 

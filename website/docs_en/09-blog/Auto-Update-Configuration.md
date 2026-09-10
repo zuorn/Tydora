@@ -1,22 +1,35 @@
-﻿---
-title: Auto Update Configuration
+---
+title: Auto-Update Configuration
 tags: [settings]
 ---
 
-# Auto Update Configuration
+# Auto-Update Configuration
 
-Tydora supports automatic updates: when a user launches the app, it automatically checks for and installs the latest version. This document explains how to configure the signing keys required for automatic updates.
+Tydora supports auto-update: users are prompted to check for and install the latest version on startup. This page explains how to configure the signing keys required for auto-update.
 
 ## How It Works
 
-1. When the developer builds the app, the installer is signed using a private key
-2. The build artifacts include a `.sig` signature file and `latest.json` version information
-3. When the user launches the app, Tauri downloads `latest.json` from GitHub Releases
-4. After verifying the signature, it automatically downloads and installs the update
+1. When the developer builds the app, the installer is signed with a private key
+2. Build artifacts include a `.sig` signature file and a `latest.json` version manifest
+3. On startup, Tauri downloads `latest.json` from GitHub Releases
+4. After verifying the signature, the update is downloaded and installed automatically
 
-## Generating Signing Keys
+## The Three Update Channels
 
-### Installing minisign
+Tydora first determines the current installation form (the Rust-side `is_store_version` / `is_portable_version`) and then picks an update path:
+
+| Channel | How it's detected | How it updates |
+|---------|-------------------|----------------|
+| **GitHub build** (default) | Not Store, not portable | The Tauri updater reads `latest.json` and `.sig` from GitHub Releases |
+| **Microsoft Store build** | Install identity comes from MSIX | Follows Store updates; when a newer GitHub version exists, the user explicitly confirms switching to the GitHub build on the About page |
+| **Portable build** | A portable marker exists | Checks and installs via the dedicated portable channel (`check_portable_update`) |
+
+> [!TIP]
+> The update entry point for both the Store and portable builds is the "About" tab in Settings; all three channels share the same signing key and `latest.json`.
+
+## Generating a Signing Key
+
+### Install minisign
 
 ```bash
 # Windows (using scoop)
@@ -29,17 +42,17 @@ brew install minisign
 sudo apt install minisign
 ```
 
-### Generating a Key Pair
+### Generate a Key Pair
 
 ```bash
 minisign -G -s ~/.tauri/tydora.key -p ~/.tauri/tydora.key.pub
 ```
 
-You will be prompted to enter a password; this password becomes `TAURI_SIGNING_PRIVATE_KEY_PASSWORD`.
+You will be prompted for a password — that password becomes `TAURI_SIGNING_PRIVATE_KEY_PASSWORD`.
 
-This generates two files:
-- `~/.tauri/tydora.key` — private key (keep secret)
-- `~/.tauri/tydora.key.pub` — public key (public)
+Two files are generated:
+- `~/.tauri/tydora.key` — the private key (keep secret)
+- `~/.tauri/tydora.key.pub` — the public key (public)
 
 ## Configuring GitHub Secrets
 
@@ -50,9 +63,9 @@ This generates two files:
 3. Click **New repository secret**
 4. Add the following secrets:
 
-| Secret name | Value | Description |
-|------------|-----|------|
-| `TAURI_SIGNING_PRIVATE_KEY` | Private key file contents | The output of `cat ~/.tauri/tydora.key` |
+| Secret name | Value | Notes |
+|------------|-------|-------|
+| `TAURI_SIGNING_PRIVATE_KEY` | The private key file contents | The output of `cat ~/.tauri/tydora.key` |
 | `TAURI_SIGNING_PRIVATE_KEY_PASSWORD` | The password set when generating the key | Optional; leave empty if no password was set |
 
 ### Copying the Private Key Contents
@@ -69,7 +82,7 @@ Paste the complete output into the GitHub Secret.
 
 ## Configuring the Public Key
 
-Configure the public key in `src-tauri/tauri.conf.json`:
+Set the public key in `plugins.updater` of `app/tydora-desktop/tauri.conf.json`:
 
 ```json
 {
@@ -84,7 +97,10 @@ Configure the public key in `src-tauri/tauri.conf.json`:
 }
 ```
 
-The public key contents can be obtained with the following command:
+> [!NOTE]
+> In the September 2026 refactor the desktop crate moved from the repository-root `src-tauri/` to `app/tydora-desktop/`. Syncing `VERSION` with `tauri.conf.json` is handled by `npm run sync-version` (`scripts/sync-version.mjs`).
+
+You can obtain the public key contents with:
 
 ```bash
 # Windows
@@ -96,17 +112,23 @@ cat ~/.tauri/tydora.key.pub
 
 ## Build Artifacts
 
-Once configured, Release builds automatically generate the following files:
+Once configured, the Release workflow (`.github/workflows/release.yml`) produces and stages the following artifacts:
 
-| File | Description |
-|------|------|
-| `Tydora_x.x.x_x64-setup.exe` | Windows installer |
-| `Tydora_x.x.x_x64-setup.exe.sig` | Windows signature file |
-| `Tydora_aarch64.app.tar.gz` | macOS ARM installer |
-| `Tydora_aarch64.app.tar.gz.sig` | macOS ARM signature file |
-| `Tydora_amd64.AppImage` | Linux installer |
-| `Tydora_amd64.AppImage.sig` | Linux signature file |
-| `latest.json` | Version information (read automatically by Tauri) |
+| File | Platform | Notes |
+|------|----------|-------|
+| `Tydora_x.x.x_x64-setup.exe` | Windows | NSIS installer |
+| `Tydora_x.x.x_x64-setup.exe.sig` | Windows | NSIS signature |
+| `Tydora_x.x.x_x64_portable.zip` | Windows | Portable build (no install, unzip and run; CI compresses `Tydora.exe` separately) |
+| `Tydora_x.x.x_x64_en-US.msi` | Windows | MSI installer (for enterprise distribution) |
+| `Tydora_x.x.x_aarch64.dmg` | macOS | Apple silicon installer |
+| `Tydora_aarch64.app.tar.gz` / `.sig` | macOS | Apple silicon update bundle and signature |
+| `Tydora_x64.dmg` | macOS | Intel installer |
+| `Tydora_x64.app.tar.gz` / `.sig` | macOS | Intel update bundle and signature |
+| `Tydora_amd64.AppImage` / `.sig` | Linux | AppImage and signature |
+| `Tydora_amd64.deb` / `.sig` | Linux | Debian / Ubuntu package and signature |
+| `Tydora_x86_64.rpm` / `.sig` | Linux | Fedora / RHEL package and signature |
+| `Tydora_x.x.x.0_x64.msix` | Windows | Microsoft Store package (produced separately by `.github/workflows/msstore.yml` — see [[09-blog/Publish-to-Microsoft-Store]]) |
+| `latest.json` | All | Version manifest (read automatically by the Tauri updater) |
 
 ## Verifying the Configuration
 
@@ -116,37 +138,37 @@ Once configured, Release builds automatically generate the following files:
 # Build the app
 npm run tauri build
 
-# Check whether .sig files were generated
-ls src-tauri/target/release/bundle/nsis/*.sig
+# Check that .sig files were generated (target lives at the repo root, set by app/.cargo/config.toml)
+ls target/release/bundle/nsis/*.sig
 ```
 
 ### GitHub Actions Verification
 
-1. Push to the `release` branch or trigger Actions manually
-2. Review the build logs to confirm there are no signing-related errors
-3. Check that the Release contains the `.sig` files and `latest.json`
+1. Push to the `release` branch, or trigger the workflow manually
+2. Check the build log and confirm there are no signing-related errors
+3. Check that the Release includes the `.sig` files and `latest.json`
 
-## Frequently Asked Questions
+## FAQ
 
-### Q: Build fails with a signing error
+### Q: The build fails with a signing error
 
-Make sure the value of `TAURI_SIGNING_PRIVATE_KEY` contains the complete private key contents, including the part that begins with `untrusted comment:`.
+Make sure `TAURI_SIGNING_PRIVATE_KEY` contains the complete private key, including the part that starts with `untrusted comment:`.
 
-### Q: Users cannot auto-update
+### Q: Users can't auto-update
 
-Check whether `latest.json` is accessible:
+Check that `latest.json` is reachable:
 ```
 https://github.com/zuorn/Tydora/releases/latest/download/latest.json
 ```
 
-### Q: How do I change the key
+### Q: How do I rotate the key
 
 1. Generate a new key pair with `minisign -G`
-2. Update the private key in the GitHub Secrets
-3. Update the public key in `tauri.conf.json`
-4. Rebuild and publish
+2. Update the private key in GitHub Secrets
+3. Update the public key in `app/tydora-desktop/tauri.conf.json`
+4. Rebuild and release
 
 ## Related Documents
 
 - [[01-Getting-Started/02-About]] — Version information
-- [[07-Settings/01-General-Settings]] — Application settings
+- [[07-Settings/01-General-Settings]] — App settings

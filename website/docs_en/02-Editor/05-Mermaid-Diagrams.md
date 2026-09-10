@@ -1,14 +1,13 @@
-﻿---
+---
 title: Mermaid Diagrams
-tags: [Editor]
+tags: [editor]
 ---
 
 # Mermaid Diagrams
 
-Tydora integrates the Mermaid diagram engine, allowing you to draw flowcharts, sequence diagrams, Gantt charts, class diagrams, state diagrams, and more directly in Markdown using text, with real-time rendered previews.
+Tydora integrates the Mermaid diagram engine, so you can draw flowcharts, sequence diagrams, Gantt charts, class diagrams, state diagrams, and more directly in Markdown as text, with live rendering.
 
-> [!NOTE]
-> Write using mermaid code blocks. Diagram rendering is enabled by default and can be disabled in settings.
+> [!NOTE] Write them in a `mermaid` code block. Diagram rendering is on by default; there is no separate toggle.
 
 ## Basic Syntax
 
@@ -18,14 +17,18 @@ Use `mermaid` as the code block language:
 ```mermaid
 graph TD
     A[Start] --> B{Decision}
-    B -->|Yes| C[Execute]
+    B -->|Yes| C[Do it]
     B -->|No| D[Exit]
 ```
 ````
 
+> [!TIP] Diagram themes follow the app theme; the diagram itself is not directly draggable/editable — go back to the code block to make changes.
+
 ## Mermaid Examples
 
-Flowchart
+Below are minimal examples of the main diagram types. Copy them into a note to see the results.
+
+### Flowchart
 
 ```mermaid
 flowchart TD
@@ -36,7 +39,7 @@ flowchart TD
     C -->|Three| F[fa:fa-car Car]
 ```
 
-Class Diagram
+### Class Diagram
 
 ```mermaid
 classDiagram
@@ -62,7 +65,7 @@ classDiagram
     }
 ```
 
-State Diagram
+### State Diagram
 
 ```mermaid
 stateDiagram-v2
@@ -74,7 +77,7 @@ stateDiagram-v2
     Crash --> [*]
 ```
 
-ER Diagram
+### ER Diagram
 
 ```mermaid
 erDiagram
@@ -88,7 +91,7 @@ erDiagram
     PRODUCT ||--o{ ORDER-ITEM : "ordered in"
 ```
 
-XY Chart
+### XY Chart
 
 ```mermaid
 xychart-beta
@@ -99,7 +102,7 @@ xychart-beta
     line [5000, 6000, 7500, 8200, 9500, 10500, 11000, 10200, 9200, 8500, 7000, 6000]
 ```
 
-Journey Diagram
+### User Journey
 
 ```mermaid
 journey
@@ -113,7 +116,7 @@ journey
       Sit down: 3: Me
 ```
 
-Gantt Chart
+### Gantt Chart
 
 ```mermaid
 gantt
@@ -127,7 +130,7 @@ gantt
     another task      : 24d
 ```
 
-Pie Chart
+### Pie Chart
 
 ```mermaid
 pie
@@ -135,10 +138,9 @@ pie
     "Dogs" : 386
     "Cats" : 85
     "Rats" : 15
- 
 ```
 
-Quadrant Chart
+### Quadrant Chart
 
 ```mermaid
 quadrantChart
@@ -157,7 +159,7 @@ quadrantChart
     Campaign F: [0.35, 0.78]
 ```
 
-Mind Map
+### Mind Map
 
 ```mermaid
 mindmap
@@ -179,7 +181,10 @@ mindmap
       Mermaid
 ```
 
-Git Graph
+> [!TIP]
+> This is Mermaid's own mind map syntax, which is a different capability from Tydora's Markmap-based [[08-Advanced-Features/02-Mind-Map]]: the former requires you to write the structure by hand, the latter is generated automatically from heading levels.
+
+### Git Graph
 
 ```mermaid
 gitGraph
@@ -192,11 +197,11 @@ gitGraph
     commit
     checkout main
     merge develop
-   commit
+    commit
     commit
 ```
 
-Kanban
+### Kanban
 
 ```mermaid
 kanban
@@ -204,22 +209,18 @@ kanban
     [Create Documentation]
     docs[Create Blog about the new diagram]
   [In progress]
-    id6[Create renderer so that it works in all cases. We also add som extra text here for testing purposes. And some more just for the extra flare.]
+    id6[Create renderer so that it works in all cases]
   id9[Ready for deploy]
     id8[Design grammar]@{ assigned: 'knsv' }
   id10[Ready for test]
     id4[Create parsing tests]@{ ticket: MC-2038, assigned: 'K.Sveidqvist', priority: 'High' }
-    id66[last item]@{ priority: 'Very Low', assigned: 'knsv' }
   id11[Done]
     id5[define getData]
-    id2[Title of diagram is more than 100 chars when user duplicates diagram with 100 char]@{ ticket: MC-2036, priority: 'Very High'}
+    id2[Title of diagram is more than 100 chars]@{ ticket: MC-2036, priority: 'Very High'}
     id3[Update DB function]@{ ticket: MC-2037, assigned: knsv, priority: 'High' }
-
-  id12[Can't reproduce]
-    id3[Weird flickering in Firefox]
 ```
 
-Architecture Diagram
+### Architecture Diagram
 
 ```mermaid
 architecture-beta
@@ -235,7 +236,7 @@ architecture-beta
     disk2:T -- B:db
 ```
 
-Packet Diagram
+### Packet Diagram
 
 ```mermaid
 packet-beta
@@ -257,3 +258,16 @@ packet-beta
 160-191: "(Options and Padding)"
 192-255: "Data (variable length)"
 ```
+
+## Troubleshooting
+
+- The code block language must be exactly `mermaid`; variants like `mermaidjs` are not recognized
+- The syntax is sensitive to indentation and arrow symbols — writing `->` instead of `-->` will error
+- If node text contains `(`, `)`, `[`, `]`, wrap it in quotes, e.g. `A["text (with parens)"]`
+- For more syntax, see the [official Mermaid documentation](https://mermaid.js.org/)
+
+## Related Documents
+
+- [[02-Editor/02-Markdown-Syntax]] — Syntax in detail
+- [[02-Editor/03-Code-Blocks]] — Using code blocks
+- [[08-Advanced-Features/02-Mind-Map]] — Mind maps generated from headings

@@ -493,10 +493,9 @@
   gap: 12px;
   color: var(--text-secondary);
   font-size: 14px;
-  opacity: 0.7;
 }
 
-/* 欢迎页品牌区：应用图标 + 软件名称 */
+/* 欢迎页品牌区：应用图标 + 软件名称（不透明，完整显示） */
 .welcome-brand {
   display: flex;
   flex-direction: column;
@@ -506,8 +505,8 @@
 }
 
 .welcome-brand-icon {
-  width: 88px;
-  height: 88px;
+  width: 112px;
+  height: 112px;
 }
 
 .welcome-brand-name {
@@ -527,6 +526,7 @@
   align-items: center;
   gap: 8px;
   width: 260px;
+  opacity: 0.7;
 }
 
 .welcome-hint-item>span:first-child {

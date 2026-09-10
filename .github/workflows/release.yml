@@ -92,17 +92,31 @@ jobs:
           configPath: app/tydora-desktop/tauri.conf.json
           args: ${{ matrix.args }}
 
-      # Windows: 额外生成便携版（免安装）zip，内容为 release 构建出的 Tydora.exe
+      # Windows: 额外生成便携版（免安装）zip，内容为 release 构建出的主程序
+      # 注意：Tauri v2 在 target/release 下保留 cargo bin 名（tydora-desktop.exe），
+      # 只有 bundle 产物（NSIS/MSI）才用 productName=Tydora —— 两个名字都探测，
+      # 避免 crate 改名后再次踩坑
       - name: Package Windows portable zip
         if: matrix.platform == 'windows-latest'
         shell: pwsh
         run: |
           $version = (Get-Content VERSION).Trim()
-          $exe = 'target/release/Tydora.exe'
-          if (-not (Test-Path $exe)) { throw "Release exe not found: $exe" }
+          $candidates = @('target/release/Tydora.exe', 'target/release/tydora-desktop.exe')
+          $exe = $candidates | Where-Object { Test-Path $_ } | Select-Object -First 1
+          if (-not $exe) {
+            Write-Host 'target/release 下现有的可执行文件：'
+            Get-ChildItem 'target/release' -Filter '*.exe' -ErrorAction SilentlyContinue |
+              Select-Object -ExpandProperty Name
+            throw "Release exe not found. Tried: $($candidates -join ', ')"
+          }
           New-Item -ItemType Directory -Force -Path 'release-assets' | Out-Null
+          # 便携版内统一命名为 Tydora.exe，不把 crate 名暴露给用户
+          $stage = 'portable-stage'
+          if (Test-Path $stage) { Remove-Item -Recurse -Force $stage }
+          New-Item -ItemType Directory -Force -Path $stage | Out-Null
+          Copy-Item $exe (Join-Path $stage 'Tydora.exe') -Force
           $zip = Join-Path 'release-assets' "Tydora_${version}_x64_portable.zip"
-          Compress-Archive -Path $exe -DestinationPath $zip -Force
+          Compress-Archive -Path (Join-Path $stage 'Tydora.exe') -DestinationPath $zip -Force
           Get-Item $zip | Select-Object FullName, Length
 
       # 汇总所有 bundle 产物（含 .sig 签名）到 release-assets/

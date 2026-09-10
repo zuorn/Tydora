@@ -404,6 +404,20 @@ const TipTapEditor = forwardRef<EditorHandle, TipTapEditorProps>(
     const handleSourceSelectionChange = useCallback((selection: { anchor: number; head: number }) => {
       sourceSelectionRef.current = selection;
     }, []);
+    // ── 跨模式位置保持：两侧持续记录「光标 + 光标在视口中的位置 + 视口滚动比例」 ──
+    // IR 侧：PM 选区 + ratio/scrollRatio（选区变更 / 滚动时刷新）→ IR → SV 时恢复
+    const irViewStateRef = useRef<{ from: number; to: number; ratio: number; scrollRatio: number }>({
+      from: 1, to: 1, ratio: 0, scrollRatio: 0,
+    });
+    const prevFilePathForViewStateRef = useRef(currentFilePath);
+    // SV 侧：源码偏移 + ratio/scrollRatio → SV → IR 时恢复
+    const sourceViewStateRef = useRef<{ anchor: number; head: number; ratio: number; scrollRatio: number }>({
+      anchor: 0, head: 0, ratio: 0, scrollRatio: 0,
+    });
+    const handleSourceViewStateChange = useCallback(
+      (state: { anchor: number; head: number; ratio: number; scrollRatio: number }) => {
+        sourceViewStateRef.current = state;
+      }, []);
     const [contextMenuPos, setContextMenuPos] = useState<{ x: number; y: number } | null>(null);
     const [tableToolbar, setTableToolbar] = useState<{ table: HTMLElement } | null>(null);
     const linkEditRef = useRef<{ from: number; to: number } | null>(null);
@@ -1084,12 +1098,20 @@ const TipTapEditor = forwardRef<EditorHandle, TipTapEditorProps>(
           // autolink 能即时生成链接，`[中文](README_ZH.md)` 这类相对路径/本地
           // 路径链接不会自动变成链接。这里补一个 markInputRule：
           // 链接文本是最后一个捕获组（mark 应用位置），URL 从完整匹配中提取。
-          // 注意必须用 ^ $ 锚点：InputRule 的 range 计算假设匹配从段落开头
-          // 开始（忽略 match.index），否则段落中间输入时位置会错位损坏文本。
+          //
+          // 不能加 ^ 锚点：InputRule 把「段落开头到光标」的整段文本丢给 find，
+          // 加 ^ 就等于要求链接必须是整段（只能空段落里输入），任何前置文字都会
+          // 让规则失效、退化成纯文本（方括号被序列化器转义成 \[ \]）。
+          // markInputRule 的 range 用的是 match[0].length（不是 match.index），
+          // 所以只要 match[0] 恰好是 `[文本](url)` 本身，段落中间也能正确定位。
+          //
+          // 前置 `!` 必须排除：Link 的 priority(1000) 高于 Image(100)，
+          // 本规则会先于 Image 的 nodeInputRule 执行，否则 `![alt](url)` 会被
+          // 抢成「一个 ! + 链接」。前置 `\` 同理，转义过的方括号应保持字面量。
           addInputRules() {
             return [
               markInputRule({
-                find: /^\[([^\]]+)\]\((?:[^)\s]+)\)$/,
+                find: /(?<![!\\])\[([^\]]+)\]\((?:[^)\s]+)\)$/,
                 type: this.type,
                 getAttributes: (match) => {
                   const m = match[0].match(/^\[[^\]]+\]\(([^)\s]+)\)$/);
@@ -2226,17 +2248,18 @@ const TipTapEditor = forwardRef<EditorHandle, TipTapEditorProps>(
         // 文件切换或从 SV 切换回 IR 时强制更新内容
         isInternalRef.current = true;
         editor.commands.setContent(value);
-        // setContent 默认把选区放到文档末尾。后续 openFile 在 60ms 后调用 focus()，
-        // ProseMirror 会把当前选区滚动到视图中 → 光标在末尾就导致跳到底部。
-        // 重置光标到文档开头，使 focus() 不再向下滚动。
-        editor.commands.setTextSelection(1);
-        // 文件切换时重置滚动位置到顶部
-        requestAnimationFrame(() => {
-          const scrollContainer = containerRef.current?.querySelector('.tiptap-editor');
-          if (scrollContainer) {
-            scrollContainer.scrollTop = 0;
-          }
-        });
+        if (fileChanged) {
+          // 文件切换：光标回开头（避免后续 focus() 把末尾选区滚进视图），滚动回顶部。
+          // 注意：SV → IR 的模式切换不再在这里重置——光标与滚动位置由上方
+          // 「跨模式位置保持」逻辑按切换前记录的位置恢复。
+          editor.commands.setTextSelection(1);
+          requestAnimationFrame(() => {
+            const scrollContainer = containerRef.current?.querySelector('.tiptap-editor');
+            if (scrollContainer) {
+              scrollContainer.scrollTop = 0;
+            }
+          });
+        }
       } else {
         const currentContent = getMarkdownSafe(editor);
         // storage.markdown 未就绪时：不比较，保守地不同步（避免覆盖文档内容/引发 setContent 震荡）。
@@ -2248,9 +2271,83 @@ const TipTapEditor = forwardRef<EditorHandle, TipTapEditorProps>(
       }
     }, [value, editor, currentFilePath, mode]);
 
-    // 在 IR ↔ SV 之间切换时保留焦点与光标位置：
-    // 模式切换发生在同一 React 提交中，CodeMirrorEditor 挂载/卸载完成后，
-    // 旧编辑器的选区仍可通过各自的状态/ref 读取，据此在两个表示之间映射光标。
+    // 在 IR ↔ SV 之间切换时保留焦点、光标与滚动位置：
+    // 两个编辑器在同一 React 提交中互换挂载（DOM 会被卸载重建），因此位置状态必须
+    // 在切换**之前**就记录好 —— IR 侧订阅 selectionUpdate + 滚动事件持续刷新
+    // irViewStateRef，SV 侧通过 onViewStateChange 上报 sourceViewStateRef。
+    // 恢复时不仅设置选区，还把光标滚回切换前所在的视口相对位置（ratio），
+    // 避免整体跳到顶端。
+
+    /** IR 侧：恢复滚动位置（光标在视口内以光标为锚，否则按视口滚动比例） */
+    const restoreIrScrollToRatio = useCallback((pmPos: number, ratio: number, scrollRatio: number) => {
+      const caretInView = ratio >= 0 && ratio <= 1;
+      const apply = (retry: boolean) => {
+        const view = getEditorView(editor);
+        const container = containerRef.current?.querySelector(".tiptap-editor") as HTMLElement | null;
+        if (!view || !container) {
+          if (retry) requestAnimationFrame(() => apply(false));
+          return;
+        }
+        try {
+          if (!caretInView) {
+            const max = container.scrollHeight - container.clientHeight;
+            container.scrollTop = max > 0 ? Math.min(1, Math.max(0, scrollRatio)) * max : 0;
+            return;
+          }
+          const coords = view.coordsAtPos(pmPos);
+          const rect = container.getBoundingClientRect();
+          if (!coords || rect.height <= 0) {
+            if (retry) requestAnimationFrame(() => apply(false));
+            return;
+          }
+          container.scrollTop += coords.top - (rect.top + ratio * rect.height);
+        } catch {
+          if (retry) requestAnimationFrame(() => apply(false));
+        }
+      };
+      // 首次渲染布局可能未就绪，下一帧重试一次
+      requestAnimationFrame(() => apply(true));
+    }, [editor]);
+
+    // IR 模式（含每篇文章）：持续记录光标 PM 位置与视口相对位置
+    useEffect(() => {
+      if (!editor || mode !== "ir") return;
+      const container = containerRef.current?.querySelector(".tiptap-editor") as HTMLElement | null;
+      const capture = () => {
+        const sel = editor.state.selection;
+        if (!sel) return;
+        let ratio = irViewStateRef.current.ratio;
+        let scrollRatio = irViewStateRef.current.scrollRatio;
+        const view = getEditorView(editor);
+        if (view && container) {
+          try {
+            const coords = view.coordsAtPos(sel.head);
+            const rect = container.getBoundingClientRect();
+            if (coords && rect.height > 0) ratio = (coords.top - rect.top) / rect.height;
+          } catch { /* 布局未就绪时保留上一次 ratio */ }
+          const max = container.scrollHeight - container.clientHeight;
+          scrollRatio = max > 0 ? container.scrollTop / max : 0;
+        }
+        irViewStateRef.current = { from: sel.from, to: sel.to, ratio, scrollRatio };
+      };
+      const fileChanged = prevFilePathForViewStateRef.current !== currentFilePath;
+      if (fileChanged) {
+        // 文件切换：状态归零（与内容同步 effect 的"滚动回顶部"同义）。
+        // 那边在 rAF 里才把 scrollTop 置 0，故下一帧再补记一次真实位置。
+        prevFilePathForViewStateRef.current = currentFilePath;
+        irViewStateRef.current = { from: 1, to: 1, ratio: 0, scrollRatio: 0 };
+        requestAnimationFrame(() => capture());
+      }
+      capture();
+      const onScroll = () => capture();
+      editor.on("selectionUpdate", capture);
+      container?.addEventListener("scroll", onScroll, { passive: true });
+      return () => {
+        editor.off("selectionUpdate", capture);
+        container?.removeEventListener("scroll", onScroll);
+      };
+    }, [editor, mode, currentFilePath]);
+
     const prevModeForCursorRef = useRef(mode);
     useEffect(() => {
       const prevMode = prevModeForCursorRef.current;
@@ -2258,24 +2355,37 @@ const TipTapEditor = forwardRef<EditorHandle, TipTapEditorProps>(
       if (!editor) return;
 
       if (mode === "sv" && prevMode === "ir") {
-        // IR → SV：把 PM 光标映射为 Markdown 源码偏移，在 CodeMirror 中恢复并聚焦
-        const { from, to } = editor.state.selection;
+        // IR → SV：把持续记录到的 PM 光标映射为 Markdown 源码偏移，
+        // 在 CodeMirror 中恢复选区 + 滚动位置并聚焦
+        const st = irViewStateRef.current;
+        const fallback = editor.state.selection;
+        const from = Number.isFinite(st.from) ? st.from : fallback.from;
+        const to = Number.isFinite(st.to) ? st.to : fallback.to;
         const map = buildPositionMap(editor);
-        sourceEditorRef.current?.setSelectionAndFocus(
+        sourceEditorRef.current?.setSelectionAndScroll(
           pmPosToMdOffset(map, from),
           pmPosToMdOffset(map, to),
+          st.ratio,
+          st.scrollRatio,
         );
       } else if (mode === "ir" && prevMode === "sv") {
-        // SV → IR：把源码中的偏移映射回 PM 位置，聚焦并恢复选区
-        const sel = sourceSelectionRef.current;
+        // SV → IR：把源码中的偏移映射回 PM 位置，聚焦恢复选区，并按记录的
+        // 视口相对位置恢复滚动
+        const st = sourceViewStateRef.current ?? {
+          ...sourceSelectionRef.current,
+          ratio: 0,
+          scrollRatio: 0,
+        };
         const map = buildPositionMap(editor);
-        const anchorPos = mdOffsetToPmPos(map, sel.anchor);
-        const headPos = mdOffsetToPmPos(map, sel.head);
+        const anchorPos = mdOffsetToPmPos(map, st.anchor);
+        const headPos = mdOffsetToPmPos(map, st.head);
         const from = Math.min(anchorPos, headPos);
         const to = Math.max(anchorPos, headPos);
         editor.chain().focus().setTextSelection({ from, to }).run();
+        // 以 DOM 光标实际所在位置（selection.head）为基准恢复视口位置
+        restoreIrScrollToRatio(editor.state.selection.head, st.ratio, st.scrollRatio);
       }
-    }, [mode, editor]);
+    }, [mode, editor, restoreIrScrollToRatio]);
 
     // 文末留白：文本到达末尾后仍可继续向下滚动，让最后一行能滚到窗口中间附近（手动滚动，非打字机模式）
     useEffect(() => {
@@ -2332,6 +2442,7 @@ const TipTapEditor = forwardRef<EditorHandle, TipTapEditorProps>(
           onWordCount={onWordCount}
           filePath={currentFilePath}
           onSelectionChange={handleSourceSelectionChange}
+          onViewStateChange={handleSourceViewStateChange}
         />
       );
     }

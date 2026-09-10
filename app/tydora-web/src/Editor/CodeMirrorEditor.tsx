@@ -360,6 +360,13 @@ interface CodeMirrorEditorProps {
   filePath?: string | null;
   /** 选区（Markdown 源码偏移）变化时回调，用于跨模式保留光标位置 */
   onSelectionChange?: (selection: { anchor: number; head: number }) => void;
+  /**
+   * 视图状态（选区 + 光标在视口中的位置 + 视口滚动比例）变化时回调，
+   * 供 IR ↔ SV 模式切换时精确恢复滚动/光标位置。
+   * ratio ∈ [0,1] 表示光标顶部在视口中的相对位置（0=顶部），光标不在视口内时越界；
+   * scrollRatio ∈ [0,1] 表示视口自身滚动到底部的比例（兜底用）。
+   */
+  onViewStateChange?: (state: { anchor: number; head: number; ratio: number; scrollRatio: number }) => void;
 }
 
 export interface CodeMirrorEditorHandle {
@@ -368,6 +375,12 @@ export interface CodeMirrorEditorHandle {
   focus: () => void;
   /** 设置选区（Markdown 源码偏移）并将焦点移入编辑器 */
   setSelectionAndFocus: (anchor: number, head: number) => void;
+  /**
+   * 恢复选区 + 恢复滚动位置（用于 IR → SV 切换时保持视觉位置不跳变）：
+   * - 光标在视口内（ratio ∈ [0,1]）→ 把光标滚回视口中的同一相对位置
+   * - 光标在视口外 → 按 scrollRatio 恢复视口自身的滚动比例
+   */
+  setSelectionAndScroll: (anchor: number, head: number, ratio: number, scrollRatio: number) => void;
 }
 
 const highlightCompartment = new Compartment();
@@ -655,12 +668,13 @@ function executeCMTableAction(view: EditorView, op: string): boolean {
 }
 
 const CodeMirrorEditor = forwardRef<CodeMirrorEditorHandle, CodeMirrorEditorProps>(
-  ({ value, onChange, onWordCount, filePath, onSelectionChange }, ref) => {
+  ({ value, onChange, onWordCount, filePath, onSelectionChange, onViewStateChange }, ref) => {
     const containerRef = useRef<HTMLDivElement>(null);
     const viewRef = useRef<EditorView | null>(null);
     const onChangeRef = useRef(onChange);
     const onWordCountRef = useRef(onWordCount);
     const onSelectionChangeRef = useRef(onSelectionChange);
+    const onViewStateChangeRef = useRef(onViewStateChange);
     const isInternalRef = useRef(false);
     const filePathRef = useRef(filePath);
     filePathRef.current = filePath;
@@ -669,6 +683,32 @@ const CodeMirrorEditor = forwardRef<CodeMirrorEditorHandle, CodeMirrorEditorProp
     onChangeRef.current = onChange;
     onWordCountRef.current = onWordCount;
     onSelectionChangeRef.current = onSelectionChange;
+    onViewStateChangeRef.current = onViewStateChange;
+
+    /**
+     * 上报「选区 + 光标在视口中的位置 + 视口滚动比例」，供跨模式切换恢复位置。
+     */
+    const reportViewState = useCallback(() => {
+      const view = viewRef.current;
+      if (!view) return;
+      const sel = view.state.selection.main;
+      let ratio = 0;
+      let scrollRatio = 0;
+      try {
+        const rect = view.scrollDOM.getBoundingClientRect();
+        const coords = view.coordsAtPos(sel.head);
+        if (coords && rect.height > 0) ratio = (coords.top - rect.top) / rect.height;
+      } catch {
+        /* 布局未就绪时忽略，保留上一次 ratio */
+      }
+      try {
+        const max = view.scrollDOM.scrollHeight - view.scrollDOM.clientHeight;
+        scrollRatio = max > 0 ? view.scrollDOM.scrollTop / max : 0;
+      } catch {
+        /* ignore */
+      }
+      onViewStateChangeRef.current?.({ anchor: sel.anchor, head: sel.head, ratio, scrollRatio });
+    }, []);
 
     useImperativeHandle(ref, () => ({
       getValue: () => {
@@ -697,6 +737,41 @@ const CodeMirrorEditor = forwardRef<CodeMirrorEditorHandle, CodeMirrorEditorProp
         const h = Math.max(0, Math.min(head, len));
         view.dispatch({ selection: { anchor: a, head: h } });
         view.focus();
+      },
+      setSelectionAndScroll: (anchor: number, head: number, ratio: number, scrollRatio: number) => {
+        const view = viewRef.current;
+        if (!view) return;
+        const len = view.state.doc.length;
+        const a = Math.max(0, Math.min(anchor, len));
+        const h = Math.max(0, Math.min(head, len));
+        view.dispatch({ selection: { anchor: a, head: h } });
+        view.focus();
+        // 恢复滚动：光标在视口内则以光标为锚（保证光标停在原屏幕位置），
+        // 光标在视口外（切换前用户手动滚走了）则按视口滚动比例恢复
+        const caretInView = ratio >= 0 && ratio <= 1;
+        const applyScroll = (retry: boolean) => {
+          const v = viewRef.current;
+          if (!v) return;
+          const scroller = v.scrollDOM;
+          try {
+            if (!caretInView) {
+              const max = scroller.scrollHeight - scroller.clientHeight;
+              scroller.scrollTop = max > 0 ? Math.min(1, Math.max(0, scrollRatio)) * max : 0;
+              return;
+            }
+            const coords = v.coordsAtPos(v.state.selection.main.head);
+            const rect = scroller.getBoundingClientRect();
+            if (!coords || rect.height <= 0) {
+              if (retry) requestAnimationFrame(() => applyScroll(false));
+              return;
+            }
+            scroller.scrollTop += coords.top - (rect.top + ratio * rect.height);
+          } catch {
+            if (retry) requestAnimationFrame(() => applyScroll(false));
+          }
+        };
+        // 首次渲染的布局可能尚未完成，下一帧再校正一次
+        requestAnimationFrame(() => applyScroll(true));
       },
     }));
 
@@ -798,6 +873,8 @@ const CodeMirrorEditor = forwardRef<CodeMirrorEditorHandle, CodeMirrorEditorProp
       const updateListener = EditorView.updateListener.of((update: ViewUpdate) => {
         const main = update.state.selection.main;
         onSelectionChangeRef.current?.({ anchor: main.anchor, head: main.head });
+        // 选区变化时记录「光标 + 视口相对位置」，供切回 IR 模式时恢复
+        if (update.selectionSet || update.docChanged) reportViewState();
         if (update.docChanged) {
           if (isInternalRef.current) {
             isInternalRef.current = false;
@@ -863,6 +940,18 @@ const CodeMirrorEditor = forwardRef<CodeMirrorEditorHandle, CodeMirrorEditorProp
         anchor: view.state.selection.main.anchor,
         head: view.state.selection.main.head,
       });
+      reportViewState();
+
+      // 滚动时记录视口位置（rAF 节流），供切回 IR 模式时恢复滚动位置
+      let scrollRafId = 0;
+      const onScroll = () => {
+        if (scrollRafId) return;
+        scrollRafId = requestAnimationFrame(() => {
+          scrollRafId = 0;
+          reportViewState();
+        });
+      };
+      view.scrollDOM.addEventListener("scroll", onScroll, { passive: true });
 
       // 文末留白：到达文末后仍可继续向下滚动，让最后一行能滚到窗口中间附近（手动滚动）
       const wrapper = containerRef.current.closest(".editor-wrapper") as HTMLElement | null;
@@ -877,6 +966,8 @@ const CodeMirrorEditor = forwardRef<CodeMirrorEditorHandle, CodeMirrorEditorProp
 
       return () => {
         endSpaceObserver.disconnect();
+        view.scrollDOM.removeEventListener("scroll", onScroll);
+        if (scrollRafId) cancelAnimationFrame(scrollRafId);
         view.destroy();
         viewRef.current = null;
       };

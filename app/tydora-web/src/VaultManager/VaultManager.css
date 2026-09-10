@@ -565,3 +565,8 @@
 .vault-manager-list::-webkit-scrollbar-thumb:hover {
   background: rgba(255, 255, 255, 0.2);
 }
+
+/* 弹框内的主体区域：覆盖全窗口版 height:100vh */
+.app-modal-dialog .vault-manager {
+  height: auto;
+}

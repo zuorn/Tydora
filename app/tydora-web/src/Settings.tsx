@@ -1,8 +1,4 @@
 import React, { useState, useCallback, useEffect, useRef, type MouseEvent as ReactMouseEvent, type CSSProperties } from "react";
-import { getCurrentWebviewWindow } from "@tauri-apps/api/webviewWindow";
-import { PhysicalSize, PhysicalPosition } from "@tauri-apps/api/dpi";
-import { availableMonitors } from "@tauri-apps/api/window";
-import { clampWindowToMonitor } from "./services/windowState";
 import { invoke } from "@tauri-apps/api/core";
 import { emit } from "@tauri-apps/api/event";
 import { ask, open } from "@tauri-apps/plugin-dialog";
@@ -51,7 +47,7 @@ import "./Settings.css";
 
 // ── Types ────────────────────────────────────────────────────────────
 
-type SettingsTab = "general" | "theme" | "shortcuts" | "mindmap" | "graph" | "image" | "canvas" | "terminal" | "publish" | "vim" | "about";
+type SettingsTab = "general" | "editor" | "theme" | "shortcuts" | "mindmap" | "graph" | "image" | "canvas" | "terminal" | "publish" | "vim" | "about";
 
 interface NavItem {
   id: SettingsTab;
@@ -257,7 +253,8 @@ export { DEFAULT_SHORTCUTS, DEFAULT_MINDMAP, DEFAULT_GRAPH };
 
 // ── Components ──────────────────────────────────────────────────────
 
-function GeneralSettingsContent({
+/** 编辑器设置页：预览宽度 / 字体字号 / 间距 / 打字机 / 行号 / 代码块 / 顶部栏 */
+function EditorSettingsContent({
   settings,
   onChange,
 }: {
@@ -265,27 +262,9 @@ function GeneralSettingsContent({
   onChange: (s: GeneralSettings) => void;
 }) {
   const { t } = useTranslation();
-  const { language, setLanguage } = useLanguage();
 
   return (
     <div className="canvas-settings-page">
-      <div className="canvas-settings-card">
-        <div className="canvas-settings-row">
-          <div className="canvas-settings-row-label">
-            <span className="canvas-settings-row-title">{t("settings.appearance.language")}</span>
-            <span className="canvas-settings-row-desc">{t("settings.appearance.languageDesc")}</span>
-          </div>
-          <SettingsSelect
-            value={language}
-            onChange={(v) => setLanguage(v as SupportedLanguage)}
-            options={SUPPORTED_LANGUAGES.map((lang) => ({
-              value: lang.code,
-              label: lang.label,
-            }))}
-          />
-        </div>
-      </div>
-
       <div className="canvas-settings-card">
         <div className="canvas-settings-row">
           <div className="canvas-settings-row-label">
@@ -305,6 +284,9 @@ function GeneralSettingsContent({
             <span className="canvas-settings-unit">{settings.previewMaxWidth}px</span>
           </div>
         </div>
+      </div>
+
+      <div className="canvas-settings-card">
         <div className="canvas-settings-row">
           <div className="canvas-settings-row-label">
             <span className="canvas-settings-row-title">{t("settings.appearance.editorFont")}</span>
@@ -361,6 +343,9 @@ function GeneralSettingsContent({
             <span className="canvas-settings-unit">{settings.codeFontSize}px</span>
           </div>
         </div>
+      </div>
+
+      <div className="canvas-settings-card">
         <div className="canvas-settings-row">
           <div className="canvas-settings-row-label">
             <span className="canvas-settings-row-title">{t("settings.appearance.lineHeight")}</span>
@@ -469,6 +454,41 @@ function GeneralSettingsContent({
             ]}
           />
         </div>
+      </div>
+    </div>
+  );
+}
+
+function GeneralSettingsContent({
+  settings,
+  onChange,
+}: {
+  settings: GeneralSettings;
+  onChange: (s: GeneralSettings) => void;
+}) {
+  const { t } = useTranslation();
+  const { language, setLanguage } = useLanguage();
+
+  return (
+    <div className="canvas-settings-page">
+      <div className="canvas-settings-card">
+        <div className="canvas-settings-row">
+          <div className="canvas-settings-row-label">
+            <span className="canvas-settings-row-title">{t("settings.appearance.language")}</span>
+            <span className="canvas-settings-row-desc">{t("settings.appearance.languageDesc")}</span>
+          </div>
+          <SettingsSelect
+            value={language}
+            onChange={(v) => setLanguage(v as SupportedLanguage)}
+            options={SUPPORTED_LANGUAGES.map((lang) => ({
+              value: lang.code,
+              label: lang.label,
+            }))}
+          />
+        </div>
+      </div>
+
+      <div className="canvas-settings-card">
         <div className="canvas-settings-row">
           <div className="canvas-settings-row-label">
             <span className="canvas-settings-row-title">{t("settings.appearance.menuDensity")}</span>
@@ -1442,6 +1462,25 @@ function ThemeSettingsContent() {
 
   return (
     <div className="settings-section">
+      {/* 应用主题 / 代码主题切换：页面顶部居中 */}
+      <div className="theme-kind-tabs top-center" role="tablist" aria-label={t("settings.theme.appTheme")}>
+        {([
+          ["app", "appTheme"],
+          ["code", "codeTheme"],
+        ] as const).map(([tab, labelKey]) => (
+          <button
+            key={tab}
+            type="button"
+            role="tab"
+            aria-selected={themeKindTab === tab}
+            className={`theme-kind-tab${themeKindTab === tab ? " active" : ""}`}
+            onClick={() => setThemeKindTab(tab)}
+          >
+            {t(`settings.theme.${labelKey}`)}
+          </button>
+        ))}
+      </div>
+
       <h3 className="settings-section-title">{t("settings.theme.appearanceMode")}</h3>
       <p className="settings-hint" style={{ marginTop: -8, marginBottom: 12 }}>
         {t("settings.theme.appearanceModeHint")}
@@ -1484,23 +1523,6 @@ function ThemeSettingsContent() {
         })}
       </p>
 
-      <div className="theme-kind-tabs" role="tablist" aria-label={t("settings.theme.appTheme")}>
-        {([
-          ["app", "appTheme"],
-          ["code", "codeTheme"],
-        ] as const).map(([tab, labelKey]) => (
-          <button
-            key={tab}
-            type="button"
-            role="tab"
-            aria-selected={themeKindTab === tab}
-            className={`theme-kind-tab${themeKindTab === tab ? " active" : ""}`}
-            onClick={() => setThemeKindTab(tab)}
-          >
-            {t(`settings.theme.${labelKey}`)}
-          </button>
-        ))}
-      </div>
       <p className="settings-hint" style={{ marginTop: 8, marginBottom: 12 }}>
         {t("settings.theme.slotHint", {
           mode: t(`settings.theme.${resolvedMode === "dark" ? "appearanceDark" : "appearanceLight"}`),
@@ -2378,123 +2400,6 @@ function ImageSettingsContent({
   );
 }
 
-// @ts-expect-error - Reserved for future editor settings UI
-function EditorSettingsContent({
-  settings,
-  onChange,
-}: {
-  settings: EditorSettings;
-  onChange: (s: EditorSettings) => void;
-}) {
-  const { t } = useTranslation();
-  const update = <K extends keyof EditorSettings>(key: K, value: EditorSettings[K]) =>
-    onChange({ ...settings, [key]: value });
-
-  return (
-    <div className="canvas-settings-page">
-      <div className="canvas-settings-card">
-        <div className="canvas-settings-row">
-          <div className="canvas-settings-row-label">
-            <span className="canvas-settings-row-title">{t("settings.editor.defaultMode")}</span>
-            <span className="canvas-settings-row-desc">{t("settings.editor.defaultModeDesc")}</span>
-          </div>
-          <SettingsSelect
-            value={settings.defaultMode}
-            onChange={(v) => update("defaultMode", v as EditorSettings["defaultMode"])}
-            options={[
-              { value: "ir", label: t("settings.editor.instantRender") },
-              { value: "sv", label: t("settings.editor.source") },
-            ]}
-          />
-        </div>
-        <div className="canvas-settings-row">
-          <div className="canvas-settings-row-label">
-            <span className="canvas-settings-row-title">{t("settings.editor.wordCountType")}</span>
-          </div>
-          <SettingsSelect
-            value={settings.counterType}
-            onChange={(v) => update("counterType", v as EditorSettings["counterType"])}
-            options={[
-              { value: "markdown", label: t("settings.editor.markdown") },
-              { value: "text", label: t("settings.editor.plainText") },
-            ]}
-          />
-        </div>
-      </div>
-
-      <div className="canvas-settings-card">
-        <div className="canvas-settings-row">
-          <div className="canvas-settings-row-label">
-            <span className="canvas-settings-row-title">{t("settings.editor.callout")}</span>
-            <span className="canvas-settings-row-desc">{'> [!NOTE]'}</span>
-          </div>
-          <label className="settings-switch">
-            <input type="checkbox" checked={settings.callout} onChange={(e) => update("callout", e.target.checked)} />
-            <span className="settings-switch-slider" />
-          </label>
-        </div>
-        <div className="canvas-settings-row">
-          <div className="canvas-settings-row-label">
-            <span className="canvas-settings-row-title">{t("settings.editor.mermaid")}</span>
-            <span className="canvas-settings-row-desc">flowchart / sequence / ...</span>
-          </div>
-          <label className="settings-switch">
-            <input type="checkbox" checked={settings.mermaid} onChange={(e) => update("mermaid", e.target.checked)} />
-            <span className="settings-switch-slider" />
-          </label>
-        </div>
-        <div className="canvas-settings-row">
-          <div className="canvas-settings-row-label">
-            <span className="canvas-settings-row-title">{t("settings.editor.math")}</span>
-            <span className="canvas-settings-row-desc">$LaTeX$</span>
-          </div>
-          <label className="settings-switch">
-            <input type="checkbox" checked={settings.math} onChange={(e) => update("math", e.target.checked)} />
-            <span className="settings-switch-slider" />
-          </label>
-        </div>
-        <div className="canvas-settings-row">
-          <div className="canvas-settings-row-label">
-            <span className="canvas-settings-row-title">{t("settings.editor.wikilink")}</span>
-            <span className="canvas-settings-row-desc">[[note]]</span>
-          </div>
-          <label className="settings-switch">
-            <input type="checkbox" checked={settings.wikiLink} onChange={(e) => update("wikiLink", e.target.checked)} />
-            <span className="settings-switch-slider" />
-          </label>
-        </div>
-        <div className="canvas-settings-row">
-          <div className="canvas-settings-row-label">
-            <span className="canvas-settings-row-title">{t("settings.editor.yaml")}</span>
-            <span className="canvas-settings-row-desc">--- 元数据 ---</span>
-          </div>
-          <label className="settings-switch">
-            <input type="checkbox" checked={settings.frontmatter} onChange={(e) => update("frontmatter", e.target.checked)} />
-            <span className="settings-switch-slider" />
-          </label>
-        </div>
-        <div className="canvas-settings-row">
-          <div className="canvas-settings-row-label">
-            <span className="canvas-settings-row-title">{t("settings.editor.tableToolbar")}</span>
-          </div>
-          <label className="settings-switch">
-            <input type="checkbox" checked={settings.tableToolbar} onChange={(e) => update("tableToolbar", e.target.checked)} />
-            <span className="settings-switch-slider" />
-          </label>
-        </div>
-      </div>
-
-      <div className="canvas-settings-card">
-        <div className="canvas-settings-row">
-          <div className="canvas-settings-row-label">
-            <span className="canvas-settings-row-desc">{t("settings.editor.restartNotice")}</span>
-          </div>
-        </div>
-      </div>
-    </div>
-  );
-}
-
 function CanvasSettingsContent({
   settings,
   onChange,
@@ -2911,18 +2816,17 @@ function AboutSettingsContent() {
 
 // ── Main Settings Component ─────────────────────────────────────────
 
-const SETTINGS_WINDOW_STATE_KEY = "zmd-settings-window-state";
 const SETTINGS_NAV_WIDTH_KEY = "zmd-settings-nav-width";
 const SETTINGS_NAV_WIDTH_DEFAULT = 260;
 const SETTINGS_NAV_WIDTH_MIN = 180;
 const SETTINGS_NAV_WIDTH_MAX = 420;
 
-export default function Settings() {
+export default function Settings({ onClose }: { onClose?: () => void }) {
   const { t } = useTranslation();
   const [activeTab, setActiveTab] = useState<SettingsTab>(() => {
     try {
       const saved = localStorage.getItem("zmd-settings-initial-tab") as SettingsTab | null;
-      if (saved && ["general", "theme", "shortcuts", "mindmap", "graph", "image", "canvas", "publish", "vim", "about"].includes(saved)) {
+      if (saved && ["general", "editor", "theme", "shortcuts", "mindmap", "graph", "image", "canvas", "publish", "vim", "about"].includes(saved)) {
         localStorage.removeItem("zmd-settings-initial-tab");
         return saved;
       }
@@ -2975,76 +2879,6 @@ export default function Settings() {
   useEffect(() => {
     track(ANALYTICS_EVENTS.SETTINGS_OPEN);
     trackPageview("/app/settings");
-  }, []);
-
-  // ── 窗口位置/大小记忆 ──
-  const saveWindowStateRef = useRef<() => Promise<void>>(async () => { });
-  useEffect(() => {
-    const win = getCurrentWebviewWindow();
-
-    const saveWindowState = async () => {
-      try {
-        const maximized = await win.isMaximized();
-        const state: Record<string, unknown> = { maximized };
-        if (!maximized) {
-          const pos = await win.outerPosition();
-          const size = await win.outerSize();
-          state.x = pos.x;
-          state.y = pos.y;
-          state.width = size.width;
-          state.height = size.height;
-        }
-        localStorage.setItem(SETTINGS_WINDOW_STATE_KEY, JSON.stringify(state));
-      } catch { }
-    };
-    saveWindowStateRef.current = saveWindowState;
-
-    (async () => {
-      try {
-        const saved = localStorage.getItem(SETTINGS_WINDOW_STATE_KEY);
-        if (saved) {
-          const state = JSON.parse(saved) as {
-            x: number; y: number; width: number; height: number; maximized: boolean;
-          };
-
-          const monitors = await availableMonitors();
-          if (monitors && monitors.length > 0 && state.width && state.height) {
-            const clamped = clampWindowToMonitor(
-              { x: state.x ?? 0, y: state.y ?? 0, width: state.width, height: state.height },
-              monitors
-            );
-            await win.setSize(new PhysicalSize(clamped.width, clamped.height));
-            await win.setPosition(new PhysicalPosition(clamped.x, clamped.y));
-          }
-          if (state.maximized) {
-            await win.maximize();
-          }
-        }
-      } catch { }
-      // 无论是否有保存的窗口状态，都必须显示窗口（Rust 端以 visible(false) 创建）
-      await win.show();
-      await win.setFocus().catch(() => { });
-    })();
-
-    let moveTimer: ReturnType<typeof setTimeout>;
-    let resizeTimer: ReturnType<typeof setTimeout>;
-
-    const unlistenMove = win.onMoved(() => {
-      clearTimeout(moveTimer);
-      moveTimer = setTimeout(saveWindowState, 300);
-    });
-
-    const unlistenResize = win.onResized(() => {
-      clearTimeout(resizeTimer);
-      resizeTimer = setTimeout(saveWindowState, 300);
-    });
-
-    return () => {
-      clearTimeout(moveTimer);
-      clearTimeout(resizeTimer);
-      unlistenMove.then((fn) => fn()).catch(() => { });
-      unlistenResize.then((fn) => fn()).catch(() => { });
-    };
   }, []);
 
   // 通用设置状态
@@ -3145,10 +2979,10 @@ export default function Settings() {
   // 触发持久化 + 跨窗口广播，此处仅维护设置窗口内的本地 state 供 UI 渲染。
   const [terminalSettings, setTerminalSettings] = useState<TerminalSettings>(() => loadTerminalSettings());
 
-  const handleClose = useCallback(async () => {
-    const win = getCurrentWebviewWindow();
-    await win.close();
-  }, []);
+  // 弹框模式：由宿主（App）传入 onClose；Ctrl+W / Ctrl+, 均走此关闭
+  const handleClose = useCallback(() => {
+    onClose?.();
+  }, [onClose]);
 
   // Ctrl+W / Ctrl+,（macOS：⌘）关闭设置窗口；Alt+1 / Alt+2 转发给主窗口折叠侧栏
   useEffect(() => {
@@ -3198,6 +3032,14 @@ export default function Settings() {
               <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z" />
             </svg>
           ), searchTerms: ["通用", "general", "外观", "字体", "编辑设置"]
+        },
+        {
+          id: "editor", label: t("settings.tabs.editor"), icon: (
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <path d="M12 20h9" />
+              <path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z" />
+            </svg>
+          ), searchTerms: ["编辑器", "editor", "字体", "字号", "行间距", "段间距", "预览宽度", "打字机", "行号", "代码块", "工具栏"]
         },
         {
           id: "theme", label: t("settings.tabs.theme"), icon: (
@@ -3325,8 +3167,8 @@ export default function Settings() {
           className={`settings-nav${isNavResizing ? " resizing" : ""}`}
           style={{ width: navWidth }}
         >
-          {/* 顶部透明拖拽区域：deep 使整条顶栏（含子节点）可拖 */}
-          <div className="settings-nav-topbar" data-tauri-drag-region="deep" />
+          {/* 顶部留白（原独立窗口的拖拽区，弹框模式仅作间距） */}
+          <div className="settings-nav-topbar" />
           <div className="settings-nav-content">
             {/* 搜索框 */}
             <div className="settings-nav-search">
@@ -3391,25 +3233,14 @@ export default function Settings() {
 
         {/* 右侧内容 */}
         <div className="settings-main-wrapper">
-          {/* 内容区域顶部栏 */}
-          <div className="settings-main-topbar" data-tauri-drag-region="deep">
-            <div className="settings-main-topbar-drag" data-tauri-drag-region="deep" />
-            <div className="settings-titlebar-controls" data-tauri-drag-region="false">
-              <button
-                className="settings-titlebar-btn settings-titlebar-close"
-                onClick={handleClose}
-                title={t("settings.close")}
-              >
-                <svg width="14" height="14" viewBox="0 0 10 10">
-                  <line x1="1.5" y1="1.5" x2="8.5" y2="8.5" stroke="currentColor" strokeWidth="1.4" />
-                  <line x1="8.5" y1="1.5" x2="1.5" y2="8.5" stroke="currentColor" strokeWidth="1.4" />
-                </svg>
-              </button>
-            </div>
-          </div>
+          {/* 内容区域顶部留白（关闭按钮由 AppModal 悬浮提供） */}
+          <div className="settings-main-topbar" />
           <main className="settings-main">
             {activeTab === "general" && (
               <GeneralSettingsContent settings={generalSettings} onChange={setGeneralSettings} />
+            )}
+            {activeTab === "editor" && (
+              <EditorSettingsContent settings={generalSettings} onChange={setGeneralSettings} />
             )}
             {activeTab === "theme" && <ThemeSettingsContent />}
             {activeTab === "shortcuts" && <ShortcutsSettingsContent />}

@@ -7,9 +7,7 @@
 [![dsh.so security](https://www.dsh.so/badge/tydora.svg)](https://www.dsh.so/artifact/tydora)
 [![dsh.so install](https://www.dsh.so/badge/install/tydora.svg)](https://www.dsh.so/artifact/tydora)
 
-[中文](README_ZH.md) | English
-
-![image.png](website/assets/image-20260815-221141.png)
+![image.png](/website/assets/image-20260910-223717.png)
 
 ---
 
@@ -95,19 +93,11 @@ Issues and pull requests are welcome!
 
 ## Contributors
 
-<a href="https://github.com/zuorn/Tydora/graphs/contributors">
-  <img src="https://contrib.rocks/image?repo=zuorn/Tydora" />
-</a>
+[![](https://contrib.rocks/image?repo=zuorn/Tydora)](https://github.com/zuorn/Tydora/graphs/contributors)
 
 ## Star History
 
-<a href="https://www.star-history.com/?repos=zuorn%2FTydora&type=date&legend=top-left">
- <picture>
-   <source media="(prefers-color-scheme: dark)" srcset="https://api.star-history.com/chart?repos=zuorn/Tydora&type=date&theme=dark&legend=top-left&sealed_token=UbjlpYMAKlj9YxE9TrI3oZEpbMArNY0oRBtXdZ4GlQe9lQG0bgKmhoGnECO6aR-BCg34sIpFHJLyux4trfCJQVTOG2DIOa2HKERx9cCUMNhsoboxUFNz8g" />
-   <source media="(prefers-color-scheme: light)" srcset="https://api.star-history.com/chart?repos=zuorn/Tydora&type=date&legend=top-left&sealed_token=UbjlpYMAKlj9YxE9TrI3oZEpbMArNY0oRBtXdZ4GlQe9lQG0bgKmhoGnECO6aR-BCg34sIpFHJLyux4trfCJQVTOG2DIOa2HKERx9cCUMNhsoboxUFNz8g" />
-   <img alt="Star History Chart" src="https://api.star-history.com/chart?repos=zuorn/Tydora&type=date&legend=top-left&sealed_token=UbjlpYMAKlj9YxE9TrI3oZEpbMArNY0oRBtXdZ4GlQe9lQG0bgKmhoGnECO6aR-BCg34sIpFHJLyux4trfCJQVTOG2DIOa2HKERx9cCUMNhsoboxUFNz8g" />
- </picture>
-</a>
+[![Star History Chart](https://api.star-history.com/chart?repos=zuorn/Tydora&type=date&legend=top-left&sealed_token=UbjlpYMAKlj9YxE9TrI3oZEpbMArNY0oRBtXdZ4GlQe9lQG0bgKmhoGnECO6aR-BCg34sIpFHJLyux4trfCJQVTOG2DIOa2HKERx9cCUMNhsoboxUFNz8g)](https://www.star-history.com/?repos=zuorn%2FTydora&type=date&legend=top-left)
 
 ## License
 

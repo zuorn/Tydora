@@ -117,18 +117,11 @@
   height: 36px;
   flex-shrink: 0;
   background: transparent;
-  -webkit-app-region: drag;
   position: relative;
   display: flex;
   align-items: stretch;
   user-select: none;
   -webkit-user-select: none;
-}
-
-.settings-main-topbar-drag {
-  flex: 1;
-  height: 100%;
-  -webkit-app-region: drag;
 }
 
 /* ── Navigation (类似主窗口侧栏) ────────────────────────────────── */
@@ -161,12 +154,11 @@
   -webkit-app-region: no-drag;
 }
 
-/* ── 顶部透明拖拽区域 ── */
+/* ── 顶部留白区域 ── */
 .settings-nav-topbar {
   height: 36px;
   flex-shrink: 0;
   background: transparent;
-  -webkit-app-region: drag;
   position: relative;
   user-select: none;
   -webkit-user-select: none;
@@ -1658,11 +1650,9 @@
 }
 
 .settings-about-icon {
-  width: 80px;
-  height: 80px;
-  border-radius: 18px;
+  width: 112px;
+  height: 112px;
   margin-bottom: 20px;
-  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.15);
 }
 
 .settings-about-title {
@@ -1943,6 +1933,11 @@
   border-radius: 10px;
   width: fit-content;
   max-width: 100%;
+}
+
+/* 主题页顶部居中变体 */
+.theme-kind-tabs.top-center {
+  margin: 0 auto 16px;
 }
 
 .theme-kind-tab {

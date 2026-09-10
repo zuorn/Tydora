@@ -496,6 +496,27 @@
   opacity: 0.7;
 }
 
+/* 欢迎页品牌区：应用图标 + 软件名称 */
+.welcome-brand {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 16px;
+}
+
+.welcome-brand-icon {
+  width: 88px;
+  height: 88px;
+}
+
+.welcome-brand-name {
+  font-size: 26px;
+  font-weight: 700;
+  color: var(--text-primary);
+  letter-spacing: 0.5px;
+}
+
 .welcome-hint-icon {
   font-size: 32px;
   margin-bottom: 8px;

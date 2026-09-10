@@ -97,21 +97,15 @@ html.platform-macos .editor-container.sidebar-is-closed .editor-topbar {
 
 /* 侧栏展开时红绿灯落在侧栏顶栏，无需再给编辑器顶栏让位 */
 
-html.platform-macos .settings-nav-topbar {
-  padding-left: var(--mac-traffic-lights-width);
-}
-
 /* macOS 使用系统红绿灯，隐藏自定义最小化/最大化/关闭 */
 html.platform-macos .window-controls-native,
 html.platform-macos .settings-titlebar-controls,
-html.platform-macos .vault-manager-window-controls,
 html.platform-macos .mindmap-window-controls,
 html.platform-macos .graph-window-controls,
 html.platform-macos .canvas-window-controls {
   display: none !important;
 }
 
-html.platform-macos .vault-manager-titlebar-sidebar,
 html.platform-macos .mindmap-window-titlebar,
 html.platform-macos .graph-window-titlebar,
 html.platform-macos .canvas-window-titlebar {

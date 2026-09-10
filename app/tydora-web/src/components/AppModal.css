@@ -1,0 +1,112 @@
+/* ===== 通用模态弹框（AppModal）：遮罩 + 圆角对话框 + 悬浮关闭按钮 ===== */
+.app-modal-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 10000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 40px;
+  background: rgba(0, 0, 0, 0.45);
+  backdrop-filter: blur(2px);
+  animation: app-modal-overlay-in 0.15s ease;
+}
+
+.app-modal-overlay.closing {
+  animation: app-modal-overlay-out 0.16s ease forwards;
+}
+
+@keyframes app-modal-overlay-in {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+@keyframes app-modal-overlay-out {
+  from { opacity: 1; }
+  to { opacity: 0; }
+}
+
+.app-modal-dialog {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  background: var(--bg-primary, #1e1e2e);
+  border: 1px solid var(--border, #45475a);
+  border-radius: 14px;
+  overflow: hidden;
+  box-shadow: 0 24px 64px rgba(0, 0, 0, 0.45);
+  animation: app-modal-dialog-in 0.18s ease;
+}
+
+.app-modal-dialog.closing {
+  animation: app-modal-dialog-out 0.16s ease forwards;
+}
+
+@keyframes app-modal-dialog-in {
+  from {
+    opacity: 0;
+    transform: translateY(10px) scale(0.98);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+@keyframes app-modal-dialog-out {
+  from {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+  to {
+    opacity: 0;
+    transform: translateY(10px) scale(0.98);
+  }
+}
+
+/* 悬浮在右上角的关闭按钮（弹框无标题栏） */
+.app-modal-close {
+  position: absolute;
+  top: 10px;
+  right: 10px;
+  z-index: 10;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 30px;
+  height: 30px;
+  border: none;
+  background: transparent;
+  color: var(--text-secondary, #a6adc8);
+  cursor: pointer;
+  border-radius: 50%;
+  transition: background 0.15s, color 0.15s;
+}
+
+.app-modal-close:hover {
+  background: rgba(255, 255, 255, 0.1);
+  color: var(--text-primary, #cdd6f4);
+}
+
+/* 内容区填满弹框（除悬浮关闭按钮外） */
+.app-modal-dialog > * {
+  min-height: 0;
+}
+
+.app-modal-dialog > :not(.app-modal-close) {
+  flex: 1;
+}
+
+/* 移动端 / 小屏：弹框全屏显示 */
+@media (max-width: 640px), (max-height: 560px) {
+  .app-modal-overlay {
+    padding: 0;
+  }
+
+  .app-modal-dialog {
+    width: 100% !important;
+    height: 100% !important;
+    border-radius: 0;
+    border: none;
+  }
+}

@@ -342,7 +342,7 @@ html.platform-macos .tiptap-editor .tiptap {
   margin: 0;
 }
 
-/* TipTap Placeholder：空文档时显示"入@插入双链，#插入标签"提示 */
+/* TipTap Placeholder：空文档时显示"输入@插入双链，输入#插入标签"提示 */
 /* 需覆盖上方 IR 行号规则（content/position/right/top 等） */
 .tiptap-editor .tiptap p.is-editor-empty::before,
 .tiptap-editor .tiptap p.is-empty::before {

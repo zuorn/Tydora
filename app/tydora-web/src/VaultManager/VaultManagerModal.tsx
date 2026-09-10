@@ -1,12 +1,10 @@
-import { useState, useEffect, useCallback, useRef } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { useTranslation } from "react-i18next";
 import { invoke } from "@tauri-apps/api/core";
-import { getCurrentWindow, availableMonitors } from "@tauri-apps/api/window";
-import { PhysicalSize, PhysicalPosition } from "@tauri-apps/api/dpi";
 import { open } from "@tauri-apps/plugin-dialog";
 import { mkdir, exists } from "@tauri-apps/plugin-fs";
 import { emit } from "@tauri-apps/api/event";
-import { clampWindowToMonitor } from "../services/windowState";
+import AppModal from "../components/AppModal";
 import { track, trackPageview, ANALYTICS_EVENTS } from "../analytics";
 import { useLanguage } from "../i18n/LanguageContext";
 import { SUPPORTED_LANGUAGES, type SupportedLanguage } from "../i18n";
@@ -21,7 +19,6 @@ interface VaultInfo {
 
 const VAULTS_KEY = "zmd-vaults";
 const ACTIVE_VAULT_KEY = "zmd-active-vault";
-const VAULT_MANAGER_WINDOW_STATE_KEY = "zmd-vault-manager-window-state";
 
 function loadVaults(): VaultInfo[] {
   try {
@@ -48,7 +45,17 @@ function saveVaults(vaults: VaultInfo[], activeIndex: number) {
 
 type ViewMode = "home" | "create";
 
-export default function VaultManagerWindow() {
+interface VaultManagerModalProps {
+  open: boolean;
+  onClose: () => void;
+}
+
+/**
+ * 管理仓库 —— 模态弹框版。
+ * 数据交互与原独立窗口完全一致：localStorage 持久化 + `vaults-changed` 事件广播，
+ * 主窗口（App）监听该事件实时同步仓库列表与激活仓库。
+ */
+export default function VaultManagerModal({ open: isOpen, onClose }: VaultManagerModalProps) {
   const { t } = useTranslation();
   const { language, setLanguage } = useLanguage();
   const [vaults, setVaults] = useState<VaultInfo[]>(loadVaults);
@@ -64,100 +71,22 @@ export default function VaultManagerWindow() {
   const [newVaultName, setNewVaultName] = useState("");
   const [newVaultLocation, setNewVaultLocation] = useState("");
 
+  // 打开时拉取版本号 + 埋点（替代原窗口的挂载埋点）
   useEffect(() => {
+    if (!isOpen) return;
     invoke<string>("get_app_version").then(setVersion).catch(() => {});
-  }, []);
-
-  // 统计：仓库管理窗口打开（含启动时无仓库自动打开、侧栏和命令面板入口）
-  useEffect(() => {
     track(ANALYTICS_EVENTS.VAULT_MANAGER_OPEN);
     trackPageview("/app/vault-manager");
-  }, []);
+    // 每次打开重置临时视图状态（避免上次遗留的菜单/重命名/表单）
+    setMenuOpenIndex(-1);
+    setRenamingIndex(-1);
+    setMovingIndex(-1);
+    setViewMode("home");
+  }, [isOpen]);
 
-  // ── 窗口位置/大小记忆 ──
-  const saveWindowStateRef = useRef<() => Promise<void>>(async () => {});
+  // 关闭菜单：点击弹框外部区域
   useEffect(() => {
-    const win = getCurrentWindow();
-
-    const saveWindowState = async () => {
-      try {
-        const maximized = await win.isMaximized();
-        const state: Record<string, unknown> = { maximized };
-        if (!maximized) {
-          const pos = await win.outerPosition();
-          const size = await win.outerSize();
-          state.x = pos.x;
-          state.y = pos.y;
-          state.width = size.width;
-          state.height = size.height;
-        }
-        localStorage.setItem(VAULT_MANAGER_WINDOW_STATE_KEY, JSON.stringify(state));
-      } catch {}
-    };
-    saveWindowStateRef.current = saveWindowState;
-
-    (async () => {
-      try {
-        const monitors = await availableMonitors();
-        if (monitors && monitors.length > 0) {
-          let saved: { x: number; y: number; width: number; height: number; maximized: boolean } | null = null;
-          const savedStr = localStorage.getItem(VAULT_MANAGER_WINDOW_STATE_KEY);
-          if (savedStr) {
-            try { saved = JSON.parse(savedStr); } catch {}
-          }
-
-          if (saved && saved.width && saved.height) {
-            const clamped = clampWindowToMonitor(
-              { x: saved.x ?? 0, y: saved.y ?? 0, width: saved.width, height: saved.height },
-              monitors
-            );
-            await win.setSize(new PhysicalSize(clamped.width, clamped.height));
-            await win.setPosition(new PhysicalPosition(clamped.x, clamped.y));
-            if (saved.maximized) {
-              await win.maximize();
-            }
-          } else {
-            // 无保存状态：将当前（Rust center 定位）位置钳制到屏幕内
-            const pos = await win.outerPosition();
-            const size = await win.outerSize();
-            if (size.width && size.height) {
-              const clamped = clampWindowToMonitor(
-                { x: pos.x, y: pos.y, width: size.width, height: size.height },
-                monitors
-              );
-              await win.setPosition(new PhysicalPosition(clamped.x, clamped.y));
-            }
-          }
-        }
-      } catch {}
-      await win.show();
-      await win.setFocus().catch(() => {});
-    })();
-
-    let moveTimer: ReturnType<typeof setTimeout>;
-    let resizeTimer: ReturnType<typeof setTimeout>;
-
-    const unlistenMove = win.onMoved(() => {
-      clearTimeout(moveTimer);
-      moveTimer = setTimeout(saveWindowState, 300);
-    });
-
-    const unlistenResize = win.onResized(() => {
-      clearTimeout(resizeTimer);
-      resizeTimer = setTimeout(saveWindowState, 300);
-    });
-
-    return () => {
-      clearTimeout(moveTimer);
-      clearTimeout(resizeTimer);
-      unlistenMove.then((fn) => fn()).catch(() => {});
-      unlistenResize.then((fn) => fn()).catch(() => {});
-    };
-  }, []);
-
-  // Close menu on outside click
-  useEffect(() => {
-    if (menuOpenIndex < 0) return;
+    if (!isOpen || menuOpenIndex < 0) return;
     const handler = (e: MouseEvent) => {
       const target = e.target as HTMLElement;
       if (!target.closest(".vault-manager-more-btn") && !target.closest(".vault-manager-menu")) {
@@ -166,7 +95,20 @@ export default function VaultManagerWindow() {
     };
     document.addEventListener("mousedown", handler);
     return () => document.removeEventListener("mousedown", handler);
-  }, [menuOpenIndex]);
+  }, [isOpen, menuOpenIndex]);
+
+  // 关闭守卫：重命名/菜单打开时先取消它们，本次不关闭弹框
+  const guardClose = useCallback(() => {
+    if (renamingIndex >= 0) {
+      setRenamingIndex(-1);
+      return false;
+    }
+    if (menuOpenIndex >= 0) {
+      setMenuOpenIndex(-1);
+      return false;
+    }
+    return true;
+  }, []);
 
   const notifyChange = useCallback(async (newVaults: VaultInfo[], newIndex: number) => {
     saveVaults(newVaults, newIndex);
@@ -244,12 +186,12 @@ export default function VaultManagerWindow() {
     }
   }, [vaults, notifyChange]);
 
+  // 选中仓库：持久化 + 广播事件（主窗口实时切换），随后关闭弹框
   const handleSelectVault = useCallback(async (index: number) => {
     setActiveIndex(index);
-    const win = getCurrentWindow();
-    const [size, scale] = await Promise.all([win.innerSize(), win.scaleFactor()]);
-    await invoke("open_vault_in_new_window", { vaultPath: vaults[index].path, width: size.width / scale, height: size.height / scale });
-  }, [vaults]);
+    await notifyChange(vaults, index);
+    onClose();
+  }, [vaults, notifyChange, onClose]);
 
   const handleRename = useCallback((index: number) => {
     setRenamingIndex(index);
@@ -324,20 +266,7 @@ export default function VaultManagerWindow() {
     await notifyChange(newVaults, newIndex);
   }, [vaults, activeIndex, notifyChange]);
 
-  // Window controls
-  const handleMinimize = useCallback(async () => {
-    try {
-      const { getCurrentWindow } = await import("@tauri-apps/api/window");
-      await getCurrentWindow().minimize();
-    } catch {}
-  }, []);
-
-  const handleClose = useCallback(async () => {
-    try {
-      const { getCurrentWindow } = await import("@tauri-apps/api/window");
-      await getCurrentWindow().close();
-    } catch {}
-  }, []);
+  if (!isOpen) return null;
 
   // Render right content based on view mode
   const renderContent = () => {
@@ -445,106 +374,95 @@ export default function VaultManagerWindow() {
   };
 
   return (
-    <div className="vault-manager">
-      <div className="vault-manager-layout">
-        {/* Left sidebar with its own titlebar */}
-        <div className="vault-manager-sidebar">
-          <div data-tauri-drag-region className="vault-manager-titlebar vault-manager-titlebar-sidebar">
-            <div className="vault-manager-titlebar-drag" data-tauri-drag-region />
-          </div>
-          <div className="vault-manager-list">
-            {vaults.map((vault, i) => (
-              <div
-                key={vault.path}
-                className={`vault-manager-item${i === activeIndex ? " active" : ""}`}
-              >
-                {renamingIndex === i ? (
-                  <div className="vault-manager-rename">
-                    <input
-                      className="vault-manager-rename-input"
-                      value={renameValue}
-                      onChange={(e) => setRenameValue(e.target.value)}
-                      onKeyDown={(e) => {
-                        if (e.key === "Enter") handleRenameConfirm();
-                        if (e.key === "Escape") setRenamingIndex(-1);
-                      }}
-                      onBlur={handleRenameConfirm}
-                      autoFocus
-                    />
-                  </div>
-                ) : (
+    <AppModal
+      open={isOpen}
+      onClose={onClose}
+      shouldClose={guardClose}
+      ariaLabel={t("sidebar.vault.manage")}
+      closeTitle={t("vaultManager.close")}
+    >
+      <div className="vault-manager">
+          <div className="vault-manager-layout">
+            {/* Left sidebar */}
+            <div className="vault-manager-sidebar">
+              <div className="vault-manager-list">
+                {vaults.map((vault, i) => (
                   <div
-                    className="vault-manager-item-content"
-                    onClick={() => handleSelectVault(i)}
+                    key={vault.path}
+                    className={`vault-manager-item${i === activeIndex ? " active" : ""}`}
                   >
-                    <div className="vault-manager-item-info">
-                      <div className="vault-manager-item-name">{vault.name}</div>
-                      <div className="vault-manager-item-path">{vault.path}</div>
-                    </div>
-                    {movingIndex === i && <span className="vault-manager-moving">{t("vaultManager.moving")}</span>}
-                  </div>
-                )}
-                {renamingIndex !== i && (
-                  <div className="vault-manager-item-actions">
-                    <button
-                      className="vault-manager-more-btn"
-                      title={t("vaultManager.moreActions")}
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        setMenuOpenIndex(menuOpenIndex === i ? -1 : i);
-                      }}
-                    >
-                      <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor">
-                        <circle cx="12" cy="5" r="2" />
-                        <circle cx="12" cy="12" r="2" />
-                        <circle cx="12" cy="19" r="2" />
-                      </svg>
-                    </button>
-                    {menuOpenIndex === i && (
-                      <div className="vault-manager-menu">
-                        <div className="vault-manager-menu-item" onClick={() => handleRename(i)}>
-                          {t("vaultManager.rename")}
+                    {renamingIndex === i ? (
+                      <div className="vault-manager-rename">
+                        <input
+                          className="vault-manager-rename-input"
+                          value={renameValue}
+                          onChange={(e) => setRenameValue(e.target.value)}
+                          onKeyDown={(e) => {
+                            if (e.key === "Enter") handleRenameConfirm();
+                            if (e.key === "Escape") setRenamingIndex(-1);
+                          }}
+                          onBlur={handleRenameConfirm}
+                          autoFocus
+                        />
+                      </div>
+                    ) : (
+                      <div
+                        className="vault-manager-item-content"
+                        onClick={() => handleSelectVault(i)}
+                      >
+                        <div className="vault-manager-item-info">
+                          <div className="vault-manager-item-name">{vault.name}</div>
+                          <div className="vault-manager-item-path">{vault.path}</div>
                         </div>
-                        <div className="vault-manager-menu-item" onClick={() => handleMove(i)}>
-                          {t("vaultManager.move")}
-                        </div>
-                        <div className="vault-manager-menu-item" onClick={() => handleShowInExplorer(vault.path)}>
-                          {t("vaultManager.showInExplorer")}
-                        </div>
-                        <div className="vault-manager-menu-divider" />
-                        <div className="vault-manager-menu-item vault-manager-menu-danger" onClick={() => handleRemove(i)}>
-                          {t("vaultManager.remove")}
-                        </div>
+                        {movingIndex === i && <span className="vault-manager-moving">{t("vaultManager.moving")}</span>}
+                      </div>
+                    )}
+                    {renamingIndex !== i && (
+                      <div className="vault-manager-item-actions">
+                        <button
+                          className="vault-manager-more-btn"
+                          title={t("vaultManager.moreActions")}
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            setMenuOpenIndex(menuOpenIndex === i ? -1 : i);
+                          }}
+                        >
+                          <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor">
+                            <circle cx="12" cy="5" r="2" />
+                            <circle cx="12" cy="12" r="2" />
+                            <circle cx="12" cy="19" r="2" />
+                          </svg>
+                        </button>
+                        {menuOpenIndex === i && (
+                          <div className="vault-manager-menu">
+                            <div className="vault-manager-menu-item" onClick={() => handleRename(i)}>
+                              {t("vaultManager.rename")}
+                            </div>
+                            <div className="vault-manager-menu-item" onClick={() => handleMove(i)}>
+                              {t("vaultManager.move")}
+                            </div>
+                            <div className="vault-manager-menu-item" onClick={() => handleShowInExplorer(vault.path)}>
+                              {t("vaultManager.showInExplorer")}
+                            </div>
+                            <div className="vault-manager-menu-divider" />
+                            <div className="vault-manager-menu-item vault-manager-menu-danger" onClick={() => handleRemove(i)}>
+                              {t("vaultManager.remove")}
+                            </div>
+                          </div>
+                        )}
                       </div>
                     )}
                   </div>
-                )}
+                ))}
               </div>
-            ))}
-          </div>
-        </div>
+            </div>
 
-        {/* Right content area with its own titlebar */}
-        <div className="vault-manager-main">
-          <div data-tauri-drag-region className="vault-manager-titlebar vault-manager-titlebar-main">
-            <div className="vault-manager-titlebar-drag" data-tauri-drag-region />
-            <div className="vault-manager-window-controls">
-              <button className="vault-manager-window-btn" onClick={handleMinimize} title={t("vaultManager.minimize")}>
-                <svg width="10" height="10" viewBox="0 0 10 10">
-                  <line x1="1" y1="5" x2="9" y2="5" stroke="currentColor" strokeWidth="1.2" />
-                </svg>
-              </button>
-              <button className="vault-manager-window-btn vault-manager-window-close" onClick={handleClose} title={t("vaultManager.close")}>
-                <svg width="10" height="10" viewBox="0 0 10 10">
-                  <line x1="1.5" y1="1.5" x2="8.5" y2="8.5" stroke="currentColor" strokeWidth="1.2" />
-                  <line x1="8.5" y1="1.5" x2="1.5" y2="8.5" stroke="currentColor" strokeWidth="1.2" />
-                </svg>
-              </button>
+            {/* Right content area */}
+            <div className="vault-manager-main">
+              {renderContent()}
             </div>
           </div>
-          {renderContent()}
         </div>
-      </div>
-    </div>
+      </AppModal>
   );
 }

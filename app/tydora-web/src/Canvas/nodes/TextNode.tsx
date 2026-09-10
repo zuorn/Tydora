@@ -29,7 +29,7 @@ function TextNode({ data, selected, id }: NodeProps) {
         heading: { levels: [1, 2, 3, 4, 5, 6] },
       }),
       Placeholder.configure({
-        placeholder: '入@插入双链，#插入标签',
+        placeholder: '输入@插入双链，输入#插入标签',
         // 未聚焦/未选中时也在空节点上显示提示
         showOnlyCurrent: false,
       }),
@@ -183,7 +183,7 @@ function TextNode({ data, selected, id }: NodeProps) {
           </div>
         ) : (
           <div className="canvas-text-preview">
-            {text || <span className="canvas-placeholder">入@插入双链，#插入标签</span>}
+            {text || <span className="canvas-placeholder">输入@插入双链，输入#插入标签</span>}
           </div>
         )}
       </div>

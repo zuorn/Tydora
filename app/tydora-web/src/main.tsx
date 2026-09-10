@@ -44,8 +44,6 @@ const App = lazy(() =>
     return m;
   })
 );
-const Settings = lazy(() => import("./Settings"));
-const VaultManagerWindow = lazy(() => import("./VaultManager/VaultManagerWindow"));
 const MindmapWindow = lazy(() => import("./mindmap").then((m) => ({ default: m.MindmapWindow })));
 const GraphWindow = lazy(() => import("./graph").then((m) => ({ default: m.GraphWindow })));
 const CanvasWindow = lazy(() => import("./Canvas/CanvasWindow"));
@@ -79,8 +77,6 @@ if (import.meta.env.DEV) {
 function Root() {
   bootStamp("root_component_entered");
   const urlParams = new URLSearchParams(window.location.search);
-  const isSettingsWindow = urlParams.get("window") === "settings";
-  const isVaultManagerWindow = urlParams.get("window") === "vault-manager";
   const isMindmapWindow = urlParams.get("window") === "mindmap";
   const isGraphWindow = urlParams.get("window") === "graph";
   const isCanvasWindow = urlParams.get("window") === "canvas";
@@ -91,14 +87,6 @@ function Root() {
     ? urlParams.get("vault")?.replace(/\//g, "\\")
     : null;
 
-  if (isSettingsWindow) {
-    bootEnd("main_window_lazy_chunks_resolve");
-    return <Settings />;
-  }
-  if (isVaultManagerWindow) {
-    bootEnd("main_window_lazy_chunks_resolve");
-    return <VaultManagerWindow />;
-  }
   if (isMindmapWindow) {
     bootEnd("main_window_lazy_chunks_resolve");
     return <MindmapWindow />;

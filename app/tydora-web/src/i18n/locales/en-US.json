@@ -85,6 +85,7 @@
     "tabs": {
       "groupGeneral": "General",
       "general": "General",
+      "editor": "Editor",
       "theme": "Theme",
       "shortcuts": "Shortcuts",
       "image": "Image",

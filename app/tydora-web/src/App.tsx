@@ -31,7 +31,7 @@ import { ExportPreviewDialog } from "./components/ExportPreviewDialog";
 import { XhsPreviewPanel } from "./export/xiaohongshu";
 import { emit, listen } from "@tauri-apps/api/event";
 import { loadImageSettings, type ImageSettings } from "./services";
-import { loadEditorSettings, type EditorSettings, EDITOR_SETTINGS_KEY, SHORTCUTS_KEY, GRAPH_SETTINGS_KEY, DEFAULT_GRAPH, type SidebarTab, type SidebarSide, type SidebarTabPlacement, sidebarTabsForSide, DEFAULT_GENERAL } from "./Settings";
+import { loadEditorSettings, type EditorSettings, EDITOR_SETTINGS_KEY, SHORTCUTS_KEY, GRAPH_SETTINGS_KEY, DEFAULT_GRAPH, type SidebarTab, type SidebarSide, type SidebarTabPlacement, sidebarTabsForSide, DEFAULT_GENERAL, TOGGLE_SIDEBAR_EVENT, TOGGLE_RIGHT_SIDEBAR_EVENT } from "./Settings";
 import { applyFontSettings } from "./utils/systemFonts";
 import { applyMenuDensity, applyEditorSpacingFromSettings, normalizeMenuDensity } from "./utils/menuDensity";
 import { checkForUpdate, downloadAndInstall, relaunchApp, exitApp, isPortableVersion, type UpdateInfo } from "./services";
@@ -1946,28 +1946,50 @@ function App({ initialFilePath, initialVaultPath }: { initialFilePath?: string |
     setRightSidebarOpen((prev) => !prev);
   }, []);
 
-  // 切换侧栏快捷键（从 localStorage 读取，默认值来自 src/config/shortcuts.json）
+  // 侧栏折叠/展开快捷键：左侧 Alt+1、右侧 Alt+2
+  // （与设置-快捷键面板同源：默认值见 src/config/shortcuts.json，用户自定义存 localStorage）
   useEffect(() => {
     const handler = (e: KeyboardEvent) => {
-      let shortcutKeys = shortcutsConfig.editor.find((s) => s.id === "toggle-sidebar")?.keys ?? ["Ctrl", "\\"];
-      try {
-        const saved = localStorage.getItem(SHORTCUTS_KEY);
-        if (saved) {
-          const parsed = JSON.parse(saved);
-          const item = parsed.find((s: { id: string }) => s.id === "toggle-sidebar");
-          if (item) shortcutKeys = item.keys;
-        }
-      } catch {}
-      const key = shortcutKeys.join("+").toLowerCase();
-      const eventKey = `${e.ctrlKey || e.metaKey ? "ctrl+" : ""}${e.altKey ? "alt+" : ""}${e.shiftKey ? "shift+" : ""}${e.key.toLowerCase()}`;
-      if (eventKey === key) {
+      const shortcuts = loadShortcuts();
+      if (matchShortcut(e, getShortcutKeys(shortcuts, "toggle-sidebar"))) {
         e.preventDefault();
         handleSidebarToggle();
+        return;
+      }
+      if (matchShortcut(e, getShortcutKeys(shortcuts, "toggle-right-sidebar"))) {
+        e.preventDefault();
+        handleRightSidebarToggle();
       }
     };
     window.addEventListener("keydown", handler, { capture: true });
     return () => window.removeEventListener("keydown", handler, { capture: true });
-  }, [handleSidebarToggle]);
+  }, [handleSidebarToggle, handleRightSidebarToggle]);
+
+  // 其他窗口（设置窗口）转发来的侧栏折叠/展开请求：
+  // 设置窗口是独立的 webview，主窗口收不到它的按键，这里通过全局事件接住
+  useEffect(() => {
+    let disposed = false;
+    let unlisteners: Array<() => void> = [];
+    (async () => {
+      try {
+        const fns = await Promise.all([
+          listen(TOGGLE_SIDEBAR_EVENT, () => handleSidebarToggle()),
+          listen(TOGGLE_RIGHT_SIDEBAR_EVENT, () => handleRightSidebarToggle()),
+        ]);
+        if (disposed) {
+          fns.forEach((fn) => fn());
+          return;
+        }
+        unlisteners = fns;
+      } catch {
+        // 事件系统不可用时（如纯 Web 预览环境）忽略
+      }
+    })();
+    return () => {
+      disposed = true;
+      unlisteners.forEach((fn) => fn());
+    };
+  }, [handleSidebarToggle, handleRightSidebarToggle]);
 
   const handleNewWindow = useCallback(async (filePath: string) => {
     try {
@@ -3377,6 +3399,7 @@ function App({ initialFilePath, initialVaultPath }: { initialFilePath?: string |
 
     // 视图操作
     { id: "toggle-sidebar", label: t("app.command.labels.toggleSidebar"), category: t("app.command.categories.view"), shortcut: getCommandShortcut("toggle-sidebar"), action: handleSidebarToggle },
+    { id: "toggle-right-sidebar", label: t("app.command.labels.toggleRightSidebar"), category: t("app.command.categories.view"), shortcut: getCommandShortcut("toggle-right-sidebar"), action: handleRightSidebarToggle },
     { id: "toggle-mode", label: t("app.command.labels.toggleEditMode"), category: t("app.command.categories.view"), shortcut: getCommandShortcut("toggle-mode"), action: cycleMode },
     { id: "toggle-typewriter", label: t("app.command.labels.toggleTypewriter"), category: t("app.command.categories.view"), shortcut: getCommandShortcut("toggle-typewriter"), action: toggleTypewriterMode },
     { id: "split-lr", label: t("app.menu.splitLeftRight"), category: t("app.command.categories.view"), shortcut: getCommandShortcut("split-lr"), aliases: t("app.command.aliases.splitLeftRight").split(", "), action: () => { if (fileName && isCurrentFileMarkdown) handleSplit("lr"); else if (isActiveTerminal) handleSplit("lr"); } },

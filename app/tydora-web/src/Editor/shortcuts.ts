@@ -34,6 +34,26 @@ export function formatShortcutKey(key: string): string {
   }
 }
 
+/** 历史默认键位表：值 = 该 id 曾经用过的默认键位。
+ *  若用户保存的键位恰好等于旧默认值，视为「未自定义」，自动迁移到最新默认；
+ *  用户真正自定义过的键位不受影响。 */
+const LEGACY_DEFAULT_KEYS: Record<string, string[][]> = {
+  // 左侧栏折叠/展开：Ctrl+Tab → Alt+1
+  "toggle-sidebar": [["Ctrl", "Tab"], ["Ctrl", "\\"]],
+};
+
+function sameKeys(a: string[], b: string[]): boolean {
+  if (a.length !== b.length) return false;
+  return a.every((k, i) => k.toLowerCase() === (b[i] ?? "").toLowerCase());
+}
+
+/** 解析用户保存的键位：命中「旧默认值」时回落到最新默认，其余原样返回。 */
+export function resolveSavedKeys(id: string, savedKeys: string[], defaultKeys: string[]): string[] {
+  const legacy = LEGACY_DEFAULT_KEYS[id];
+  if (legacy && legacy.some((l) => sameKeys(l, savedKeys))) return defaultKeys;
+  return savedKeys;
+}
+
 export function loadShortcuts(): ShortcutItem[] {
   try {
     const saved = localStorage.getItem(SHORTCUTS_KEY);
@@ -41,7 +61,7 @@ export function loadShortcuts(): ShortcutItem[] {
       const parsed = JSON.parse(saved);
       return DEFAULT_SHORTCUTS.map((def) => {
         const savedItem = parsed.find((s: ShortcutItem) => s.id === def.id);
-        return savedItem ? { ...def, keys: savedItem.keys } : def;
+        return savedItem ? { ...def, keys: resolveSavedKeys(def.id, savedItem.keys, def.keys) } : def;
       });
     }
   } catch {}
@@ -84,6 +104,10 @@ export function matchShortcut(e: KeyboardEvent, keys: string[]): boolean {
 
   const keyLower = e.key.toLowerCase();
   if (keyLower === mainKey) return true;
+  // 数字键：个别键盘布局/输入法下 e.key 不是 "2"，但 e.code 始终是 Digit2
+  if (/^[0-9]$/.test(mainKey) && e.code === `Digit${mainKey}`) return true;
+  // 小键盘数字（Numpad2）同样视为该数字键
+  if (/^[0-9]$/.test(mainKey) && e.code === `Numpad${mainKey}`) return true;
   if (e.code.toLowerCase() === `key${mainKey}`) return true;
   // 标点：e.code 与配置字符对齐（如 Comma ↔ ,）
   const codeMap: Record<string, string> = {

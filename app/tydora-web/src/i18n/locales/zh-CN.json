@@ -213,7 +213,7 @@
         "undo": "撤销",
         "redo": "重做",
         "select-all": "全选（代码块内）",
-        "toggle-sidebar": "切换侧栏",
+        "toggle-sidebar": "切换左侧栏",
         "typewriter": "打字机模式",
         "open-mindmap": "打开思维导图",
         "split-lr": "左右分屏",
@@ -222,7 +222,8 @@
         "escape": "关闭提示",
         "quick-open": "快速打开文件",
         "command-palette": "命令面板",
-        "open-settings": "打开/关闭设置"
+        "open-settings": "打开/关闭设置",
+        "toggle-right-sidebar": "切换右侧栏"
       }
     },
     "theme": {
@@ -699,7 +700,7 @@
         "openInNewWindow": "新窗口打开",
         "undo": "撤销",
         "redo": "重做",
-        "toggleSidebar": "切换侧栏",
+        "toggleSidebar": "切换左侧栏",
         "toggleEditMode": "切换编辑模式",
         "toggleTypewriter": "切换打字机模式",
         "openMindmap": "打开思维导图",
@@ -753,7 +754,8 @@
         "imageSettings": "图像设置",
         "canvasSettings": "白板设置",
         "openVaultInNewWindow": "在新窗口打开「{{name}}」知识库",
-        "about": "关于"
+        "about": "关于",
+        "toggleRightSidebar": "切换右侧栏"
       },
       "aliases": {
         "vaultManager": "仓库, 仓库管理",

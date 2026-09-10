@@ -213,7 +213,7 @@
         "undo": "Undo",
         "redo": "Redo",
         "select-all": "Select All (in Code Block)",
-        "toggle-sidebar": "Toggle Sidebar",
+        "toggle-sidebar": "Toggle Left Sidebar",
         "typewriter": "Typewriter Mode",
         "open-mindmap": "Open Mind Map",
         "split-lr": "Split Left/Right",
@@ -222,7 +222,8 @@
         "escape": "Close Tooltip",
         "quick-open": "Quick Open",
         "command-palette": "Command Palette",
-        "open-settings": "Toggle Settings"
+        "open-settings": "Toggle Settings",
+        "toggle-right-sidebar": "Toggle Right Sidebar"
       }
     },
     "theme": {
@@ -700,7 +701,7 @@
         "openInNewWindow": "Open in New Window",
         "undo": "Undo",
         "redo": "Redo",
-        "toggleSidebar": "Toggle Sidebar",
+        "toggleSidebar": "Toggle Left Sidebar",
         "toggleEditMode": "Toggle Edit Mode",
         "toggleTypewriter": "Toggle Typewriter Mode",
         "openMindmap": "Open Mind Map",
@@ -754,7 +755,8 @@
         "imageSettings": "Image Settings",
         "canvasSettings": "Canvas Settings",
         "openVaultInNewWindow": "Open \"{{name}}\" in New Window",
-        "about": "About"
+        "about": "About",
+        "toggleRightSidebar": "Toggle Right Sidebar"
       },
       "aliases": {
         "vaultManager": "vault, vaults",

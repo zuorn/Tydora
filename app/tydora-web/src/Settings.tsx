@@ -4,6 +4,7 @@ import { PhysicalSize, PhysicalPosition } from "@tauri-apps/api/dpi";
 import { availableMonitors } from "@tauri-apps/api/window";
 import { clampWindowToMonitor } from "./services/windowState";
 import { invoke } from "@tauri-apps/api/core";
+import { emit } from "@tauri-apps/api/event";
 import { ask, open } from "@tauri-apps/plugin-dialog";
 import { useTranslation } from "react-i18next";
 import { useTheme, type ThemeName, type ThemePair } from "./themes";
@@ -44,7 +45,7 @@ import {
   type MenuDensity,
 } from "./utils/menuDensity";
 import shortcutsConfig from "./config/shortcuts.json";
-import { formatShortcutKey, matchShortcut, loadShortcuts, getShortcutKeys } from "./Editor/shortcuts";
+import { formatShortcutKey, matchShortcut, loadShortcuts, getShortcutKeys, resolveSavedKeys } from "./Editor/shortcuts";
 import { isAnalyticsEnabled, setAnalyticsEnabled, track, trackPageview, ANALYTICS_EVENTS } from "./analytics";
 import "./Settings.css";
 
@@ -213,6 +214,13 @@ const DEFAULT_GRAPH: GraphSettings = {
 
 // 默认快捷键统一从 src/config/shortcuts.json 读取（设置面板中的自定义仍存储在 localStorage）
 const DEFAULT_SHORTCUTS: ShortcutItem[] = shortcutsConfig.editor as ShortcutItem[];
+
+/** 快捷键录制中标记：录制期间全局快捷键（侧栏折叠/展开等）应让位，避免误触 */
+const shortcutRecordingRef = { current: false };
+
+/** 侧栏折叠/展开事件名：设置窗口没有侧栏，按键后转发给主窗口执行 */
+export const TOGGLE_SIDEBAR_EVENT = "tydora:toggle-sidebar";
+export const TOGGLE_RIGHT_SIDEBAR_EVENT = "tydora:toggle-right-sidebar";
 
 const ALL_SIDEBAR_TABS: SidebarTab[] = ["files", "search", "outline", "bookmarks", "tags"];
 
@@ -1947,7 +1955,10 @@ function ShortcutsSettingsContent() {
         const parsed = JSON.parse(saved);
         const merged = DEFAULT_SHORTCUTS.map((def) => {
           const savedItem = parsed.find((s: ShortcutItem) => s.id === def.id);
-          return savedItem ? savedItem : def;
+          // 命中历史默认键位的条目自动迁移到最新默认（用户自定义过的保持不动）
+          return savedItem
+            ? { ...savedItem, keys: resolveSavedKeys(def.id, savedItem.keys, def.keys) }
+            : def;
         });
         return merged;
       }
@@ -2018,6 +2029,7 @@ function ShortcutsSettingsContent() {
     redo: t("settings.shortcuts.labels.redo"),
     "select-all": t("settings.shortcuts.labels.select-all"),
     "toggle-sidebar": t("settings.shortcuts.labels.toggle-sidebar"),
+    "toggle-right-sidebar": t("settings.shortcuts.labels.toggle-right-sidebar"),
     typewriter: t("settings.shortcuts.labels.typewriter"),
     "open-mindmap": t("settings.shortcuts.labels.open-mindmap"),
     "split-lr": t("settings.shortcuts.labels.split-lr", "左右分屏"),
@@ -2095,8 +2107,13 @@ function ShortcutsSettingsContent() {
   };
 
   useEffect(() => {
+    // 录制期间标记：让全局快捷键（侧栏折叠/展开等）让位
+    shortcutRecordingRef.current = editingId !== null || recordingSearch;
     window.addEventListener("keydown", handleKeyDown);
-    return () => window.removeEventListener("keydown", handleKeyDown);
+    return () => {
+      shortcutRecordingRef.current = false;
+      window.removeEventListener("keydown", handleKeyDown);
+    };
   }, [editingId, recordingSearch]);
 
   const startEditing = (id: string) => {
@@ -3133,7 +3150,7 @@ export default function Settings() {
     await win.close();
   }, []);
 
-  // Ctrl+W / Ctrl+,（macOS：⌘）关闭设置窗口
+  // Ctrl+W / Ctrl+,（macOS：⌘）关闭设置窗口；Alt+1 / Alt+2 转发给主窗口折叠侧栏
   useEffect(() => {
     const handler = (e: KeyboardEvent) => {
       if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === "w") {
@@ -3146,6 +3163,20 @@ export default function Settings() {
       if (matchShortcut(e, keys.length ? keys : fallback)) {
         e.preventDefault();
         handleClose();
+        return;
+      }
+      // 设置窗口本身没有侧栏：命中侧栏快捷键时通过全局事件让主窗口执行，
+      // 保证用户在「设置-快捷键」里改完就能直接按键验证效果
+      if (shortcutRecordingRef.current) return;
+      const shortcuts = loadShortcuts();
+      if (matchShortcut(e, getShortcutKeys(shortcuts, "toggle-sidebar"))) {
+        e.preventDefault();
+        emit(TOGGLE_SIDEBAR_EVENT).catch(() => { });
+        return;
+      }
+      if (matchShortcut(e, getShortcutKeys(shortcuts, "toggle-right-sidebar"))) {
+        e.preventDefault();
+        emit(TOGGLE_RIGHT_SIDEBAR_EVENT).catch(() => { });
       }
     };
     window.addEventListener("keydown", handler);

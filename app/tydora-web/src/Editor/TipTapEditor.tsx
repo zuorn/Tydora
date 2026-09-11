@@ -45,7 +45,7 @@ import { HardBreakCleanup } from "./extensions/hardbreak-cleanup";
 import { TableFloatingToolbar as TableFloatingToolbarComponent } from "./TableFloatingToolbar";
 import { executeCommand } from "./extensions/custom-commands";
 import { Math as MathExtension } from "./extensions/math";
-import { saveImageToLocal, loadImageSettings, resolveRelativePath, dirName, ImageSaveCancelledError } from "../services";
+import { saveImageToLocal, loadImageSettings, resolveRelativePath, dirName, ImageSaveCancelledError, IMAGE_SETTINGS_KEY, readImageAsBlobUrl } from "../services";
 import { LinkIndexService } from "../wikilink";
 import { loadShortcuts, matchShortcut } from "./shortcuts";
 import { invoke, convertFileSrc } from "@tauri-apps/api/core";
@@ -149,6 +149,22 @@ function ensureExtraLanguages() {
 let activeImageSourceEditorClose: (() => void) | null = null;
 // 图片预览弹层：同一时刻只允许一个（所有图片 node view 共享）
 let activeImagePreviewClose: (() => void) | null = null;
+
+/**
+ * markdown-it 渲染图片时会对 src 做 normalizeLink 百分号编码（如中文 → %XX），
+ * 而 tiptap-markdown 只解码链接的 href、不解码图片的 src，导致本地图片路径
+ * （../图片/x.png）在节点视图里变成 ../%E5%9B%BE%E7%89%87/x.png，永远找不到文件。
+ * 此处把 src 解回原始路径；网络图 / data / asset URL 保持原样（其 %XX 有语义）。
+ */
+export function decodeMarkdownImageSrc(src: string): string {
+  if (!src || !src.includes("%")) return src;
+  if (/^(https?:|data:|asset:|blob:)/i.test(src) || src.startsWith("//")) return src;
+  try {
+    return decodeURIComponent(src);
+  } catch {
+    return src;
+  }
+}
 
 /** 将图片节点属性序列化为 Markdown 源码（与 addStorage.serialize 一致） */
 function imageNodeToMarkdown(attrs: Record<string, any>): string {
@@ -647,7 +663,9 @@ const TipTapEditor = forwardRef<EditorHandle, TipTapEditorProps>(
                       String(v).replace(/&/g, "&amp;").replace(/"/g, "&quot;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
                     md.renderer.rules.image = (tokens: any[], idx: number) => {
                       const token = tokens[idx];
-                      const src = token.attrGet("src") || "";
+                      // markdown-it 会把 src 百分号编码（中文→%XX），先解回原始路径，
+                      // 否则本地相对路径在节点视图与序列化回写时都会是编码形态
+                      const src = decodeMarkdownImageSrc(token.attrGet("src") || "");
                       const alt = token.content || "";
                       const m = alt.match(/^(.*)\|(\d+)$/);
                       const width = m && m[1] !== "" ? m[2] : null;
@@ -679,6 +697,13 @@ const TipTapEditor = forwardRef<EditorHandle, TipTapEditorProps>(
               dom.style.height = "auto";
               dom.loading = "lazy";
 
+              // 当前图片的本地绝对路径（asset 协议加载失败时的 fs 兜底数据源）
+              let currentAbsPath: string | null = null;
+              let imageSettled = false;
+              let fsFallbackTried = false;
+              let imageObjectUrl: string | null = null;
+              let imageLoadProbeTimer: number | null = null;
+
               const initialWidth = node.attrs.width ? Number(node.attrs.width) : null;
               if (initialWidth) {
                 dom.style.width = `${initialWidth}px`;
@@ -686,6 +711,7 @@ const TipTapEditor = forwardRef<EditorHandle, TipTapEditorProps>(
               }
 
               if (absPath) {
+                currentAbsPath = absPath;
                 dom.setAttribute("data-abs-path", absPath);
                 dom.src = convertFileSrc(absPath);
               } else if (src && (src.startsWith("http://") || src.startsWith("https://"))) {
@@ -727,28 +753,88 @@ const TipTapEditor = forwardRef<EditorHandle, TipTapEditorProps>(
                 };
                 tryLoad(false);
               } else if (src && !src.startsWith("data:") && !src.startsWith("asset:")) {
-                let resolvedPath = src;
-                const basePath = currentFilePathRef.current
-                  ? dirName(currentFilePathRef.current)
-                  : activeVaultPathRef.current;
-                if (src.startsWith("/")) {
+                // src 可能仍是百分号编码形态（非 markdown-it 渲染管线进来时），先解码
+                const rawSrc = decodeMarkdownImageSrc(src);
+                const isAbsLocal = /^[a-zA-Z]:[\\/]/.test(rawSrc) || rawSrc.startsWith("/");
+                let resolvedPath = rawSrc;
+                const docDir = currentFilePathRef.current ? dirName(currentFilePathRef.current) : null;
+                const vaultRoot = activeVaultPathRef.current ?? null;
+                if (rawSrc.startsWith("/") && vaultRoot) {
                   // 仓库根绝对路径：/assets/image.png → vaultPath/assets/image.png
-                  if (activeVaultPathRef.current) {
-                    resolvedPath = resolveRelativePath(activeVaultPathRef.current, src.slice(1));
-                  }
+                  resolvedPath = resolveRelativePath(vaultRoot, rawSrc.slice(1));
                 } else if (node.attrs["data-wiki-embed"]) {
                   // Obsidian 嵌入图片：优先按文件名在 vault 中查找，失败则回退相对路径解析
-                  const found = LinkIndexService.findImageByBaseName(src);
+                  const found = LinkIndexService.findImageByBaseName(rawSrc);
                   if (found) {
                     resolvedPath = found;
-                  } else if (basePath && (src.startsWith("./") || src.startsWith("../") || !src.match(/^[a-zA-Z]:\\/))) {
-                    resolvedPath = resolveRelativePath(basePath, src);
+                  } else if (docDir) {
+                    resolvedPath = resolveRelativePath(docDir, rawSrc);
                   }
-                } else if (basePath && (src.startsWith("./") || src.startsWith("../") || !src.match(/^[a-zA-Z]:\\/))) {
-                  resolvedPath = resolveRelativePath(basePath, src);
+                } else if (!isAbsLocal && docDir) {
+                  resolvedPath = resolveRelativePath(docDir, rawSrc);
                 }
                 dom.setAttribute("data-abs-path", resolvedPath);
+                currentAbsPath = resolvedPath;
                 dom.src = convertFileSrc(resolvedPath);
+
+                // ── 加载兜底与路径校验（异步）──
+                // 1) 渲染时 currentFilePath 可能尚未就绪（或文档目录 ≠ 仓库根），
+                //    相对路径可能解析到错误位置 → 用 fs exists 校验，必要时换基准重解析
+                // 2) asset 协议服务失败（error 或超时未加载）→ fs 直接读文件转 blob 兜底
+                const tryFsFallback = () => {
+                  if (fsFallbackTried || !currentAbsPath) return;
+                  fsFallbackTried = true;
+                  void readImageAsBlobUrl(currentAbsPath).then((url) => {
+                    if (url) {
+                      imageObjectUrl = url;
+                      dom.src = url;
+                      console.info("[ImageView] fs fallback loaded:", currentAbsPath);
+                    } else {
+                      console.warn("[ImageView] fs fallback failed:", currentAbsPath);
+                    }
+                  });
+                };
+                dom.addEventListener("load", () => { imageSettled = true; });
+                dom.addEventListener("error", () => {
+                  imageSettled = true;
+                  console.warn("[ImageView] asset protocol failed, trying fs fallback:", currentAbsPath);
+                  tryFsFallback();
+                });
+                imageLoadProbeTimer = window.setTimeout(() => {
+                  if (!imageSettled) {
+                    console.warn("[ImageView] asset protocol timeout, trying fs fallback:", currentAbsPath);
+                    tryFsFallback();
+                  }
+                }, 2500);
+
+                void (async () => {
+                  try {
+                    if (isAbsLocal) return; // 绝对路径无需校验基准
+                    const { exists } = await import("@tauri-apps/plugin-fs");
+                    if (currentAbsPath && (await exists(currentAbsPath))) return;
+                    // 当前解析结果不存在 → 换基准重解析（文档目录 / 仓库根）
+                    const candidates: string[] = [];
+                    if (rawSrc.startsWith("/") && vaultRoot) {
+                      // 同步解析已用仓库根，备选：文档目录
+                      if (docDir) candidates.push(resolveRelativePath(docDir, rawSrc.slice(1)));
+                    } else if (docDir) {
+                      // 同步解析已用文档目录，备选：仓库根
+                      if (vaultRoot) candidates.push(resolveRelativePath(vaultRoot, rawSrc));
+                    }
+                    for (const cand of candidates) {
+                      if (cand && (await exists(cand))) {
+                        console.info("[ImageView] re-resolved image path:", resolvedPath, "->", cand);
+                        currentAbsPath = cand;
+                        dom.setAttribute("data-abs-path", cand);
+                        dom.src = convertFileSrc(cand);
+                        return;
+                      }
+                    }
+                    console.warn("[ImageView] image not found at any candidate path:", {
+                      rawSrc, resolved: resolvedPath, docDir, vaultRoot,
+                    });
+                  } catch { /* 校验失败不影响主流程 */ }
+                })();
               } else {
                 dom.src = src;
               }
@@ -1067,6 +1153,8 @@ const TipTapEditor = forwardRef<EditorHandle, TipTapEditorProps>(
                 destroy: () => {
                   stopDrag();
                   closeSourceEditor();
+                  if (imageLoadProbeTimer != null) window.clearTimeout(imageLoadProbeTimer);
+                  if (imageObjectUrl) URL.revokeObjectURL(imageObjectUrl);
                 },
               };
             };
@@ -1509,7 +1597,13 @@ const TipTapEditor = forwardRef<EditorHandle, TipTapEditorProps>(
     const handleImageFile = useCallback(async (file: File) => {
       if (!editor) return;
 
-      const settings = imageSettingsRef.current || loadImageSettings();
+      // 存储设置以 localStorage 为准实时读取（设置弹框内改完立即生效），
+      // props 快照仅作为兜底，避免使用到启动时的旧配置
+      let settings: ImageSettings = imageSettingsRef.current ?? loadImageSettings();
+      try {
+        const stored = localStorage.getItem(IMAGE_SETTINGS_KEY);
+        if (stored) settings = { ...settings, ...(JSON.parse(stored) as ImageSettings) };
+      } catch {}
       try {
         const result = await saveImageToLocal(
           file,

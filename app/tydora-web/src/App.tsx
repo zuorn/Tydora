@@ -34,7 +34,7 @@ import { buildExportArtifact, EXPORT_FORMATS, type ExportFormat, type BuiltArtif
 import { ExportPreviewDialog } from "./components/ExportPreviewDialog";
 import { XhsPreviewPanel } from "./export/xiaohongshu";
 import { emit, listen } from "@tauri-apps/api/event";
-import { loadImageSettings, type ImageSettings } from "./services";
+import { loadImageSettings, IMAGE_SETTINGS_KEY, type ImageSettings } from "./services";
 import { loadEditorSettings, type EditorSettings, EDITOR_SETTINGS_KEY, SHORTCUTS_KEY, GRAPH_SETTINGS_KEY, DEFAULT_GRAPH, type SidebarTab, type SidebarSide, type SidebarTabPlacement, sidebarTabsForSide, DEFAULT_GENERAL, TOGGLE_SIDEBAR_EVENT, TOGGLE_RIGHT_SIDEBAR_EVENT } from "./Settings";
 import { applyFontSettings } from "./utils/systemFonts";
 import { applyMenuDensity, applyEditorSpacingFromSettings, normalizeMenuDensity } from "./utils/menuDensity";
@@ -877,8 +877,15 @@ function App({ initialFilePath, initialVaultPath }: { initialFilePath?: string |
   // 快速打开文件弹窗状态
   const [quickOpenOpen, setQuickOpenOpen] = useState(false);
 
-  // 图像设置状态
-  const [imageSettings] = useState<ImageSettings>(() => loadImageSettings());
+  // 图像设置状态（设置弹框内改动后实时同步；跨窗口亦通过 storage 事件同步）
+  const [imageSettings, setImageSettings] = useState<ImageSettings>(() => loadImageSettings());
+  useEffect(() => {
+    const handleImageSettingsStorage = (e: StorageEvent) => {
+      if (e.key === IMAGE_SETTINGS_KEY) setImageSettings(loadImageSettings());
+    };
+    window.addEventListener("storage", handleImageSettingsStorage);
+    return () => window.removeEventListener("storage", handleImageSettingsStorage);
+  }, []);
 
   // 命令面板状态
   const [commandPaletteOpen, setCommandPaletteOpen] = useState(false);

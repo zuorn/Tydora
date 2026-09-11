@@ -97,6 +97,10 @@ export function relativePath(from: string, to: string): string {
  */
 export function resolveRelativePath(baseDir: string, relPath: string): string {
   const sep = pathSep();
+  // 绝对路径（Windows 盘符正/反斜杠、类 Unix 根）直接归一化返回，不做相对拼接
+  if (/^[a-zA-Z]:[\\/]/.test(relPath)) {
+    return relPath.replace(/\//g, sep);
+  }
   // 拆分为路径段，过滤掉空段
   const baseParts = baseDir.split(/[\\/]/).filter(Boolean);
   // 统一用 / 分割，处理 ./ 和 ../
@@ -262,7 +266,7 @@ async function saveToFixedDirectory(
   uint8: Uint8Array,
   originalName: string,
   settings: ImageSettings,
-  _currentFilePath: string | null, // 保留参数以兼容调用方；固定目录策略统一使用 /assets/ 前缀
+  currentFilePath: string | null,
 ): Promise<SaveImageResult> {
   const dirPath = settings.fixedDirectory.path;
   if (!dirPath) {
@@ -277,7 +281,23 @@ async function saveToFixedDirectory(
 
   await writeFile(fullPath, uint8);
 
-   const markdownRef = `/assets/${availableName}`;
+  // Markdown 引用：固定目录模式不能再用 /assets/ 前缀（图片不在仓库内），
+  // 优先写成「相对当前文档所在目录」的路径；文档未保存或跨盘符时回退绝对路径。
+  const markdownRef = buildFixedDirectoryRef(currentFilePath, fullPath);
 
   return { savedPath: fullPath, markdownRef };
+}
+
+/** 生成固定目录模式下的 Markdown 引用路径 */
+function buildFixedDirectoryRef(currentFilePath: string | null, fullPath: string): string {
+  if (!currentFilePath) return fullPath;
+
+  const docDir = dirName(currentFilePath);
+  const docDrive = docDir.split(/[\\/]/)[0].toLowerCase();
+  const imgDrive = fullPath.split(/[\\/]/)[0].toLowerCase();
+
+  // 跨盘符无法用相对路径表达，直接写绝对路径（编辑器按绝对路径渲染）
+  if (!docDrive || docDrive !== imgDrive) return fullPath;
+
+  return relativePath(docDir, fullPath).replace(/\\/g, "/");
 }

@@ -1,8 +1,9 @@
-import { useState, useEffect, useCallback, memo } from 'react';
+import { useState, useEffect, useCallback, useRef, memo } from 'react';
 import { Handle, Position, NodeResizer, type NodeProps } from '@xyflow/react';
 import { convertFileSrc } from '@tauri-apps/api/core';
 import { useTranslation } from 'react-i18next';
 import { getCanvasColor, resolveFilePath } from '../canvas-utils';
+import { readImageAsBlobUrl } from '../../services';
 import { useNearestEdge } from '../useNearestEdge';
 
 function ImageNode({ data, selected }: NodeProps) {
@@ -13,6 +14,8 @@ function ImageNode({ data, selected }: NodeProps) {
   const handleNodeMouseEnter = useCallback(() => setIsHovered(true), []);
   const handleNodeMouseLeave = useCallback(() => { setIsHovered(false); handleMouseLeave(); }, [handleMouseLeave]);
   const filePath = (data as any)?.file || '';
+  const resolvedPathRef = useRef('');
+  const fsFallbackTriedRef = useRef(false);
 
   // Get vault path from localStorage
   const getVaultPath = (): string => {
@@ -40,8 +43,24 @@ if (!filePath.match(/^[A-Z]:\\/i)) {
     }
 
     // Use convertFileSrc from Tauri
+    fsFallbackTriedRef.current = false;
+    resolvedPathRef.current = resolvedPath;
     setImageSrc(convertFileSrc(resolvedPath));
   }, [filePath]);
+
+  // asset 协议加载失败（如图片目录在仓库外、含非 ASCII 路径）时，
+  // 通过 fs 插件读取文件内容兜底显示
+  const handleImageError = useCallback(async () => {
+    const abs = resolvedPathRef.current;
+    if (fsFallbackTriedRef.current || !abs) {
+      setImageSrc('');
+      return;
+    }
+    fsFallbackTriedRef.current = true;
+    const url = await readImageAsBlobUrl(abs);
+    if (url) setImageSrc(url);
+    else setImageSrc('');
+  }, []);
 
   const color = getCanvasColor((data as any)?.color);
 
@@ -79,7 +98,7 @@ if (!filePath.match(/^[A-Z]:\\/i)) {
           src={imageSrc}
           alt={(data as any)?.file || 'image'}
           className="canvas-image-display"
-          onError={() => setImageSrc('')}
+          onError={() => { void handleImageError(); }}
         />
       ) : (
         <div className="canvas-image-placeholder">

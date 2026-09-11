@@ -1,7 +1,8 @@
-import { useState, useEffect, useCallback, memo } from 'react';
+import { useState, useEffect, useCallback, useRef, memo } from 'react';
 import { Handle, Position, NodeResizer, type NodeProps } from '@xyflow/react';
 import { convertFileSrc } from '@tauri-apps/api/core';
 import { getCanvasColor, resolveFilePath } from '../canvas-utils';
+import { readImageAsBlobUrl } from '../../services';
 import { useNearestEdge } from '../useNearestEdge';
 import { useCanvasZoom, shouldHideContent } from '../CanvasZoomContext';
 
@@ -21,6 +22,8 @@ function MediaNode({ data, selected }: NodeProps) {
   const hideContent = shouldHideContent(zoom, hideContentThreshold);
 
   const filePath = (data as any)?.file || '';
+  const resolvedPathRef = useRef('');
+  const fsFallbackTriedRef = useRef(false);
 
   // Get vault path from localStorage
   const getVaultPath = (): string => {
@@ -61,8 +64,24 @@ function MediaNode({ data, selected }: NodeProps) {
       setMediaType('unknown');
     }
 
+    fsFallbackTriedRef.current = false;
+    resolvedPathRef.current = resolvedPath;
     setMediaSrc(convertFileSrc(resolvedPath));
   }, [filePath]);
+
+  // asset 协议加载失败（如图片目录在仓库外、含非 ASCII 路径）时，
+  // 通过 fs 插件读取文件内容兜底显示（仅图片；视频/音频/_pdf 体积过大不做兜底）
+  const handleImageError = useCallback(async () => {
+    const abs = resolvedPathRef.current;
+    if (fsFallbackTriedRef.current || !abs) {
+      setMediaSrc('');
+      return;
+    }
+    fsFallbackTriedRef.current = true;
+    const url = await readImageAsBlobUrl(abs);
+    if (url) setMediaSrc(url);
+    else setMediaSrc('');
+  }, []);
 
   const color = getCanvasColor((data as any)?.color);
 
@@ -80,9 +99,7 @@ function MediaNode({ data, selected }: NodeProps) {
             src={mediaSrc}
             alt={filePath}
             className="canvas-media-image"
-            onError={(e) => {
-              (e.target as HTMLImageElement).style.display = 'none';
-            }}
+            onError={() => { void handleImageError(); }}
           />
         );
       case 'video':

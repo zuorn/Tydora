@@ -5511,7 +5511,7 @@ dependencies = [
 
 [[package]]
 name = "tydora-cli"
-version = "0.2.7"
+version = "0.2.8"
 dependencies = [
  "anyhow",
  "assert_cmd",
@@ -5531,7 +5531,7 @@ dependencies = [
 
 [[package]]
 name = "tydora-core"
-version = "0.2.7"
+version = "0.2.8"
 dependencies = [
  "serde",
  "serde_json",
@@ -5541,7 +5541,7 @@ dependencies = [
 
 [[package]]
 name = "tydora-desktop"
-version = "0.2.7"
+version = "0.2.8"
 dependencies = [
  "axum",
  "base64 0.22.1",

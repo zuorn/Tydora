@@ -2793,3 +2793,130 @@
   opacity: 0.5;
   cursor: not-allowed;
 }
+/* ── 设置 → CLI 与 MCP ─────────────────────────────── */
+
+.cli-settings-codeblock {
+  position: relative;
+  margin-top: 8px;
+}
+
+.cli-settings-copy-btn {
+  position: absolute;
+  top: 6px;
+  right: 6px;
+  z-index: 1;
+  padding: 3px 10px;
+  border-radius: 6px;
+  border: 1px solid var(--border-color, rgba(128, 128, 128, 0.25));
+  background: var(--bg-primary, rgba(255, 255, 255, 0.9));
+  color: var(--text-primary, inherit);
+  font-size: 11px;
+  line-height: 1.4;
+  cursor: pointer;
+  opacity: 0.85;
+  transition: opacity 0.15s ease, background 0.15s ease;
+}
+
+.cli-settings-copy-btn:hover {
+  opacity: 1;
+  background: var(--bg-secondary, rgba(128, 128, 128, 0.1));
+}
+
+.cli-settings-code {
+  margin: 8px 0 0;
+  padding: 10px 12px;
+  border-radius: 8px;
+  background: var(--bg-secondary, rgba(128, 128, 128, 0.08));
+  border: 1px solid var(--border-color, rgba(128, 128, 128, 0.2));
+  font-family: var(--font-mono, "JetBrains Mono", Consolas, monospace);
+  font-size: 12px;
+  line-height: 1.6;
+  white-space: pre-wrap;
+  word-break: break-all;
+  color: var(--text-primary, inherit);
+  user-select: text;
+  cursor: text;
+}
+
+/* 配置预览语法高亮：token 色跟随当前代码主题的 --hljs-* 变量 */
+.cli-settings-codeblock .hljs-keyword,
+.cli-settings-codeblock .hljs-selector-tag,
+.cli-settings-codeblock .hljs-literal,
+.cli-settings-codeblock .hljs-section,
+.cli-settings-codeblock .hljs-meta {
+  color: var(--hljs-keyword, #d73a49);
+}
+
+.cli-settings-codeblock .hljs-string,
+.cli-settings-codeblock .hljs-title,
+.cli-settings-codeblock .hljs-name,
+.cli-settings-codeblock .hljs-attribute,
+.cli-settings-codeblock .hljs-symbol,
+.cli-settings-codeblock .hljs-variable,
+.cli-settings-codeblock .hljs-template-variable {
+  color: var(--hljs-string, #032f62);
+}
+
+.cli-settings-codeblock .hljs-comment,
+.cli-settings-codeblock .hljs-quote {
+  color: var(--hljs-comment, #6a737d);
+  font-style: italic;
+}
+
+.cli-settings-codeblock .hljs-number,
+.cli-settings-codeblock .hljs-params {
+  color: var(--hljs-number, #005cc5);
+}
+
+.cli-settings-codeblock .hljs-built_in,
+.cli-settings-codeblock .hljs-operator {
+  color: var(--hljs-built_in, #e36209);
+}
+
+/* 命令清单：每行 = 命令 + 说明 */
+.cli-settings-cmdlist {
+  margin-top: 4px;
+  padding-left: 14px;
+  display: flex;
+  flex-direction: column;
+}
+
+.cli-settings-cmd-row {
+  display: flex;
+  align-items: baseline;
+  gap: 12px;
+  padding: 5px 0;
+  border-bottom: 1px solid var(--border-color, rgba(128, 128, 128, 0.12));
+}
+
+.cli-settings-cmd-row:last-child {
+  border-bottom: none;
+}
+
+.cli-settings-cmd {
+  flex: 0 0 auto;
+  min-width: 220px;
+  padding: 2px 8px;
+  border-radius: 5px;
+  background: var(--bg-secondary, rgba(128, 128, 128, 0.08));
+  font-family: var(--font-mono, "JetBrains Mono", Consolas, monospace);
+  font-size: 12px;
+  color: var(--text-primary, inherit);
+  user-select: text;
+}
+
+.cli-settings-cmd-desc {
+  font-size: 12px;
+  opacity: 0.75;
+}
+
+.cli-settings-warn {
+  color: var(--warning-color, #b45309);
+}
+
+.cli-settings-format-group {
+  display: flex;
+  gap: 6px;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+}

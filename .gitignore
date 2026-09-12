@@ -8,6 +8,8 @@ target/
 .target/
 .build/
 website/site/
+app/tydora-cli/binaries/
+app/tydora-desktop/binaries/
 
 # Python
 __pycache__/

@@ -127,7 +127,8 @@ interface SidebarProps {
   onNewWindow: (filePath: string) => void;
   onOpenInNewPanel: (filePath: string) => void;
   canOpenInNewPanel: boolean;
-  onPublish: () => void;
+  /** 打开新仓库（目录选择器 → 添加为仓库并激活） */
+  onOpenNewVault: () => void;
   onSelectVault: (index: number) => void;
   collapsed: boolean;
   refreshKey: number;
@@ -3183,7 +3184,7 @@ function VaultSwitcher({
   vaults,
   activeIndex,
   onRemove,
-  onPublish,
+  onOpenNewVault,
   onSelectVault,
   onManageVaults,
   onOpenSettings,
@@ -3191,7 +3192,7 @@ function VaultSwitcher({
   vaults: VaultInfo[];
   activeIndex: number;
   onRemove: (index: number) => void;
-  onPublish: () => void;
+  onOpenNewVault?: () => void;
   onSelectVault: (index: number) => void;
   onManageVaults?: () => void;
   onOpenSettings?: () => void;
@@ -3328,22 +3329,20 @@ function VaultSwitcher({
             </svg>
             <span>{t("sidebar.vault.manage")}</span>
           </div>
-          {activeIndex >= 0 && (
-            <div
-              className="vault-menu-item vault-menu-manage"
-              onClick={() => {
-                setMenuOpen(false);
-                onPublish();
-              }}
-            >
-              <svg className="vault-menu-icon" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
-                <path d="M4 12v8a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-8" />
-                <polyline points="16 6 12 2 8 6" />
-                <line x1="12" y1="2" x2="12" y2="15" />
-              </svg>
-              <span>{t("sidebar.vault.publishWebsite")}</span>
-            </div>
-          )}
+          <div
+            className="vault-menu-item vault-menu-manage"
+            onClick={() => {
+              setMenuOpen(false);
+              onOpenNewVault?.();
+            }}
+          >
+            <svg className="vault-menu-icon" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+              <path d="M4 20h16a2 2 0 0 0 2-2V8a2 2 0 0 0-2-2h-7.9a2 2 0 0 1-1.69-.9L9.6 3.9A2 2 0 0 0 7.93 3H4a2 2 0 0 0-2 2v13c0 1.1.9 2 2 2Z" />
+              <line x1="12" y1="10" x2="12" y2="16" />
+              <line x1="9" y1="13" x2="15" y2="13" />
+            </svg>
+            <span>{t("sidebar.vault.openNewVault")}</span>
+          </div>
         </div>
       )}
 
@@ -3375,7 +3374,7 @@ export default function Sidebar({
   onNewWindow,
   onOpenInNewPanel,
   canOpenInNewPanel,
-  onPublish,
+  onOpenNewVault,
   onSelectVault,
   collapsed,
   refreshKey,
@@ -3966,7 +3965,7 @@ export default function Sidebar({
         vaults={vaults}
         activeIndex={activeVaultIndex}
         onRemove={onRemoveVault}
-        onPublish={onPublish}
+        onOpenNewVault={onOpenNewVault}
         onSelectVault={onSelectVault}
         onManageVaults={onManageVaults}
         onOpenSettings={onOpenSettings}

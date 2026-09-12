@@ -1,5 +1,14 @@
 # Changelog
 
+## 0.2.7（2026-09-11）
+
+### **🚀 Features**
+
+- Enhance view state management for cross-mode editor transitions ([<u>30adf45</u>](https://github.com/zuorn/Tydora/commit/30adf4583f1f4dca875ec4dfd0e7affa245485b8))
+- 添加右侧栏切换功能，更新快捷键配置和国际化支持 ([<u>417eb80</u>](https://github.com/zuorn/Tydora/commit/417eb800acb744a52dea03adcde5f3291e50961f))
+- 更新欢迎页品牌区样式，调整图标尺寸并修改不透明度 ([<u>83fac21</u>](https://github.com/zuorn/Tydora/commit/83fac2133509b2a5fc4422531fd34d74bde43e2d))
+- 更新版本号至 0.2.7，修改相关文档和配置文件 ([<u>75a6522</u>](https://github.com/zuorn/Tydora/commit/75a65227021920c76119d5e0e5138f9c033480f7))
+
 ## 0.2.6（2026-09-10）
 
 ### **🏗️ Chores**

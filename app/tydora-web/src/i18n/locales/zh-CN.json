@@ -95,6 +95,7 @@
       "canvas": "白板",
       "terminal": "终端",
       "publish": "发布",
+      "cli": "CLI 与 MCP",
       "vim": "Vim 模式",
       "groupAbout": "关于",
       "about": "关于"
@@ -578,6 +579,30 @@
         "ctrl+g": "知识图谱",
         "ctrl+g.vimAction": "Vim：显示文件信息"
       }
+    },
+    "cli": {
+      "cliTitle": "CLI 命令",
+      "cliDesc": "在终端或 AI Agent 中直接读写当前 vault 的 Markdown 文件，与界面同时使用互不干扰（写入会自动刷新界面，删除可从回收站恢复）。",
+      "notInstalled": "当前未检测到命令行工具：安装版随安装包自带；开发环境请先运行 npm run build:cli。",
+      "cmdNotebooks": "列出所有笔记本",
+      "cmdList": "列出笔记本下的笔记",
+      "cmdShow": "查看一条笔记的完整内容",
+      "cmdSearch": "全文搜索（大小写不敏感，--limit 限制结果数）",
+      "cmdCreate": "新建笔记（正文从 stdin 读入，标题取首个 H1）",
+      "cmdEdit": "精确替换文本（--old 旧 --new 新，加 --dry-run 只预览不写入）",
+      "cmdWrite": "从 stdin 整篇覆盖笔记",
+      "cmdDelete": "删除笔记（移入回收站，可恢复）",
+      "mcpTitle": "MCP 接入",
+      "mcpDesc": "把下方配置加入支持 MCP 的 AI 客户端（Claude Code、Codex、Cursor 等），AI 助手即可读写这个 vault。配置已自动带上当前 vault 路径；所有命令经白名单校验，AI 无法越权访问 vault 之外的文件。",
+      "format": "客户端类型",
+      "formatJson": "JSON（通用）",
+      "formatToml": "TOML（Codex）",
+      "formatCmd": "命令行（Claude Code）",
+      "readOnly": "只读模式",
+      "readOnlyDesc": "AI 只能浏览和搜索，不能创建、编辑或删除笔记。",
+      "copy": "复制配置",
+      "copied": "已复制",
+      "noVault": "请先打开一个 vault，配置会自动带上它的路径。"
     }
   },
   "app": {
@@ -878,7 +903,8 @@
       "remove": "移除此仓库",
       "removeConfirmTitle": "移除仓库",
       "removeConfirmMessage": "确定要移除仓库 \"{{name}}\" 吗？\n此操作不会删除本地文件。",
-      "publishWebsite": "发布为网站"
+      "publishWebsite": "发布为网站",
+      "openNewVault": "打开新仓库"
     },
     "empty": {
       "noVault": "尚未打开仓库",

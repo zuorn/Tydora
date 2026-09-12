@@ -2,24 +2,22 @@
 //!
 //! 设计参考：见 docs/cli-implementation-plan.md
 //!
-//! ## 子命令（Phase 1）
+//! ## 子命令
 //!
 //! - `notebooks` (alias `nb`)           列出 vault 下所有 notebook
 //! - `list <notebook>` (alias `ls`)     列出某 notebook 下的笔记
 //! - `show <id>` (alias `s`)            读取并打印一条笔记（frontmatter + body）
-//! - `completion <shell>`               输出 bash/zsh/fish 补全脚本（Phase 3 充实）
+//! - `completion <shell>`               输出 bash/zsh/fish/powershell/elvish 补全脚本
+//! - `create` / `delete` / `edit` / `write`  写路径（stdin body + dry-run）
+//! - `search <query>`                   大小写不敏感全文检索
+//! - `publish`                          调用 markdown-publish 构建静态站点
+//! - `mcp`                              MCP over stdio（Phase 4）
 //!
 //! ## 全局 flag
 //!
 //! - `--json` / `-j`                    全局 JSON 输出
 //! - `--version` / `-V`                 打印版本（来自 Cargo workspace.package.version）
 //! - `--help` / `-h`                    打印完整帮助树（自绘，含 CJK）
-//!
-//! ## Phase 2+ 才实现的子命令
-//!
-//! - `create` / `delete` / `edit` / `write` / `search`
-//! - `publish`（Tydora 独有）
-//! - `mcp`（MCP over stdio）
 
 use clap::{Arg, ArgAction, Command};
 
@@ -54,8 +52,18 @@ pub enum CommandKind {
     Edit { id: String, old: Option<String>, new: Option<String>, new_stdin: bool, dry_run: bool },
     Write { id: String, dry_run: bool },
     Search { query: String, notebook: Option<String>, limit: Option<usize> },
-    Publish,
-    Mcp,
+    Publish {
+        out: Option<std::path::PathBuf>,
+        site_name: Option<String>,
+        site_lang: Option<String>,
+        site_url: Option<String>,
+        base_href: Option<String>,
+        build_mode: Option<String>,
+    },
+    Mcp {
+        read_only: bool,
+        allow_publish: bool,
+    },
 }
 
 /// 显示在 help 与错误信息里的二进制名。
@@ -186,8 +194,18 @@ impl Cli {
                     limit: sub_matches.get_one::<usize>("limit").copied(),
                 }
             }
-            "publish" => CommandKind::Publish,
-            "mcp" => CommandKind::Mcp,
+            "publish" => CommandKind::Publish {
+                out: sub_matches.get_one::<String>("out").map(std::path::PathBuf::from),
+                site_name: sub_matches.get_one::<String>("site-name").cloned(),
+                site_lang: sub_matches.get_one::<String>("site-lang").cloned(),
+                site_url: sub_matches.get_one::<String>("site-url").cloned(),
+                base_href: sub_matches.get_one::<String>("base-href").cloned(),
+                build_mode: sub_matches.get_one::<String>("build-mode").cloned(),
+            },
+            "mcp" => CommandKind::Mcp {
+                read_only: sub_matches.get_flag("read-only"),
+                allow_publish: sub_matches.get_flag("allow-publish"),
+            },
             other => {
                 return Err(crate::errors::CliError::Usage(format!(
                     "unknown subcommand: {other}"
@@ -203,7 +221,8 @@ impl Cli {
 ///
 /// 注意这里只声明"参数形状"，不解析。`Cli::parse` 里调用并拿到
 /// `ArgMatches` 后再二次映射到 `CommandKind`。
-fn build_command() -> Command {
+/// `pub(crate)`：completion 子命令生成补全脚本时也复用这棵命令树。
+pub(crate) fn build_command() -> Command {
     Command::new(DISPLAY_BIN)
         .version(env!("CARGO_PKG_VERSION"))
         .about("Tydora CLI — command-line interface for Tydora vaults")
@@ -241,14 +260,14 @@ fn build_command() -> Command {
         .subcommand(list_cmd())
         .subcommand(show_cmd())
         .subcommand(completion_cmd())
-        // Phase 2 占位（已声明，dispatch 会回 Usage）
+        // Phase 2/3 子命令（均已真实实现，mcp 除外）
         .subcommand(create_cmd())
         .subcommand(delete_cmd())
         .subcommand(edit_cmd())
         .subcommand(write_cmd())
         .subcommand(search_cmd())
-        .subcommand(Command::new("publish").about("Publish vault to static site (alias for run_markdown_publish)"))
-        .subcommand(Command::new("mcp").about("MCP over stdio (Phase 4)"))
+        .subcommand(publish_cmd())
+        .subcommand(mcp_cmd())
         // clap 自带 --help / --version（在 build_command 顶部 .version(...) 已启用）
 }
 
@@ -281,7 +300,7 @@ fn show_cmd() -> Command {
 
 fn completion_cmd() -> Command {
     Command::new("completion")
-        .about("Generate shell completion script (bash, zsh, fish)")
+        .about("Generate shell completion script (bash, zsh, fish, powershell, elvish)")
         .arg(Arg::new("shell").required(true).num_args(1))
 }
 
@@ -351,14 +370,14 @@ fn write_cmd() -> Command {
 fn search_cmd() -> Command {
     Command::new("search")
         .alias("q")
-        .about("[Phase 3] Full-text search across notes")
+        .about("Full-text search across notes (case-insensitive substring match)")
         .arg(Arg::new("query").required(true).num_args(1))
         .arg(
             Arg::new("notebook")
                 .long("notebook")
                 .short('b')
                 .num_args(1)
-                .help("Restrict to one notebook"),
+                .help("Restrict to one notebook ('(root)' = top-level files only)"),
         )
         .arg(
             Arg::new("limit")
@@ -366,6 +385,81 @@ fn search_cmd() -> Command {
                 .short('l')
                 .num_args(1)
                 .value_parser(clap::value_parser!(usize))
-                .help("Maximum number of matches"),
+                .help("Maximum number of files in results"),
+        )
+}
+
+fn publish_cmd() -> Command {
+    Command::new("publish")
+        .about("Publish the resolved vault to a static site (via markdown-publish CLI)")        .arg(
+            Arg::new("out")
+                .long("out")
+                .num_args(1)
+                .value_name("DIR")
+                .help("Output directory (default: <vault-name>-site next to the vault)"),
+        )
+        .arg(
+            Arg::new("site-name")
+                .long("site-name")
+                .num_args(1)
+                .value_name("NAME")
+                .help("Site display name"),
+        )
+        .arg(
+            Arg::new("site-lang")
+                .long("site-lang")
+                .num_args(1)
+                .value_name("LANG")
+                .help("Site language (e.g. zh / en)"),
+        )
+        .arg(
+            Arg::new("site-url")
+                .long("site-url")
+                .num_args(1)
+                .value_name("URL")
+                .help("Canonical site URL"),
+        )
+        .arg(
+            Arg::new("base-href")
+                .long("base-href")
+                .num_args(1)
+                .value_name("HREF")
+                .help("Base href for deployment under a subpath (e.g. /Tydora/)"),
+        )
+        .arg(
+            Arg::new("build-mode")
+                .long("build-mode")
+                .num_args(1)
+                .value_name("MODE")
+                .help("Build mode (passed through to markdown-publish)"),
+        )
+}
+
+fn mcp_cmd() -> Command {
+    Command::new("mcp")
+        .about("Run MCP (Model Context Protocol) server over stdio")
+        .long_about(
+            "Run a Model Context Protocol (MCP) server over stdio.\n\n\
+             Exposes the vault to MCP clients (Claude Code, Codex, Cursor, ...) as a\n\
+             single tool `tydora_note` that accepts a restricted tydora CLI syntax.\n\n\
+             The vault is pinned by the server process environment ($TYDORA_VAULT);\n\
+             agents cannot pass --vault through the tool. Shell metacharacters are\n\
+             rejected at the syntax whitelist layer.\n\n\
+             Configure in the client as:\n\
+               command: <path-to>/tydora-cli.exe\n\
+               args: [\"mcp\"]\n\
+               env:  { \"TYDORA_VAULT\": \"D:\\\\path\\\\to\\\\vault\" }",
+        )
+        .arg(
+            Arg::new("read-only")
+                .long("read-only")
+                .action(ArgAction::SetTrue)
+                .help("Expose only read commands (notebooks/list/show/search)"),
+        )
+        .arg(
+            Arg::new("allow-publish")
+                .long("allow-publish")
+                .action(ArgAction::SetTrue)
+                .help("Also expose publish (off by default: spawns external Node build)"),
         )
 }

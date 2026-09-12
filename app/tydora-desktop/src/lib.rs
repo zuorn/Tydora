@@ -169,6 +169,63 @@ fn get_app_version(app: tauri::AppHandle) -> String {
     app.package_info().version.to_string()
 }
 
+/// CLI sidecar（tydora-cli）信息，供「设置 → CLI 与 MCP」页展示。
+///
+/// 查找顺序：
+/// 1. 主程序同目录（Tauri `externalBin` 的安装位置，NSIS/DMG/deb 均在此）
+/// 2. 开发环境兜底：cwd 的 `binaries/`（`cargo tauri dev` 时 cwd =
+///    app/tydora-desktop/，cli-build.sh 会把裸名副本放进去）
+///
+/// `version` 通过 spawn `tydora-cli --version` 获取（CLI 启动即返回，无阻塞风险）；
+/// spawn 失败不影响 available 判定。
+#[derive(serde::Serialize)]
+struct CliSidecarInfo {
+    available: bool,
+    path: Option<String>,
+    version: Option<String>,
+}
+
+#[tauri::command]
+fn cli_sidecar_info() -> CliSidecarInfo {
+    let mut candidates: Vec<std::path::PathBuf> = Vec::new();
+    if let Ok(exe) = std::env::current_exe() {
+        if let Some(dir) = exe.parent() {
+            if cfg!(windows) {
+                candidates.push(dir.join("tydora-cli.exe"));
+            }
+            candidates.push(dir.join("tydora-cli"));
+        }
+    }
+    // 开发环境兜底（tauri dev 的 cwd = app/tydora-desktop/）
+    if let Ok(cwd) = std::env::current_dir() {
+        if cfg!(windows) {
+            candidates.push(cwd.join("binaries").join("tydora-cli.exe"));
+        }
+        candidates.push(cwd.join("binaries").join("tydora-cli"));
+    }
+
+    for c in candidates {
+        if c.is_file() {
+            let version = std::process::Command::new(&c)
+                .arg("--version")
+                .output()
+                .ok()
+                .map(|o| String::from_utf8_lossy(&o.stdout).trim().to_string())
+                .filter(|s| !s.is_empty());
+            return CliSidecarInfo {
+                available: true,
+                path: Some(c.to_string_lossy().into_owned()),
+                version,
+            };
+        }
+    }
+    CliSidecarInfo {
+        available: false,
+        path: None,
+        version: None,
+    }
+}
+
 /// 所有子窗口统一的背景色：纯白不透明。
 /// 原因：Windows WebView2 在首帧（HTML/CSS 真正 paint 之前）会先用"窗口背景色"
 /// 填充整个客户区。如果不设置，默认是黑色，就会出现用户截图里的"右下黑边"
@@ -1942,6 +1999,7 @@ pub fn run() {
             switch_to_github_update,
             install_portable_update,
             get_cwd,
+            cli_sidecar_info,
             open_settings_window,
             open_file_in_new_window,
             open_file_location,

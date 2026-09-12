@@ -7,6 +7,7 @@ import { useTheme, type ThemeName, type ThemePair } from "./themes";
 import { loadImageSettings, saveImageSettings, type ImageSettings, type StorageMode, type FilenameFormat } from "./services";
 import { checkForUpdate, downloadAndInstall, relaunchApp, exitApp, isStoreVersion, isPortableVersion, type UpdateInfo } from "./services";
 import { PublishSettings } from "./publish";
+import CliMcpSettings from "./cli/CliMcpSettings";
 import { loadCanvasSettings, saveCanvasSettings, type CanvasSettings } from "./Canvas/canvas-settings";
 import { TerminalSettingsContent } from "./Terminal/TerminalSettingsContent";
 import { VimSettingsPanel } from "./vim/settings/VimSettingsPanel";
@@ -47,7 +48,7 @@ import "./Settings.css";
 
 // ── Types ────────────────────────────────────────────────────────────
 
-type SettingsTab = "general" | "editor" | "theme" | "shortcuts" | "mindmap" | "graph" | "image" | "canvas" | "terminal" | "publish" | "vim" | "about";
+type SettingsTab = "general" | "editor" | "theme" | "shortcuts" | "mindmap" | "graph" | "image" | "canvas" | "terminal" | "publish" | "vim" | "cli" | "about";
 
 interface NavItem {
   id: SettingsTab;
@@ -467,27 +468,9 @@ function GeneralSettingsContent({
   onChange: (s: GeneralSettings) => void;
 }) {
   const { t } = useTranslation();
-  const { language, setLanguage } = useLanguage();
 
   return (
     <div className="canvas-settings-page">
-      <div className="canvas-settings-card">
-        <div className="canvas-settings-row">
-          <div className="canvas-settings-row-label">
-            <span className="canvas-settings-row-title">{t("settings.appearance.language")}</span>
-            <span className="canvas-settings-row-desc">{t("settings.appearance.languageDesc")}</span>
-          </div>
-          <SettingsSelect
-            value={language}
-            onChange={(v) => setLanguage(v as SupportedLanguage)}
-            options={SUPPORTED_LANGUAGES.map((lang) => ({
-              value: lang.code,
-              label: lang.label,
-            }))}
-          />
-        </div>
-      </div>
-
       <div className="canvas-settings-card">
         <div className="canvas-settings-row">
           <div className="canvas-settings-row-label">
@@ -2672,6 +2655,7 @@ function CanvasSettingsContent({
 
 function AboutSettingsContent() {
   const { t } = useTranslation();
+  const { language, setLanguage } = useLanguage();
   const [version, setVersion] = useState<string>("");
   const [storeVersion, setStoreVersion] = useState(false);
   const [portableVersion, setPortableVersion] = useState(false);
@@ -2740,6 +2724,19 @@ function AboutSettingsContent() {
       <div className="settings-item">
         <label className="settings-item-label">{t("settings.about.versionInfo")}</label>
         <span className="settings-about-value">{version ? `v${version}` : t("settings.about.loading")}</span>
+      </div>
+
+      {/* 语言选择：左侧「语言」标题 + 下拉框 */}
+      <div className="settings-item">
+        <label className="settings-item-label">{t("settings.appearance.language")}</label>
+        <SettingsSelect
+          value={language}
+          onChange={(v) => setLanguage(v as SupportedLanguage)}
+          options={SUPPORTED_LANGUAGES.map((lang) => ({
+            value: lang.code,
+            label: lang.label,
+          }))}
+        />
       </div>
 
       {storeVersion && (
@@ -2826,7 +2823,7 @@ export default function Settings({ onClose }: { onClose?: () => void }) {
   const [activeTab, setActiveTab] = useState<SettingsTab>(() => {
     try {
       const saved = localStorage.getItem("zmd-settings-initial-tab") as SettingsTab | null;
-      if (saved && ["general", "editor", "theme", "shortcuts", "mindmap", "graph", "image", "canvas", "publish", "vim", "about"].includes(saved)) {
+      if (saved && ["general", "editor", "theme", "shortcuts", "mindmap", "graph", "image", "canvas", "terminal", "publish", "vim", "cli", "about"].includes(saved)) {
         localStorage.removeItem("zmd-settings-initial-tab");
         return saved;
       }
@@ -3023,6 +3020,20 @@ export default function Settings({ onClose }: { onClose?: () => void }) {
   // Navigation groups with search terms
   const navGroups: NavGroup[] = [
     {
+      title: t("settings.tabs.groupAbout"),
+      items: [
+        {
+          id: "about", label: t("settings.tabs.about"), icon: (
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <circle cx="12" cy="12" r="10" />
+              <line x1="12" y1="16" x2="12" y2="12" />
+              <line x1="12" y1="8" x2="12.01" y2="8" />
+            </svg>
+          ), searchTerms: ["关于", "about", "版本", "更新", "GitHub", "语言"]
+        },
+      ]
+    },
+    {
       title: t("settings.tabs.groupGeneral"),
       items: [
         {
@@ -3120,25 +3131,19 @@ export default function Settings({ onClose }: { onClose?: () => void }) {
           ), searchTerms: ["发布", "publish", "导出", "部署", "网站"]
         },
         {
+          id: "cli", label: t("settings.tabs.cli"), icon: (
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <polyline points="4 17 10 11 4 5" />
+              <line x1="12" y1="19" x2="20" y2="19" />
+            </svg>
+          ), searchTerms: ["CLI", "MCP", "命令行", "终端工具", "AI", "Claude", "Codex", "Cursor", "助手"]
+        },
+        {
           id: "vim", label: t("settings.tabs.vim", "Vim 模式"), icon: (
             <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
               <path d="M2 4h4.5L12 13l5.5-9H22L13.5 20H10.5L2 4z"/>
             </svg>
           ), searchTerms: ["Vim", "LazyVim", "键盘", "Leader", "快捷键", "vim", "keyboard"]
-        },
-      ]
-    },
-    {
-      title: t("settings.tabs.groupAbout"),
-      items: [
-        {
-          id: "about", label: t("settings.tabs.about"), icon: (
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-              <circle cx="12" cy="12" r="10" />
-              <line x1="12" y1="16" x2="12" y2="12" />
-              <line x1="12" y1="8" x2="12.01" y2="8" />
-            </svg>
-          ), searchTerms: ["关于", "about", "版本", "更新", "GitHub"]
         },
       ]
     }
@@ -3263,6 +3268,7 @@ export default function Settings({ onClose }: { onClose?: () => void }) {
               <PublishSettings />
             )}
             {activeTab === "vim" && <VimSettingsPanel />}
+            {activeTab === "cli" && <CliMcpSettings />}
             {activeTab === "about" && <AboutSettingsContent />}
           </main>
         </div>

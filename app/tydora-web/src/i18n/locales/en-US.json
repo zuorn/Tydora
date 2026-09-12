@@ -97,7 +97,8 @@
       "publish": "Publish",
       "vim": "Vim Mode",
       "groupAbout": "About",
-      "about": "About"
+      "about": "About",
+      "cli": "CLI & MCP"
     },
     "terminal": {
       "colorScheme": "Color Scheme",
@@ -578,6 +579,30 @@
         "ctrl+g": "Knowledge Graph",
         "ctrl+g.vimAction": "Vim: Show file info"
       }
+    },
+    "cli": {
+      "cliTitle": "CLI commands",
+      "cliDesc": "Read and write Markdown files in the current vault from a terminal or AI agent, safely alongside the GUI (writes refresh the UI automatically; deletes go to a recoverable trash).",
+      "notInstalled": "Command-line tool not detected: installers bundle it; in development run npm run build:cli first.",
+      "cmdNotebooks": "List all notebooks",
+      "cmdList": "List notes in a notebook",
+      "cmdShow": "Read a full note",
+      "cmdSearch": "Full-text search (case-insensitive, use --limit to cap results)",
+      "cmdCreate": "Create a note (body from stdin, title from the first H1)",
+      "cmdEdit": "Exact text replace (add --dry-run to preview without writing)",
+      "cmdWrite": "Overwrite a whole note from stdin",
+      "cmdDelete": "Delete a note (moved to trash, recoverable)",
+      "mcpTitle": "MCP integration",
+      "mcpDesc": "Add the configuration below to any MCP client (Claude Code, Codex, Cursor, ...) and AI assistants can read/write this vault. The config already includes the current vault path; every command passes a syntax whitelist, so the AI cannot escape the vault.",
+      "format": "Client type",
+      "formatJson": "JSON (universal)",
+      "formatToml": "TOML (Codex)",
+      "formatCmd": "Command line (Claude Code)",
+      "readOnly": "Read-only mode",
+      "readOnlyDesc": "The AI can only browse and search — never create, edit or delete notes.",
+      "copy": "Copy config",
+      "copied": "Copied",
+      "noVault": "Open a vault first — the config will include its path automatically."
     }
   },
   "app": {
@@ -879,7 +904,8 @@
       "remove": "Remove this vault",
       "removeConfirmTitle": "Remove Vault",
       "removeConfirmMessage": "Remove vault \"{{name}}\"?\nThis will not delete local files.",
-      "publishWebsite": "Publish as Website"
+      "publishWebsite": "Publish as Website",
+      "openNewVault": "Open New Vault"
     },
     "empty": {
       "noVault": "No vault opened",

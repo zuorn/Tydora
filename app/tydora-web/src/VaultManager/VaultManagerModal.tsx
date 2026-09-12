@@ -380,6 +380,7 @@ export default function VaultManagerModal({ open: isOpen, onClose }: VaultManage
       shouldClose={guardClose}
       ariaLabel={t("sidebar.vault.manage")}
       closeTitle={t("vaultManager.close")}
+      height="780px"
     >
       <div className="vault-manager">
           <div className="vault-manager-layout">

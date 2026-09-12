@@ -389,10 +389,10 @@ fn now_rfc3339() -> String {
 /// - `tags: []`
 ///
 /// 不自动覆盖或合并已有 frontmatter——一律以 **新建** frontmatter 起步。
-pub fn cmd_create(notebook: &str, explicit: Option<&Path>) -> CliResult<Created> {
+pub fn cmd_create(notebook: &str, explicit: Option<&Path>, body: &BodySource) -> CliResult<Created> {
     let vault = paths::resolve_vault(explicit)?;
     let dir = note::resolve_notebook_dir(notebook, &vault)?;
-    let raw_body = read_stdin_body()?;
+    let raw_body = read_body(body)?;
     if raw_body.is_empty() {
         return Err(CliError::Usage(
             "create: stdin body is empty (provide at least a header)".into(),
@@ -469,11 +469,14 @@ pub fn cmd_create(notebook: &str, explicit: Option<&Path>) -> CliResult<Created>
     std::fs::rename(&tmp_path, &final_path)?;
 
     let meta = std::fs::metadata(&final_path)?;
+    let created_id = note_id_from_path(&final_path, &vault);
     Ok(Created {
         schema: "tydora.create.v1",
         vault,
         notebook: notebook.to_string(),
-        id,
+        // id 约定与 show/edit 一致：vault 相对 POSIX 路径，不含 .md 后缀
+        // （修复：此前返回纯 slug，导致 create 的 id 不能直接喂给 show/edit）
+        id: created_id,
         title,
         path: final_path,
         size: meta.len(),
@@ -535,6 +538,7 @@ pub fn cmd_edit(
     new_from_stdin: bool,
     dry_run: bool,
     explicit: Option<&Path>,
+    body: &BodySource,
 ) -> CliResult<Edited> {
     let vault = paths::resolve_vault(explicit)?;
     let path = note::resolve_note_path(id, &vault)?;
@@ -552,7 +556,7 @@ pub fn cmd_edit(
         }
         s.to_string()
     } else if new_from_stdin {
-        read_stdin_body()?
+        read_body(body)?
     } else {
         return Err(CliError::Usage(
             "edit: pass either --new <TEXT> or --new-stdin".into(),
@@ -606,10 +610,10 @@ pub fn cmd_edit(
 /// `tydora write <id>` —— 从 stdin 覆盖整篇笔记。
 ///
 /// 若 stdin 为空且非 dry-run 报错（避免误覆盖）。
-pub fn cmd_write(id: &str, explicit: Option<&Path>, dry_run: bool) -> CliResult<Wrote> {
+pub fn cmd_write(id: &str, explicit: Option<&Path>, dry_run: bool, body: &BodySource) -> CliResult<Wrote> {
     let vault = paths::resolve_vault(explicit)?;
     let path = note::resolve_note_path(id, &vault)?;
-    let new_body = read_stdin_body()?;
+    let new_body = read_body(body)?;
     if new_body.is_empty() && !dry_run {
         return Err(CliError::Usage(
             "write: stdin body is empty; refusing to overwrite".into(),
@@ -635,8 +639,199 @@ pub fn cmd_write(id: &str, explicit: Option<&Path>, dry_run: bool) -> CliResult<
 }
 
 // ============================================================================
+// Phase 3：search（全文检索）
+// ============================================================================
+
+/// 单文件最多收集的匹配行数（防止大文件把 JSON/human 输出撑爆）。
+pub const SEARCH_MAX_LINES_PER_FILE: usize = 20;
+/// 超过该大小的文件直接跳过（二进制/超大笔记没有 grep 价值）。
+const SEARCH_MAX_FILE_BYTES: u64 = 16 * 1024 * 1024;
+
+#[derive(Debug, Serialize, Deserialize)]
+pub struct SearchResults {
+    pub schema: &'static str,
+    pub vault: PathBuf,
+    pub query: String,
+    /// None = 全 vault
+    pub notebook: Option<String>,
+    /// 匹配行总数（仅统计已扫描文件；limit 截断时不含未扫描部分）
+    pub total_matches: usize,
+    /// `--limit` 导致仍有未扫描文件时为 true
+    pub truncated: bool,
+    pub results: Vec<SearchHit>,
+}
+
+#[derive(Debug, Serialize, Deserialize)]
+pub struct SearchHit {
+    pub id: String,
+    pub title: String,
+    pub path: PathBuf,
+    /// 该文件中命中查询的行数
+    pub match_count: usize,
+    /// 命中行样本（最多 [`SEARCH_MAX_LINES_PER_FILE`] 行）
+    pub lines: Vec<SearchLine>,
+    /// 命中行数超出 lines 容量时为 true
+    pub lines_truncated: bool,
+}
+
+#[derive(Debug, Serialize, Deserialize)]
+pub struct SearchLine {
+    /// 1-based 行号
+    pub line: u32,
+    /// 行内容（去除行尾空白）
+    pub text: String,
+}
+
+/// `tydora search <query> [--notebook N] [--limit N]` —— 大小写不敏感的全文检索。
+///
+/// 设计取向（对齐方案 §4.2 的保守范围）：
+/// - 子串匹配（不做分词/正则/ripgrep 子进程），大小写不敏感
+/// - 扫描范围：默认全 vault 递归；`--notebook <n>` 限定子树；
+///   `--notebook (root)` 只看 vault 顶层（与 `list (root)` 语义一致）
+/// - 非法 UTF-8 / 超大文件静默跳过（与 vault 扫描的"容错不炸"一致）
+/// - `--limit` 限制返回的**文件数**（不是行数）
+pub fn cmd_search(
+    query: &str,
+    notebook: Option<&str>,
+    limit: Option<usize>,
+    explicit: Option<&Path>,
+) -> CliResult<SearchResults> {
+    let query = query.trim();
+    if query.is_empty() {
+        return Err(CliError::Usage("search: <query> must not be empty".into()));
+    }
+    let vault = paths::resolve_vault(explicit)?;
+    let needle = query.to_lowercase();
+
+    // 扫描范围：notebook 子树 / vault 顶层 / 全 vault
+    let (scan_root, root_only) = match notebook {
+        Some(nb) if nb == "(root)" || nb.eq_ignore_ascii_case("root") => (vault.clone(), true),
+        Some(nb) => {
+            let dir = vault.join(nb);
+            if !dir.is_dir() {
+                return Err(CliError::NotFound(format!(
+                    "notebook '{nb}' not found under {}",
+                    vault.display()
+                )));
+            }
+            (dir, false)
+        }
+        None => (vault.clone(), false),
+    };
+
+    let files: Vec<PathBuf> = if root_only {
+        let mut v = Vec::new();
+        for entry in std::fs::read_dir(&scan_root)? {
+            let entry = entry?;
+            if !entry.metadata()?.is_file() {
+                continue;
+            }
+            let name = entry.file_name();
+            let ext = vault::lower_ext(&name.to_string_lossy());
+            if vault::is_markdown_ext(&ext) {
+                v.push(entry.path());
+            }
+        }
+        v
+    } else {
+        vault::scan_vault(&scan_root)?.md_files
+    };
+
+    let max_files = limit.unwrap_or(usize::MAX);
+    let mut results: Vec<SearchHit> = Vec::new();
+    let mut total_matches = 0usize;
+    let mut truncated = false;
+
+    for path in files {
+        if results.len() >= max_files {
+            truncated = true;
+            break;
+        }
+        // 大文件 / 非 UTF-8：静默跳过（与 vault 扫描容错风格一致）
+        let Ok(meta) = std::fs::metadata(&path) else { continue };
+        if meta.len() > SEARCH_MAX_FILE_BYTES {
+            continue;
+        }
+        let Ok(content) = std::fs::read_to_string(&path) else {
+            continue;
+        };
+
+        let lower = content.to_lowercase();
+        if !lower.contains(&needle) {
+            continue;
+        }
+
+        let mut lines: Vec<SearchLine> = Vec::new();
+        let mut count = 0usize;
+        for (i, text) in content.lines().enumerate() {
+            if text.to_lowercase().contains(&needle) {
+                count += 1;
+                if lines.len() < SEARCH_MAX_LINES_PER_FILE {
+                    lines.push(SearchLine {
+                        line: (i + 1) as u32,
+                        text: text.trim_end().to_string(),
+                    });
+                }
+            }
+        }
+        total_matches += count;
+
+        // title/id 复用 build_note_info，与 list/show 保持同一解析口径
+        let info = build_note_info(&path, &vault)?;
+        results.push(SearchHit {
+            id: info.id,
+            title: info.title,
+            path,
+            match_count: count,
+            lines_truncated: count > lines.len(),
+            lines,
+        });
+    }
+
+    results.sort_by(|a, b| a.id.cmp(&b.id));
+
+    Ok(SearchResults {
+        schema: "tydora.search.v1",
+        vault,
+        query: query.to_string(),
+        notebook: notebook.map(str::to_string),
+        total_matches,
+        truncated,
+        results,
+    })
+}
+
+// ============================================================================
 // 杂项 helpers
 // ============================================================================
+
+/// body 文本的来源（CLI = 真实 stdin；MCP = tools/call 的 `stdin` 字段）。
+///
+/// 这是 CLI 与 MCP 的唯一语义分叉：MCP 的 stdin 被协议流占用，
+/// body 改从 `tools/call` 参数注入（docs/mcp-implementation-plan.md §4.2）。
+#[derive(Debug, Clone)]
+pub enum BodySource {
+    RealStdin,
+    Buffer(String),
+}
+
+/// 从 body 来源读取文本，剥 UTF-8 BOM，限制 32 MB。
+pub(crate) fn read_body(src: &BodySource) -> CliResult<String> {
+    match src {
+        BodySource::RealStdin => read_stdin_body(),
+        BodySource::Buffer(s) => {
+            const MAX_BYTES: usize = 32 * 1024 * 1024;
+            if s.len() > MAX_BYTES {
+                return Err(CliError::Usage(
+                    "body exceeds 32 MB limit".into(),
+                ));
+            }
+            // 与 read_stdin_body 对齐：剥 BOM
+            let s = s.strip_prefix('\u{FEFF}').unwrap_or(s);
+            Ok(s.to_string())
+        }
+    }
+}
 
 /// 从 stdin 读 body，剥 UTF-8 BOM，限制 32 MB 防止意外吞内存。
 pub(crate) fn read_stdin_body() -> CliResult<String> {

@@ -300,13 +300,16 @@ fn create_stub_returns_usage_error() {
 }
 
 #[test]
-fn mcp_stub_returns_usage_error() {
+fn mcp_with_closed_stdin_exits_zero() {
+    // `tydora mcp` 是 MCP over stdio 服务器（Phase 4）：
+    // stdin 立即关闭 → EOF → 服务器正常退出（exit 0），不输出任何内容。
     let dir = make_fixture_vault();
     tydora_cli()
         .args(["--vault", dir.path().to_str().unwrap(), "mcp"])
+        .write_stdin("")
+        .timeout(std::time::Duration::from_secs(10))
         .assert()
-        .failure()
-        .code(2);
+        .success();
 }
 
 // ----------------------------------------------------------------------------
@@ -667,3 +670,213 @@ fn tydora_home_trash_root() -> std::path::PathBuf {
 
 #[allow(dead_code)]
 fn _unused(_: &Path) {}
+
+// ----------------------------------------------------------------------------
+// Phase 3：search
+// ----------------------------------------------------------------------------
+
+use serde_json::Value;
+
+#[test]
+fn search_finds_query_and_reports_schema() {
+    let dir = make_fixture_vault();
+    let output = tydora_cli()
+        .arg("--vault")
+        .arg(dir.path().to_str().unwrap())
+        .arg("search")
+        .arg("body")
+        .arg("--json")
+        .timeout(std::time::Duration::from_secs(10))
+        .assert()
+        .success()
+        .get_output()
+        .stdout
+        .clone();
+    let v: Value = serde_json::from_slice(&output).expect("stdout must be valid JSON");
+    assert_eq!(v["schema"], "tydora.search.v1");
+    assert_eq!(v["query"], "body");
+    let results = v["results"].as_array().expect("results array");
+    let ids: Vec<&str> = results.iter().map(|r| r["id"].as_str().unwrap()).collect();
+    assert!(ids.contains(&"notes/daily"), "ids: {ids:?}");
+    assert!(ids.contains(&"inbox/welcome"), "ids: {ids:?}");
+    // 每个命中带 1-based 行号
+    let daily = results.iter().find(|r| r["id"] == "notes/daily").unwrap();
+    assert!(daily["match_count"].as_u64().unwrap() >= 1);
+    assert!(daily["lines"][0]["line"].as_u64().unwrap() >= 1);
+}
+
+#[test]
+fn search_is_case_insensitive() {
+    let dir = make_fixture_vault();
+    tydora_cli()
+        .arg("--vault")
+        .arg(dir.path().to_str().unwrap())
+        .arg("search")
+        .arg("BODY")
+        .arg("--json")
+        .timeout(std::time::Duration::from_secs(10))
+        .assert()
+        .success()
+        .stdout(predicate::str::contains("notes/daily"));
+}
+
+#[test]
+fn search_skips_hidden_directories() {
+    let dir = make_fixture_vault();
+    tydora_cli()
+        .arg("--vault")
+        .arg(dir.path().to_str().unwrap())
+        .arg("search")
+        .arg("should-not-appear")
+        .arg("--json")
+        .timeout(std::time::Duration::from_secs(10))
+        .assert()
+        .success()
+        .stdout(predicate::str::contains("\"results\": []"));
+}
+
+#[test]
+fn search_notebook_filter_restricts_scope() {
+    let dir = make_fixture_vault();
+    // "body" 同时在 inbox/welcome 与 notes/daily；限定 inbox 后只剩 welcome
+    tydora_cli()
+        .arg("--vault")
+        .arg(dir.path().to_str().unwrap())
+        .arg("search")
+        .arg("body")
+        .arg("--notebook")
+        .arg("inbox")
+        .arg("--json")
+        .timeout(std::time::Duration::from_secs(10))
+        .assert()
+        .success()
+        .stdout(
+            predicate::str::contains("inbox/welcome")
+                .and(predicate::str::contains("notes/daily").not()),
+        );
+}
+
+#[test]
+fn search_unknown_notebook_returns_3_notfound() {
+    let dir = make_fixture_vault();
+    tydora_cli()
+        .arg("--vault")
+        .arg(dir.path().to_str().unwrap())
+        .arg("search")
+        .arg("body")
+        .arg("--notebook")
+        .arg("no-such-nb")
+        .timeout(std::time::Duration::from_secs(10))
+        .assert()
+        .failure()
+        .code(3);
+}
+
+#[test]
+fn search_empty_query_returns_usage_error() {
+    let dir = make_fixture_vault();
+    tydora_cli()
+        .arg("--vault")
+        .arg(dir.path().to_str().unwrap())
+        .arg("search")
+        .arg("   ")
+        .timeout(std::time::Duration::from_secs(10))
+        .assert()
+        .failure()
+        .code(2);
+}
+
+#[test]
+fn search_limit_caps_file_count() {
+    let dir = make_fixture_vault();
+    let output = tydora_cli()
+        .arg("--vault")
+        .arg(dir.path().to_str().unwrap())
+        .arg("search")
+        .arg("body")
+        .arg("--limit")
+        .arg("1")
+        .arg("--json")
+        .timeout(std::time::Duration::from_secs(10))
+        .assert()
+        .success()
+        .get_output()
+        .stdout
+        .clone();
+    let v: Value = serde_json::from_slice(&output).expect("valid JSON");
+    let results = v["results"].as_array().unwrap();
+    assert_eq!(results.len(), 1, "--limit 1 must cap files at 1");
+    assert_eq!(v["truncated"], true, "truncated must be true when capped");
+}
+
+// ----------------------------------------------------------------------------
+// Phase 3：completion
+// ----------------------------------------------------------------------------
+
+#[test]
+fn completion_bash_emits_script() {
+    let dir = make_fixture_vault();
+    tydora_cli()
+        .arg("--vault")
+        .arg(dir.path().to_str().unwrap())
+        .arg("completion")
+        .arg("bash")
+        .timeout(std::time::Duration::from_secs(10))
+        .assert()
+        .success()
+        .stdout(predicate::str::contains("tydora"));
+}
+
+#[test]
+fn completion_zsh_emits_script() {
+    let dir = make_fixture_vault();
+    tydora_cli()
+        .arg("--vault")
+        .arg(dir.path().to_str().unwrap())
+        .arg("completion")
+        .arg("zsh")
+        .timeout(std::time::Duration::from_secs(10))
+        .assert()
+        .success()
+        .stdout(predicate::str::contains("#compdef tydora"));
+}
+
+#[test]
+fn completion_unknown_shell_returns_usage_error() {
+    let dir = make_fixture_vault();
+    tydora_cli()
+        .arg("--vault")
+        .arg(dir.path().to_str().unwrap())
+        .arg("completion")
+        .arg("tcsh")
+        .timeout(std::time::Duration::from_secs(10))
+        .assert()
+        .failure()
+        .code(2)
+        .stderr(predicate::str::contains("unknown shell"));
+}
+
+// ----------------------------------------------------------------------------
+// Phase 3：publish（launcher 缺失路径——不依赖 Node/markdown-publish）
+// ----------------------------------------------------------------------------
+
+#[test]
+fn publish_without_launcher_hints_install() {
+    let dir = make_fixture_vault();
+    // 清空 PATH + 临时目录 cwd（祖先链无 package.json）→ 三级查找全部落空，
+    // 稳定命中 "not found → exit 3 + 安装指引" 分支（不真正启动 Node）。
+    tydora_cli()
+        .env_remove("PATH")
+        .env("TMP", dir.path().to_str().unwrap())
+        .env("TEMP", dir.path().to_str().unwrap())
+        .current_dir(dir.path())
+        .arg("--vault")
+        .arg(dir.path().to_str().unwrap())
+        .arg("publish")
+        .timeout(std::time::Duration::from_secs(10))
+        .assert()
+        .failure()
+        .code(3)
+        .stderr(predicate::str::contains("npm install -g @abstractwebunit/markdown-publish"));
+}
+

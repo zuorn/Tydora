@@ -6,8 +6,8 @@
   "build": {
     "frontendDist": "../../.build/web-dist",
     "devUrl": "http://localhost:1420",
-    "beforeDevCommand": "npm run sync-version && npm run dev",
-    "beforeBuildCommand": "npm run sync-version && npm run build"
+    "beforeDevCommand": "npm run sync-version && npm run build:cli -- --debug && npm run dev",
+    "beforeBuildCommand": "npm run sync-version && npm run build:cli && npm run build"
   },
   "app": {
     "macOSPrivateApi": true,
@@ -45,6 +45,9 @@
   "bundle": {
     "active": true,
     "createUpdaterArtifacts": true,
+    "externalBin": [
+      "binaries/tydora-cli"
+    ],
     "fileAssociations": [
       {
         "ext": [

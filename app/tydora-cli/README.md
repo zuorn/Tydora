@@ -2,7 +2,12 @@
 
 Tydora CLI — 单原生二进制命令行入口，读取同一份 Tydora Markdown vault。
 
-> **Phase 1 + Phase 2 状态（2026-09-07）**：三个只读子命令（notebooks / list / show）+ 四个写路径子命令（create / edit / write / delete），4 档 Unix 退出码、`--json` 输出、Windows UTF-8 console 切换、trash 回收路径、原子写已跑通。Phase 3 加 search / publish / completion；Phase 4 加 MCP。
+> **Phase 1 + Phase 2 + Phase 3 + Phase 4 状态（2026-09-11）**：全部子命令可用——
+> 只读（notebooks / list / show / search）+ 写路径（create / edit / write / delete）+
+> 进阶（search / publish / completion）+ **MCP over stdio 服务器（`tydora mcp`）**；
+> 68 个测试全过（cli_smoke 38 + mcp_e2e 21 + mcp 单测 9）。**externalBin 已接入**
+> （tauri.conf.json `bundle.externalBin` + `npm run build:cli` 自动构建 sidecar，
+> 随 NSIS/DMG/deb 分发）。MCP 设计文档：`docs/mcp-implementation-plan.md`。
 >
 > **业务逻辑抽离（2026-09-07 下午）**：vault 扫描 / frontmatter 解析 / note id 解析已抽到 [`app/tydora-core/`](../tydora-core/README.md)——CLI 仅保留数据模型、命令编排、退出码语义。
 
@@ -97,19 +102,51 @@ tydora write <id> --dry-run (< body)  # 预览，不写
 tydora delete <id>                     # 移到 trash（$TYDORA_HOME/trash/vaults/<hash8>/<id>-<ts>.md）
 ```
 
-### Phase 3 / 4 占位
+### Phase 3（已实现）
 
 ```
-tydora completion bash|zsh|fish        # [Phase 3] shell 补全脚本
-tydora search <query>                  # [Phase 3] 跨 notebook 全文搜索
-tydora publish                         # [Phase 3] 复用 src-tauri/run_markdown_publish
-tydora mcp                             # [Phase 4] MCP over stdio
+tydora search <query> [--notebook N] [--limit N]
+                                       # 大小写不敏感全文检索；--notebook 限定子树，
+                                       # '(root)' 只看 vault 顶层；--limit 限制文件数
+tydora completion bash|zsh|fish|powershell|elvish
+                                       # clap_complete 生成的 shell 补全脚本
+tydora publish [--out DIR] [--site-name N] [--site-lang L] [--site-url U]
+               [--base-href H] [--build-mode M]
+                                       # 调 markdown-publish 构建静态站点（三级 launcher
+                                       # 查找：vendor → node_modules → 全局 npm）；
+                                       # 默认输出 <vault-name>-site（与 vault 同级）
+tydora mcp [--read-only] [--allow-publish]
+                                       # [Phase 4] MCP over stdio 服务器：
+                                       # 唯一工具 tydora_note，输入 = 受限 CLI 子集语法
+                                       # + `stdin` 字段（create/write 的 body、edit 的
+                                       # 替换文本）；shell 元字符与 --vault 在白名单层被拒
+                                       # （vault 由 $TYDORA_VAULT 钉死）；结果 =
+                                       # CLI --json 同款 schema（structuredContent）
 ```
+
+### MCP 客户端接入（Phase 4）
+
+```json
+{
+  "mcpServers": {
+    "tydora": {
+      "command": "D:\\path\\to\\tydora-cli.exe",
+      "args": ["mcp"],
+      "env": { "TYDORA_VAULT": "D:\\Notes\\MyVault" }
+    }
+  }
+}
+```
+
+- `--read-only`：只暴露 notebooks / list / show / search
+- `--allow-publish`：额外暴露 publish（默认关：会 spawn 外部 Node 构建）
+- 详细设计：`docs/mcp-implementation-plan.md`
 
 ### 写入规则
 
 - **create**：从 stdin 读 body；title 优先级 = frontmatter.title → 首 H1 → `untitled-yyyymmdd`；
-  slug id = slugify(title)，冲突自动加 `-2`/`-3`；自动注入 `created` (RFC3339 UTC) + `tags: []`。
+  文件名 slug = slugify(title)，冲突自动加 `-2`/`-3`；自动注入 `created` (RFC3339 UTC) + `tags: []`。
+  返回的 `id` = vault 相对路径（不含 .md，与 show/edit 同一 id 空间）。
 - **edit**：`--old` 在文件里必须恰好出现 1 次，否则 `Usage` 错（exit 2）；`--new` 与
   `--new-stdin` 二选一必填（都不给或都给都报错）。`--dry-run` 不写，仅打印预览。
 - **write**：从 stdin 整篇覆盖（frontmatter 一并覆盖），文件空拒绝写。

@@ -13,6 +13,8 @@
 //! - [`cli`]：clap 命令树（argv 解析）
 //! - [`dispatch`]：解析后的 `Cli` 枚举分派到具体的 [`store`] 函数
 //! - [`store`]：业务实现（直接文件系统 IO；后续 phase 接 tydora_lib）
+//! - [`publish`]：markdown-publish 外部 CLI 调用（launcher 查找 + Node wrapper）
+//! - [`mcp`]：MCP over stdio 服务器（JSON-RPC 2.0 + 受限 CLI 子集语法）
 //! - [`errors`]：`CliError` 4 档错误码 + 映射
 //! - [`output`]：`--json` 与人类可读输出的统一 schema
 //! - [`paths`]：`$TYDORA_HOME` / `$TYDORA_DATA` 解析
@@ -24,8 +26,10 @@ pub mod cli;
 pub mod dispatch;
 pub mod errors;
 pub mod fmt;
+pub mod mcp;
 pub mod output;
 pub mod paths;
+pub mod publish;
 pub mod store;
 
 pub use crate::cli::Cli;

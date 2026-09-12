@@ -8,6 +8,10 @@
 > 仓库根 `src/` → `app/tydora-web/src/`，与 `tydora-core` / `tydora-cli` 共处一个 Cargo
 > workspace（`vite.config.ts` root = `app/tydora-web`，产物 → 仓库根 `.build/web-dist`）。
 > 正文中决策时点之前的 `src-tauri/` / `src/` 字样指搬迁前布局，请以 `app/` 下实际路径为准。
+> **Phase 3 已于 2026-09-11 完成**：search / publish / completion 真实实现 +
+> sidecar 分发链路（`npm run build:cli` → `app/tydora-desktop/binaries/tydora-cli-<triple>[.exe]`
+> → `tauri.conf.json` `bundle.externalBin`，NSIS/DMG/deb 自动携带 CLI；Windows 便携版
+> zip 也额外打包 CLI）。剩余：Phase 3 的桌面端首次启动 PATH 安装（cli_link）、Phase 4 MCP。
 >
 > **已拍板的关键决策**：
 >
@@ -190,7 +194,7 @@ D:\code\Tydora\
 - MCP 暴露**唯一工具** `tydora_note`，接收"受限 CLI 子集语法"作为参数：`{"syntax": "list <notebook> --json"}`
 - 白名单解析：仅允许已知子命令名 + 双引号字符串字面量 + 数字 + `--flag`；**禁止** `| ; && > < \` $ ( {`等 shell 元字符（用`shell-words\` 解析）
 - 不 spawn shell；不引入新依赖
-- MCP 详细设计放在 `docs/mcp-implementation-plan.md`（CLI 阶段完成后另写）
+- MCP 详细设计见 `docs/mcp-implementation-plan.md`（✅ 2026-09-11 已出方案 v1.0，待实施）
 
 ### 4.5 构建与分发
 

@@ -43,7 +43,7 @@ npm run sync-version
 
 # 打包
 npm run build:msix             # Windows MSIX（scripts/build-msix.ps1）
-npm run build:cli              # bash scripts/cli-build.sh
+npm run build:cli              # node scripts/run-cli-build.mjs（定位真 Git Bash，绕开 system32 WSL bash）
 npm run build:cli:win          # powershell scripts/cli-build.ps1
 
 # CLI
@@ -442,6 +442,7 @@ i18next + react-i18next，语言文件 `locales/zh-CN.json` / `locales/en-US.jso
 
 - 代码：`app/tydora-cli/`（独立 Cargo workspace 成员）
 - 方案文档：`docs/cli-implementation-plan.md`
+- MCP 方案：`docs/mcp-implementation-plan.md`（v1.0，2026-09-11，待实施 Phase 4）
 - 自包含文档：`app/tydora-cli/README.md`
 - 复用层：`app/tydora-core/`（`error` / `frontmatter` / `note` / `vault`）
 
@@ -457,7 +458,7 @@ cd app && cargo test --bin tydora-cli --test cli_smoke
 # 通过 npm scripts
 npm run cli:test
 npm run cli:run -- --version
-npm run build:cli              # = bash scripts/cli-build.sh
+npm run build:cli              # = node scripts/run-cli-build.mjs → cli-build.sh（见 Phase 3）
 npm run build:cli:win          # Windows 包装版
 ```
 
@@ -497,9 +498,42 @@ eval "$(bash scripts/cli-env.sh)" && cd app && cargo build --bin tydora-cli
   统一 `app/` 工作区。关键经验：wry `[patch]` 必须放 workspace 根 `app/Cargo.toml`
   （成员级被忽略）；`tauri.conf.json` 的相对路径以配置文件所在目录为基准；
   Tauri CLI 的 `--config` 是 dev/build 子命令级参数。
-- ⏳ **Phase 3**（进阶）：search / publish / completion + 构建脚本产物接入 Tauri
-  `externalBin` + 桌面端 PATH 安装 + ≥30 天的 trash 自动清理
-- ⏳ **Phase 4**（MCP）：`tydora mcp` + 受限 CLI 语法 + 唯一工具 `tydora_note`
+- ✅ **Phase 3**（进阶，2026-09-11）：search / publish / completion 真实实现。
+  - `search`：大小写不敏感子串全文检索；`--notebook` 限定子树（`(root)` 只看顶层）、
+    `--limit` 限文件数；单文件最多记 20 条命中行；非 UTF-8/超 16MB 文件跳过。
+    schema `tydora.search.v1`
+  - `publish`：launcher 三级查找（vendor → node_modules → 全局 npm，沿 cwd 祖先链找
+    package.json）+ Node 24 EISDIR wrapper（同桌面端 `run_markdown_publish`）；
+    默认输出 `<vault-name>-site`（vault 同级）。schema `tydora.publish.v1`；
+    找不到 CLI → exit 3 + `npm install -g` 指引
+  - `completion`：clap_complete 生成 bash/zsh/fish/powershell/elvish
+  - **sidecar 分发**：`npm run build:cli`（`scripts/run-cli-build.mjs` 定位真正的
+    Git Bash，绕开 system32 WSL bash）→ 产物双落位
+    `app/tydora-cli/binaries/<triple>/` + `app/tydora-desktop/binaries/tydora-cli-<triple>[.exe]`
+    （Tauri externalBin 约定）→ `tauri.conf.json` `bundle.externalBin: ["binaries/tydora-cli"]`，
+    NSIS/DMG/deb 自动携带；release.yml 便携版 zip 也打包 CLI。
+    cli-build.sh 支持 `TAURI_ENV_TARGET_TRIPLE`（Tauri hook 交叉编译）+
+    MSVC 环境探测守卫（目录不存在→交给 cargo 自动发现，CI 可用）。
+    beforeDev/BuildCommand 先跑 `npm run build:cli`。两 binaries/ 目录已 gitignore。
+  - 测试：38 个冒烟测试全过（+11）
+  - 剩余：桌面端首次启动 PATH 安装（cli_link）、≥30 天 trash 自动清理
+- ✅ **Phase 4**（MCP，2026-09-11 晚）：`tydora mcp` MCP over stdio 服务器已实现。
+  - 架构：NDJSON JSON-RPC 2.0 循环；唯一工具 `tydora_note`，输入 = 受限 CLI
+    子集语法（`syntax`）+ `stdin` 字段（body）；复用 `Cli::parse(argv)` +
+    `dispatch_to(缓冲)` 全链路，结果 = CLI `--json` 同款 schema
+    （`structuredContent` + `content[0].text` 双封装）
+  - 语法白名单：8 命令各自允许 flag；分词后 token 黑名单（`|;&><\`$(){}[]!*?~#`，
+    引号内也拒）；`--vault`/`--help`/`--version` 恒拒绝；`--json` 强制注入
+  - 安全：vault 由 `$TYDORA_VAULT` 钉死；`--read-only` 只读模式；
+    `--allow-publish` 才暴露 publish；业务失败 = `isError:true`（非协议错误）
+  - **输出 sink 化重构**（前置）：output.rs 全部 emit_* 写 `&mut dyn Write`，
+    dispatch 拆 `dispatch_to(cli, out, body)`；store 加 `BodySource`
+    （RealStdin/Buffer）
+  - **顺手修复**：`create` 返回 id 由纯 slug 改为 vault 相对路径
+    （此前 create 的 id 喂 show/edit 会 NotFound）
+  - 测试：68 全过 = cli_smoke 38 + mcp_e2e 21（协议握手/版本协商/白名单/
+    stdin 字段/EOF exit 0 等）+ mcp.rs 单测 9
+  - 设计文档：`docs/mcp-implementation-plan.md`（v1.0 已实现，含 2 处实现偏差记录）
 - Linux 依赖: `libwebkit2gtk-4.1-dev`、`libappindicator3-dev`、`librsvg2-dev`、`patchelf`、`libgtk-3-dev`
 
 ## Markdown 文档站（`website/`）

@@ -14,7 +14,7 @@
     "preview": "vite preview",
     "tauri": "node scripts/run-tauri.mjs",
     "build:msix": "powershell -ExecutionPolicy Bypass -File scripts/build-msix.ps1",
-    "build:cli": "bash scripts/cli-build.sh",
+    "build:cli": "node scripts/run-cli-build.mjs",
     "build:cli:win": "powershell -ExecutionPolicy Bypass -File scripts/cli-build.ps1",
     "cli:test": "cd app && cargo test --bin tydora-cli",
     "cli:run": "cd app && cargo run --bin tydora-cli --",

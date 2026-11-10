@@ -980,13 +980,15 @@ const TipTapEditor = forwardRef<EditorHandle, TipTapEditorProps>(
 
                 void (async () => {
                   try {
-                    if (isAbsLocal) return; // 绝对路径无需校验基准
+                    if (/^[a-zA-Z]:[\\/]/.test(rawSrc)) return; // 绝对路径无需校验基准
                     const { exists } = await import("@tauri-apps/plugin-fs");
                     if (currentAbsPath && (await exists(currentAbsPath))) return;
                     // 当前解析结果不存在 → 换基准重解析（文档目录 / 仓库根）
                     const candidates: string[] = [];
-                    if (rawSrc.startsWith("/") && vaultRoot) {
-                      // 同步解析已用仓库根，备选：文档目录
+                    if (rawSrc.startsWith("/")) {
+                      // 以 / 开头既可能是类 Unix 绝对路径，也可能是仓库根相对写法（/assets/x.png）；
+                      // 同步解析按后者处理，这里补上前者与文档目录基准
+                      candidates.push(rawSrc);
                       if (docDir) candidates.push(resolveRelativePath(docDir, rawSrc.slice(1)));
                     } else if (docDir) {
                       // 同步解析已用文档目录，备选：仓库根

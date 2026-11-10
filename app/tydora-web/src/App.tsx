@@ -36,7 +36,7 @@ import { ExportPreviewDialog } from "./components/ExportPreviewDialog";
 import { XhsPreviewPanel } from "./export/xiaohongshu";
 import { emit, listen } from "@tauri-apps/api/event";
 import i18n from "./i18n";
-import { loadImageSettings, IMAGE_SETTINGS_KEY, type ImageSettings } from "./services";
+import { loadImageSettings, migrateDocImageFolder, IMAGE_SETTINGS_KEY, type ImageSettings } from "./services";
 import { loadEditorSettings, type EditorSettings, EDITOR_SETTINGS_KEY, SHORTCUTS_KEY, GRAPH_SETTINGS_KEY, DEFAULT_GRAPH, type SidebarTab, type SidebarSide, type SidebarTabPlacement, sidebarTabsForSide, DEFAULT_GENERAL, TOGGLE_SIDEBAR_EVENT, TOGGLE_RIGHT_SIDEBAR_EVENT } from "./Settings";
 import { applyFontSettings } from "./utils/systemFonts";
 import { applyMenuDensity, applyEditorSpacingFromSettings, normalizeMenuDensity } from "./utils/menuDensity";
@@ -1548,6 +1548,7 @@ function App({ initialFilePath, initialVaultPath }: { initialFilePath?: string |
     if (!buf) return false;
     try {
       let path = buf.fileName;
+      const isFirstSave = !path;
       if (!path) {
         // 仅激活缓冲可触发“另存为”
         if (bufId !== activeBufferIdRef.current) return false;
@@ -1562,7 +1563,21 @@ function App({ initialFilePath, initialVaultPath }: { initialFilePath?: string |
       }
       // 对话框期间内容可能变化，重新读取最新内容
       const latest = buffersRef.current.find((b) => b.id === bufId) ?? buf;
-      const contentToWrite = latest.content;
+      let contentToWrite = latest.content;
+      // 新建文档期间粘贴的图片存放在 assets/untitled/，首次保存后跟随文档名迁移
+      if (isFirstSave) {
+        const vaultPath = activeVaultIndex >= 0 ? vaults[activeVaultIndex]?.path : null;
+        const migration = await migrateDocImageFolder({
+          oldDocPath: null,
+          newDocPath: path,
+          vaultPath: vaultPath ?? null,
+          docContent: contentToWrite,
+        });
+        if (migration.newContent !== null) {
+          contentToWrite = migration.newContent;
+          updateBuffer(bufId, { content: contentToWrite });
+        }
+      }
       await writeTextFile(path, contentToWrite);
       updateBuffer(bufId, { savedContent: contentToWrite, modified: false });
       if (bufId === activeBufferIdRef.current) setSaveStatus("saved");
@@ -2603,20 +2618,39 @@ function App({ initialFilePath, initialVaultPath }: { initialFilePath?: string |
     if (!newBaseName || newBaseName === baseName) return;
     const parentDir = fileName.replace(/[/\\][^/\\]*$/, '');
     const newPath = `${parentDir}/${newBaseName}${ext}`;
+    const vaultPath = activeVaultIndex >= 0 ? vaults[activeVaultIndex]?.path ?? null : null;
     try {
       // 更新 wiki 链接
       if (!LinkIndexService.isEmpty() && fileName.endsWith('.md')) {
-        const vp = activeVaultIndex >= 0 ? vaults[activeVaultIndex]?.path : null;
-        if (vp) await LinkIndexService.rewriteWikiLinks(fileName, newPath, vp);
+        if (vaultPath) await LinkIndexService.rewriteWikiLinks(fileName, newPath, vaultPath);
       }
       await rename(fileName, newPath);
+      // 图片按文档名隔离存放，重命名后同步目录名与文档内的引用
+      const buf = buffersRef.current.find((b) => b.fileName === fileName);
+      const migration = await migrateDocImageFolder({
+        oldDocPath: fileName,
+        newDocPath: newPath,
+        vaultPath,
+        docContent: buf?.content,
+      });
+      if (migration.newContent !== null) {
+        await writeTextFile(newPath, migration.newContent);
+        if (buf) {
+          updateBuffer(buf.id, {
+            fileName: newPath,
+            content: migration.newContent,
+            savedContent: migration.newContent,
+            modified: false,
+          });
+        }
+      }
       setTreeRefreshKey(k => k + 1);
       handleSelectFile(newPath);
     } catch (err) {
       console.error(t("app.error.renameFailed"), err);
     }
     setMoreMenuOpen(false);
-  }, [fileName, handleSelectFile, vaults, activeVaultIndex]);
+  }, [fileName, handleSelectFile, vaults, activeVaultIndex, updateBuffer]);
 
   const handleCopyRelativePath = useCallback(() => {
     if (!fileName) return;

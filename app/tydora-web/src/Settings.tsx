@@ -4,7 +4,7 @@ import { emit } from "@tauri-apps/api/event";
 import { ask, open } from "@tauri-apps/plugin-dialog";
 import { useTranslation } from "react-i18next";
 import { useTheme, type ThemeName, type ThemePair } from "./themes";
-import { loadImageSettings, saveImageSettings, type ImageSettings, type StorageMode, type FilenameFormat } from "./services";
+import { loadImageSettings, saveImageSettings, type ImageSettings, type StorageMode, type FilenameFormat, type ImagePathStyle } from "./services";
 import { checkForUpdate, downloadAndInstall, relaunchApp, exitApp, isStoreVersion, isPortableVersion, getSystemPackageInfo, type UpdateInfo, type SystemPackageInfo } from "./services";
 import { PublishSettings } from "./publish";
 import CliMcpSettings from "./cli/CliMcpSettings";
@@ -2382,14 +2382,34 @@ function ImageSettingsContent({
             onChange={(v) => onChange({ ...settings, storageMode: v as StorageMode })}
             options={[
               { value: "vault-assets", label: t("settings.image.vaultAssets") },
+              { value: "doc-assets", label: t("settings.image.docAssets") },
               { value: "fixed-directory", label: t("settings.image.fixedLocal") },
               { value: "image-bed", label: t("settings.image.uploadLater") },
             ]}
           />
         </div>
+        <div className="canvas-settings-row">
+          <div className="canvas-settings-row-label">
+            <span className="canvas-settings-row-title">{t("settings.image.pathStyle")}</span>
+            <span className="canvas-settings-row-desc">{t("settings.image.pathStyleDesc")}</span>
+          </div>
+          <SettingsSelect
+            value={settings.local.pathStyle}
+            onChange={(v) =>
+              onChange({
+                ...settings,
+                local: { ...settings.local, pathStyle: v as ImagePathStyle },
+              })
+            }
+            options={[
+              { value: "relative", label: t("settings.image.pathRelative") },
+              { value: "absolute", label: t("settings.image.pathAbsolute") },
+            ]}
+          />
+        </div>
       </div>
 
-      {settings.storageMode === "vault-assets" && (
+      {(settings.storageMode === "vault-assets" || settings.storageMode === "doc-assets") && (
         <div className="canvas-settings-card">
           <div className="canvas-settings-row">
             <div className="canvas-settings-row-label">
@@ -2454,7 +2474,7 @@ function ImageSettingsContent({
           </div>
           <div className="canvas-settings-row">
             <div className="canvas-settings-row-label">
-              <span className="canvas-settings-row-title">文件命名格式</span>
+              <span className="canvas-settings-row-title">{t("settings.image.filenameFormat")}</span>
             </div>
             <SettingsSelect
               value={settings.local.filenameFormat}

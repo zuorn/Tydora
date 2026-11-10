@@ -4,11 +4,12 @@ export {
   loadImageSettings,
   saveImageSettings,
   saveImageToLocal,
+  migrateDocImageFolder,
   resolveRelativePath,
   dirName,
   ImageSaveCancelledError,
   IMAGE_SETTINGS_KEY,
 } from "./ImageManager";
-export type { ImageSettings, StorageMode, FilenameFormat } from "./ImageManager";
+export type { ImageSettings, StorageMode, FilenameFormat, ImagePathStyle } from "./ImageManager";
 export { attachLocalImageFsFallback, readImageAsBlobUrl } from "./imageFallback";
 export { useVaultWatcher } from "./useVaultWatcher";

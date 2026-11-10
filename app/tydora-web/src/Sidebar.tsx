@@ -10,7 +10,7 @@ import { ConfirmDialog } from "./components";
 import { UpdateLinkDialog } from "./components";
 import { FolderPicker } from "./components";
 import { LinkIndexService } from "./wikilink";
-import { resolveRelativePath } from "./services";
+import { resolveRelativePath, migrateDocImageFolder } from "./services";
 import { relativePath as computeRelativePath } from "./services/ImageManager";
 import { BookmarksPanel } from "./Bookmarks";
 import { TagPanel, parseTagSearchQuery, resolveTagFileSet } from "./tags";
@@ -558,6 +558,21 @@ async function updateImagePathsForFolder(
   }
 
   return { filesUpdated, pathsUpdated };
+}
+
+/**
+ * 重命名 / 移动单个 .md 文档：文件改名后同步 assets 下按文档隔离的图片目录，
+ * 并改写文档内的图片引用。迁移失败不应阻断文件操作本身。
+ */
+async function renameDocFile(from: string, to: string, vaultPath: string): Promise<void> {
+  await rename(from, to);
+  if (!from.endsWith(".md") || !to.endsWith(".md")) return;
+  try {
+    const migration = await migrateDocImageFolder({ oldDocPath: from, newDocPath: to, vaultPath });
+    if (migration.newContent !== null) await writeTextFile(to, migration.newContent);
+  } catch (err) {
+    console.warn("[imageManager] 图片目录迁移失败:", err);
+  }
 }
 
 async function searchFile(filePath: string, lowerQuery: string): Promise<SearchMatch[] | null> {
@@ -1910,7 +1925,7 @@ function FileTree({
       }
     }
 
-    try { await rename(path, newPath); await handleReload(); }
+    try { await renameDocFile(path, newPath, rootPath); await handleReload(); }
     catch (err) { console.error("重命名失败:", err); }
   }, [handleReload, rootPath]);
 
@@ -1948,14 +1963,14 @@ function FileTree({
         if (alwaysUpdateLinksRef.current) {
           if (wikiTotal.filesCount > 0) await rewriteWikiLinksForFolder(moveSourcePath, targetPath, rootPath);
           if (imgTotal.pathsCount > 0) await updateImagePathsForFolder(moveSourcePath, targetPath, rootPath);
-          await rename(moveSourcePath, targetPath);
+          await renameDocFile(moveSourcePath, targetPath, rootPath);
           await handleReload();
         } else {
           pendingRenameRef.current = { path: moveSourcePath, newName: fileName, isDirectory: true };
           setLinkUpdateDialog({ srcPath: moveSourcePath, targetPath, filesCount: wikiTotal.filesCount, linksCount: wikiTotal.linksCount, imagePathsCount: imgTotal.pathsCount, isDirectory: true });
         }
       } else {
-        try { await rename(moveSourcePath, targetPath); await handleReload(); } catch (err) { console.error("移动失败:", err); }
+        try { await renameDocFile(moveSourcePath, targetPath, rootPath); await handleReload(); } catch (err) { console.error("移动失败:", err); }
       }
     } else if (moveSourcePath.endsWith(".md") && !LinkIndexService.isEmpty()) {
       const { filesCount, linksCount } = LinkIndexService.getAffectedLinkCount(moveSourcePath, targetPath, rootPath);
@@ -1963,7 +1978,7 @@ function FileTree({
         if (alwaysUpdateLinksRef.current) {
           try {
             await LinkIndexService.rewriteWikiLinks(moveSourcePath, targetPath, rootPath);
-            await rename(moveSourcePath, targetPath);
+            await renameDocFile(moveSourcePath, targetPath, rootPath);
             await handleReload();
           } catch (err) { console.error("移动失败:", err); }
         } else {
@@ -1971,10 +1986,10 @@ function FileTree({
           setLinkUpdateDialog({ srcPath: moveSourcePath, targetPath, filesCount, linksCount });
         }
       } else {
-        try { await rename(moveSourcePath, targetPath); await handleReload(); } catch (err) { console.error("移动失败:", err); }
+        try { await renameDocFile(moveSourcePath, targetPath, rootPath); await handleReload(); } catch (err) { console.error("移动失败:", err); }
       }
     } else {
-      try { await rename(moveSourcePath, targetPath); await handleReload(); } catch (err) { console.error("移动失败:", err); }
+      try { await renameDocFile(moveSourcePath, targetPath, rootPath); await handleReload(); } catch (err) { console.error("移动失败:", err); }
     }
     
     setFolderPickerOpen(false);
@@ -2092,14 +2107,14 @@ function FileTree({
                   if (alwaysUpdateLinksRef.current) {
                     if (wikiTotal.filesCount > 0) await rewriteWikiLinksForFolder(srcPath, targetPath, rootPath);
                     if (imgTotal.pathsCount > 0) await updateImagePathsForFolder(srcPath, targetPath, rootPath);
-                    await rename(srcPath, targetPath);
+                    await renameDocFile(srcPath, targetPath, rootPath);
                     await handleReload();
                   } else {
                     pendingRenameRef.current = { path: srcPath, newName: fileName, isDirectory: true };
                     setLinkUpdateDialog({ srcPath, targetPath, filesCount: wikiTotal.filesCount, linksCount: wikiTotal.linksCount, imagePathsCount: imgTotal.pathsCount, isDirectory: true });
                   }
                 } else {
-                  try { await rename(srcPath, targetPath); await handleReload(); } catch (err) { console.error("移动失败:", err); }
+                  try { await renameDocFile(srcPath, targetPath, rootPath); await handleReload(); } catch (err) { console.error("移动失败:", err); }
                 }
               } else if (srcPath.endsWith(".md") && !LinkIndexService.isEmpty()) {
                 // 单个 .md 文件
@@ -2109,7 +2124,7 @@ function FileTree({
                   if (alwaysUpdateLinksRef.current) {
                     try {
                       await LinkIndexService.rewriteWikiLinks(srcPath, targetPath, rootPath);
-                      await rename(srcPath, targetPath);
+                      await renameDocFile(srcPath, targetPath, rootPath);
                       await handleReload();
                     } catch (err) {
                       console.error("移动失败:", err);
@@ -2122,14 +2137,14 @@ function FileTree({
                 } else {
                   // 无受影响链接，直接移动
                   try {
-                    await rename(srcPath, targetPath);
+                    await renameDocFile(srcPath, targetPath, rootPath);
                     await handleReload();
                   } catch (err) {
                     console.error("移动失败:", err);
                   }
                 }
               } else {
-                try { await rename(srcPath, targetPath); await handleReload(); } catch (err) { console.error("移动失败:", err); }
+                try { await renameDocFile(srcPath, targetPath, rootPath); await handleReload(); } catch (err) { console.error("移动失败:", err); }
               }
             }
           }
@@ -2682,7 +2697,7 @@ function FileTree({
         } else {
           await LinkIndexService.rewriteWikiLinks(linkUpdateDialog.srcPath, linkUpdateDialog.targetPath, rootPath);
         }
-        await rename(linkUpdateDialog.srcPath, linkUpdateDialog.targetPath);
+        await renameDocFile(linkUpdateDialog.srcPath, linkUpdateDialog.targetPath, rootPath);
         await handleReload();
       } catch (err) {
         console.error("移动失败:", err);
@@ -2703,7 +2718,7 @@ function FileTree({
         } else {
           await LinkIndexService.rewriteWikiLinks(linkUpdateDialog.srcPath, linkUpdateDialog.targetPath, rootPath);
         }
-        await rename(linkUpdateDialog.srcPath, linkUpdateDialog.targetPath);
+        await renameDocFile(linkUpdateDialog.srcPath, linkUpdateDialog.targetPath, rootPath);
         await handleReload();
       } catch (err) {
         console.error("移动失败:", err);
@@ -2716,7 +2731,7 @@ function FileTree({
   const handleLinkUpdateSkip = useCallback(async () => {
     if (linkUpdateDialog) {
       try {
-        await rename(linkUpdateDialog.srcPath, linkUpdateDialog.targetPath);
+        await renameDocFile(linkUpdateDialog.srcPath, linkUpdateDialog.targetPath, rootPath);
         await handleReload();
       } catch (err) {
         console.error("移动失败:", err);
@@ -2724,7 +2739,7 @@ function FileTree({
     }
     setLinkUpdateDialog(null);
     pendingRenameRef.current = null;
-  }, [linkUpdateDialog, handleReload]);
+  }, [linkUpdateDialog, rootPath, handleReload]);
 
   useEffect(() => {
     if (!sortDropdownOpen) return;

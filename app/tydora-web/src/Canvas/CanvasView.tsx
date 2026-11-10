@@ -572,7 +572,7 @@ export default function CanvasView({ onNodeClick }: CanvasViewProps) {
         } catch {}
       }
       
-      const result = await saveImageToLocal(file, settings, null, currentVaultPath || null);
+      const result = await saveImageToLocal(file, settings, filePath || null, currentVaultPath || null);
 
       // Create image node at the center of the viewport
       const viewport = getViewport();
@@ -589,7 +589,7 @@ export default function CanvasView({ onNodeClick }: CanvasViewProps) {
       console.error('Failed to save pasted image:', err);
       alert(t('canvas.saveImageFailed') + ': ' + (err as Error).message);
     }
-  }, [addNode, getViewport, vaultPath]);
+  }, [addNode, getViewport, vaultPath, filePath]);
 
   // Handle URL paste - detect URLs and create link nodes at viewport center
   const handleUrlPaste = useCallback((url: string) => {

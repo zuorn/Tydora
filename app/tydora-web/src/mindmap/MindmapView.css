@@ -11,6 +11,19 @@
   outline: none;
 }
 
+/* markmap 以 embedGlobalCSS 注入 .markmap{--markmap-text-color:#333}，
+   暗色主题下节点文字会和深色画布糊在一起；这里把变量接到当前应用主题 token 上。
+   选择器 (0,2,0) 高于注入规则 (0,1,0)，不受样式插入顺序影响。 */
+.mindmap-container .mindmap-svg {
+  --markmap-text-color: var(--text-primary);
+  --markmap-a-color: var(--accent);
+  --markmap-a-hover-color: var(--accent-hover);
+  --markmap-code-bg: var(--bg-code-inline);
+  --markmap-code-color: var(--text-code);
+  --markmap-circle-open-bg: var(--bg-primary);
+  --markmap-table-border: 1px solid var(--border);
+}
+
 .markmap-node-selected circle {
   stroke: var(--accent) !important;
   stroke-width: 2.5 !important;

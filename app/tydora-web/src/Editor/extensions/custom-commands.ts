@@ -3,7 +3,9 @@ import { TextSelection } from "prosemirror-state";
 import type { Node } from "prosemirror-model";
 
 export function executeCommand(name: string, editor: Editor | null) {
-  if (!editor) return;
+  // destroy() 后 commandManager 被置 null，此时 .chain() 会在 tiptap 内部抛
+  // "Cannot read properties of null (reading 'chain')"；句柄/回调可能持有旧实例。
+  if (!editor || editor.isDestroyed) return;
 
   const chain = editor.chain().focus();
 

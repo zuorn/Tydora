@@ -649,6 +649,12 @@ const TipTapEditor = forwardRef<EditorHandle, TipTapEditorProps>(
       vimEnabled,
     ].join("|");
 
+    // useEditor 的 options 在渲染期创建，而 @tiptap/react v3 是在 deps 变化后的 effect 里
+    // 才销毁旧实例、并用「这一份」options 建新实例：闭包若直接引用渲染期的 editor const，
+    // 新实例上的回调会永久指向已销毁实例（destroy() 把 commandManager 置 null），
+    // 表现为编辑器快捷键一按就抛 "Cannot read properties of null (reading 'chain')"。
+    const liveEditorRef = useRef<Editor | null>(null);
+
     const editor = useEditor({
       extensions: [
         StarterKit.configure({
@@ -1526,6 +1532,11 @@ const TipTapEditor = forwardRef<EditorHandle, TipTapEditorProps>(
             return false;
           },
           keydown: (_view: any, event: KeyboardEvent) => {
+            // 遮蔽外层 editor const：本回调由「上一轮渲染」的 options 携带，
+            // 外层 const 可能指向已销毁实例，必须经 ref 取当前存活实例。
+            const editor = liveEditorRef.current;
+            if (!editor || editor.isDestroyed) return false;
+
             // 拦截 Ctrl+/（防止被当作 HTML 注释快捷键，模式切换由 App.tsx 全局处理）
             if ((event.ctrlKey || event.metaKey) && event.key === "/") {
               event.preventDefault();
@@ -1766,6 +1777,7 @@ const TipTapEditor = forwardRef<EditorHandle, TipTapEditorProps>(
         },
       },
     }, [extensionsSignature]);
+    liveEditorRef.current = editor;
 
     // 图片处理
     const handleImageFile = useCallback(async (file: File) => {

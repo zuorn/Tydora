@@ -2569,15 +2569,14 @@ const TipTapEditor = forwardRef<EditorHandle, TipTapEditorProps>(
       // 从 SV 切换到 IR 时，强制同步内容（编辑器 view 在 SV 期间被销毁重建）
       const modeSwitchedToIR = prevModeRef.current === "sv" && mode === "ir";
       prevModeRef.current = mode;
-
-      if (isInternalRef.current) {
-        isInternalRef.current = false;
-        if (!modeSwitchedToIR) return;
-        // mode 切换导致的 isInternalRef 残留：清除标志但继续同步
-      }
       const fileChanged = prevFilePathRef.current !== currentFilePath;
       prevFilePathRef.current = currentFilePath;
 
+      // 文件切换 / 模式切换必须落地：无条件覆盖残留的 isInternalRef。
+      // （残留 flag 的语义是抑制程序化更新的 onChange 回显；若先于文件切换
+      // 被消费，切文件的 setContent 会被跳过——表现为标题已切到新文件、
+      // 内容停留在上一篇。flag 泄漏路径：setContent 内容未变时不触发
+      // onUpdate、setContent 抛异常。）
       if (fileChanged || modeSwitchedToIR) {
         // 文件切换或从 SV 切换回 IR 时强制更新内容
         isInternalRef.current = true;
@@ -2594,6 +2593,10 @@ const TipTapEditor = forwardRef<EditorHandle, TipTapEditorProps>(
             }
           });
         }
+      } else if (isInternalRef.current) {
+        // 非文件切换的程序化更新：onUpdate 未触发时（如内容未变/抛异常）
+        // flag 会残留，此处清除，避免吞掉后续同步
+        isInternalRef.current = false;
       } else {
         const currentContent = getMarkdownSafe(editor);
         // storage.markdown 未就绪时：不比较，保守地不同步（避免覆盖文档内容/引发 setContent 震荡）。

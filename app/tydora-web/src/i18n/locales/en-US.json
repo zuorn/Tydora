@@ -658,6 +658,9 @@
     "tabs": {
       "untitled": "Untitled",
       "close": "Close",
+      "closeOthers": "Close Others",
+      "closeToRight": "Close to the Right",
+      "closeAll": "Close All",
       "newTab": "New Tab (Ctrl+N)",
       "unsavedMessage": "\"{{name}}\" has unsaved changes. Save before closing the tab?"
     },

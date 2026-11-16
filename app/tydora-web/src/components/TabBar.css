@@ -147,3 +147,39 @@
   color: var(--text-primary);
   background: var(--bg-hover, var(--bg-secondary));
 }
+
+.editor-tabbar-menu {
+  position: fixed;
+  z-index: 10000;
+  min-width: 160px;
+  padding: 4px;
+  background: var(--bg-primary, #fff);
+  border: 1px solid var(--border, #e0e0e0);
+  border-radius: 8px;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.15);
+  font-size: 13px;
+}
+
+.editor-tabbar-menu-item {
+  display: block;
+  width: 100%;
+  padding: var(--menu-item-padding-y, 6px) var(--menu-item-padding-x, 12px);
+  border: none;
+  border-radius: 4px;
+  background: none;
+  color: var(--text-primary, #333);
+  font-size: 13px;
+  line-height: var(--menu-item-line-height, 1.4);
+  text-align: left;
+  cursor: pointer;
+}
+
+.editor-tabbar-menu-item:hover {
+  background: var(--bg-hover, #e8e8e8);
+}
+
+.editor-tabbar-menu-divider {
+  height: 1px;
+  margin: var(--menu-divider-margin-y, 4px) 0;
+  background: var(--border, #e0e0e0);
+}

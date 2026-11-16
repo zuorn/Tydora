@@ -658,6 +658,9 @@
     "tabs": {
       "untitled": "未命名",
       "close": "关闭",
+      "closeOthers": "关闭其他",
+      "closeToRight": "关闭右侧",
+      "closeAll": "全部关闭",
       "newTab": "新建标签页 (Ctrl+N)",
       "unsavedMessage": "\"{{name}}\" 有未保存的更改，关闭标签前要保存吗？"
     },

@@ -865,8 +865,10 @@ function App({ initialFilePath, initialVaultPath }: { initialFilePath?: string |
   }, [rightTabs, rightSidebarOpen]);
 
   const [treeRefreshKey, setTreeRefreshKey] = useState(0);
-  // 关闭有未保存修改的标签前的确认（值为待关闭标签的 bufferId）
+  // 关闭有未保存修改的标签前的确认（值为待关闭标签的 bufferId）；
+  // pendingTabCloseIdsRef 存批量关闭时排队等待确认的其余 dirty 标签
   const [tabCloseConfirmId, setTabCloseConfirmId] = useState<string | null>(null);
+  const pendingTabCloseIdsRef = useRef<string[]>([]);
   // 关闭窗口前的未保存确认
   const [closeConfirmOpen, setCloseConfirmOpen] = useState(false);
   const closeConfirmOpenRef = useRef(false); // 确认框是否已打开（防止重复弹出）
@@ -2574,28 +2576,80 @@ function App({ initialFilePath, initialVaultPath }: { initialFilePath?: string |
     }
   }, [focusPaneSoon]);
 
+  // 批量关闭：干净标签一次移除；有未保存的排队逐个弹确认
+  const closeTabs = useCallback((bufferIds: string[]) => {
+    const unique = [...new Set(bufferIds)];
+    if (unique.length === 0) return;
+    const clean: string[] = [];
+    const dirty: string[] = [];
+    for (const id of unique) {
+      const buf = buffersRef.current.find((b) => b.id === id);
+      if (!buf || !isTabBuffer(buf)) continue;
+      if (buf.modified) dirty.push(id);
+      else clean.push(id);
+    }
+
+    if (clean.length === 1) {
+      removeTab(clean[0]);
+    } else if (clean.length > 1) {
+      const cleanSet = new Set(clean);
+      const tabs = buffersRef.current.filter(isTabBuffer);
+      const remaining = tabs.filter((b) => !cleanSet.has(b.id));
+      const fallback = remaining[0] ?? emptyPlaceholderBuffer();
+      setBuffers((bs) => {
+        const next = bs.filter((b) => !cleanSet.has(b.id));
+        return remaining.length > 0 ? next : [...next, fallback];
+      });
+      setPanes((ps) => ps.map((p) => (p.bufferId && cleanSet.has(p.bufferId) ? { ...p, bufferId: fallback.id } : p)));
+      if (cleanSet.has(activeBufferIdRef.current)) {
+        setSaveStatus(remaining[0]?.modified ? "modified" : "idle");
+        focusPaneSoon(activePaneIdRef.current);
+      }
+    }
+
+    if (dirty.length === 0) return;
+    pendingTabCloseIdsRef.current = dirty.slice(1);
+    setTabCloseConfirmId(dirty[0]);
+  }, [removeTab, focusPaneSoon]);
+
   const closeTab = useCallback((bufferId: string) => {
-    const buf = buffersRef.current.find((b) => b.id === bufferId);
-    if (!buf) return;
-    if (buf.modified) {
-      setTabCloseConfirmId(bufferId);
+    closeTabs([bufferId]);
+  }, [closeTabs]);
+
+  const advancePendingTabClose = useCallback(() => {
+    const next = pendingTabCloseIdsRef.current;
+    if (next.length === 0) {
+      setTabCloseConfirmId(null);
       return;
     }
-    removeTab(bufferId);
-  }, [removeTab]);
+    pendingTabCloseIdsRef.current = next.slice(1);
+    setTabCloseConfirmId(next[0]);
+  }, []);
 
   const handleTabCloseConfirmSave = useCallback(async () => {
     const id = tabCloseConfirmId;
-    setTabCloseConfirmId(null);
     if (!id) return;
-    if (await handleSave(id)) removeTab(id);
-  }, [tabCloseConfirmId, handleSave, removeTab]);
+    if (await handleSave(id)) {
+      removeTab(id);
+      advancePendingTabClose();
+    } else {
+      // 保存失败（如取消另存为）则中止后续排队关闭
+      pendingTabCloseIdsRef.current = [];
+      setTabCloseConfirmId(null);
+    }
+  }, [tabCloseConfirmId, handleSave, removeTab, advancePendingTabClose]);
 
   const handleTabCloseConfirmDiscard = useCallback(() => {
     const id = tabCloseConfirmId;
+    if (!id) return;
+    removeTab(id);
+    advancePendingTabClose();
+  }, [tabCloseConfirmId, removeTab, advancePendingTabClose]);
+
+  const handleTabCloseConfirmCancel = useCallback(() => {
+    pendingTabCloseIdsRef.current = [];
     setTabCloseConfirmId(null);
-    if (id) removeTab(id);
-  }, [tabCloseConfirmId, removeTab]);
+  }, []);
 
   const cycleTab = useCallback((delta: number) => {
     const tabs = buffersRef.current.filter(isTabBuffer);
@@ -4513,6 +4567,7 @@ function App({ initialFilePath, initialVaultPath }: { initialFilePath?: string |
               activeId={!graphViewOpen && !canvasFilePath && !previewFilePath && !isActiveTerminal && isTabBuffer(activeBuffer) ? activeBuffer.id : null}
               onActivate={activateTab}
               onClose={closeTab}
+              onCloseMany={closeTabs}
               onNew={newTab}
             />
           )}
@@ -4850,7 +4905,7 @@ function App({ initialFilePath, initialVaultPath }: { initialFilePath?: string |
         discardText={t("app.dialog.dontSave")}
         discardHint="X"
         onConfirm={handleTabCloseConfirmSave}
-        onCancel={() => setTabCloseConfirmId(null)}
+        onCancel={handleTabCloseConfirmCancel}
         onDiscard={handleTabCloseConfirmDiscard}
       />
 

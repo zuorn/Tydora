@@ -998,14 +998,13 @@ const CodeMirrorEditor = forwardRef<CodeMirrorEditorHandle, CodeMirrorEditorProp
     // 外部 value 同步
     useEffect(() => {
       if (!viewRef.current) return;
-      if (isInternalRef.current) {
-        isInternalRef.current = false;
-        return;
-      }
       const fileChanged = prevFilePathForScrollRef.current !== filePath;
       prevFilePathForScrollRef.current = filePath;
       const currentContent = viewRef.current.state.doc.toString();
       if (value !== currentContent) {
+        // 文件切换 / 同文件更新必须落地：无条件覆盖残留的 isInternalRef
+        // （残留 flag 的语义是抑制 onChange 回显；若先于文件切换被消费，
+        // 切文件的整篇替换会被跳过——标题已切新文件、内容停留在上一篇）
         isInternalRef.current = true;
         if (fileChanged) {
           viewRef.current.dispatch({

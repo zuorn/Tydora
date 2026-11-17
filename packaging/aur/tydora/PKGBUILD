@@ -37,7 +37,7 @@
 # ─────────────────────────────────────────────────────────────────────────────
 
 pkgname=tydora
-pkgver=0.2.9
+pkgver=0.3.3
 pkgrel=1
 pkgdesc="A modern Markdown editor built with Tauri: WYSIWYG and source modes, wiki-links, graph, canvas, terminal"
 arch=('x86_64' 'aarch64')
@@ -62,7 +62,7 @@ conflicts=('tydora-bin')
 #         lto = "thin" 由 workspace profile 控制，不受这里影响）。
 options=('!debug' '!lto')
 source=("$pkgname-$pkgver.tar.gz::https://github.com/zuorn/Tydora/archive/refs/tags/v$pkgver.tar.gz")
-sha256sums=('fb605cdb0a91416d1eacc6d67bc591ed5a2e1e073e3c0b6d409c7610e9b6966d')
+sha256sums=('dbd0fa25737ab8a61fa30f7432ff3c81dc90a936cca965bf2a96dd39bd19f275')
 
 # GitHub 的 archive tarball 顶层目录用的是【仓库名】（大写 T 的 Tydora），
 # 不是 pkgname，所以不能直接 cd "$pkgname-$pkgver"。

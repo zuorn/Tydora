@@ -1,6 +1,6 @@
 pkgbase = tydora-bin
 	pkgdesc = A modern Markdown editor built with Tauri: WYSIWYG and source modes, wiki-links, graph, canvas, terminal
-	pkgver = 0.2.9
+	pkgver = 0.3.3
 	pkgrel = 1
 	url = https://github.com/zuorn/Tydora
 	arch = x86_64
@@ -16,9 +16,9 @@ pkgbase = tydora-bin
 	conflicts = tydora
 	options = !strip
 	options = !debug
-	source_x86_64 = tydora-bin-0.2.9.deb::https://github.com/zuorn/Tydora/releases/download/v0.2.9/03-Tydora_0.2.9_amd64.deb
-	source_aarch64 = tydora-bin-0.2.9.deb::https://github.com/zuorn/Tydora/releases/download/v0.2.9/03-Tydora_0.2.9_arm64.deb
-	sha256sums_x86_64 = f6b3f8e7ed966561af9c05993c0a9779d6c78d4043e312d3b79f77d6d87fa88b
-	sha256sums_aarch64 = 45558f2dc9efaab68f6cb0538ddd79f7b0f84a3c8770494a7787eb39e7d1285f
+	source_x86_64 = tydora-bin-0.3.3.deb::https://github.com/zuorn/Tydora/releases/download/v0.3.3/03-Tydora_0.3.3_amd64.deb
+	source_aarch64 = tydora-bin-0.3.3.deb::https://github.com/zuorn/Tydora/releases/download/v0.3.3/03-Tydora_0.3.3_arm64.deb
+	sha256sums_x86_64 = a98dbb7d142744d7b457a1a3435a06493fff48e0545b0a04921b4d443c1b7563
+	sha256sums_aarch64 = 5841939715a692306ab7aa332964e4c1519f7bb3fe74ac6566b6d429384d3f70
 
 pkgname = tydora-bin

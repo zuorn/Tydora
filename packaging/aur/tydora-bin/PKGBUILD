@@ -25,7 +25,7 @@
 # ─────────────────────────────────────────────────────────────────────────────
 
 pkgname=tydora-bin
-pkgver=0.2.9
+pkgver=0.3.3
 pkgrel=1
 pkgdesc="A modern Markdown editor built with Tauri: WYSIWYG and source modes, wiki-links, graph, canvas, terminal"
 arch=('x86_64' 'aarch64')
@@ -47,9 +47,9 @@ conflicts=('tydora')
 options=('!strip' '!debug')
 # 发行包文件名带平台顺序前缀 03-（上游 release.yml 为让资源排序稳定而加的）
 source_x86_64=("$pkgname-$pkgver.deb::https://github.com/zuorn/Tydora/releases/download/v$pkgver/03-Tydora_${pkgver}_amd64.deb")
-sha256sums_x86_64=('f6b3f8e7ed966561af9c05993c0a9779d6c78d4043e312d3b79f77d6d87fa88b')
+sha256sums_x86_64=('a98dbb7d142744d7b457a1a3435a06493fff48e0545b0a04921b4d443c1b7563')
 source_aarch64=("$pkgname-$pkgver.deb::https://github.com/zuorn/Tydora/releases/download/v$pkgver/03-Tydora_${pkgver}_arm64.deb")
-sha256sums_aarch64=('45558f2dc9efaab68f6cb0538ddd79f7b0f84a3c8770494a7787eb39e7d1285f')
+sha256sums_aarch64=('5841939715a692306ab7aa332964e4c1519f7bb3fe74ac6566b6d429384d3f70')
 
 prepare() {
   # makepkg 不认识 .deb（不会自动解开），这里手工拆成 control.tar.gz / data.tar.gz；

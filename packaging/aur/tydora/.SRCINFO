@@ -1,6 +1,6 @@
 pkgbase = tydora
 	pkgdesc = A modern Markdown editor built with Tauri: WYSIWYG and source modes, wiki-links, graph, canvas, terminal
-	pkgver = 0.2.9
+	pkgver = 0.3.3
 	pkgrel = 1
 	url = https://github.com/zuorn/Tydora
 	arch = x86_64
@@ -18,7 +18,7 @@ pkgbase = tydora
 	conflicts = tydora-bin
 	options = !debug
 	options = !lto
-	source = tydora-0.2.9.tar.gz::https://github.com/zuorn/Tydora/archive/refs/tags/v0.2.9.tar.gz
-	sha256sums = fb605cdb0a91416d1eacc6d67bc591ed5a2e1e073e3c0b6d409c7610e9b6966d
+	source = tydora-0.3.3.tar.gz::https://github.com/zuorn/Tydora/archive/refs/tags/v0.3.3.tar.gz
+	sha256sums = dbd0fa25737ab8a61fa30f7432ff3c81dc90a936cca965bf2a96dd39bd19f275
 
 pkgname = tydora

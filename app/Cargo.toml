@@ -43,10 +43,11 @@ env_logger = "0.11"
 
 # workspace 统一 release profile（二进制体积优先）
 [profile.release]
-lto = "thin"
+lto = "fat"
 codegen-units = 1
 strip = "symbols"
 opt-level = "z"
+panic = "abort"
 
 # ----------------------------------------------------------------------------
 # 本地 patch wry（仅 tydora-desktop 经 tauri 间接依赖）

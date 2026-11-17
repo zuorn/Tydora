@@ -452,50 +452,134 @@ function isExternalOrInline(path: string): boolean {
   return path.startsWith("http://") || path.startsWith("https://") || path.startsWith("data:");
 }
 
-/** 统计文件夹改名后受影响的图片路径数 */
+/** 路径比较键：统一分隔符、大小写与尾部斜杠，避免书写风格差异导致漏匹配 */
+function pathKey(path: string): string {
+  return path.replace(/\\/g, "/").toLowerCase().replace(/\/+$/, "");
+}
+
+/** path 是否落在 dir 内（含 dir 自身） */
+function isWithinDir(path: string, dir: string): boolean {
+  const target = pathKey(path);
+  const base = pathKey(dir);
+  return target === base || target.startsWith(base + "/");
+}
+
+/** 把 path 随 dir 子树一起搬迁到新位置；不在 dir 内则原样返回 */
+function relocateUnderDir(path: string, oldDir: string, newDir: string): string {
+  if (!isWithinDir(path, oldDir)) return path;
+  const cut = pathKey(oldDir).length;
+  return path.length <= cut ? newDir : newDir + path.slice(cut);
+}
+
+/** 解析图片引用书写位置指向的绝对路径：/ 开头按仓库根，其余按文档所在目录 */
+function resolveImageRef(imgRef: string, docDir: string, vaultPath: string): string {
+  return imgRef.startsWith("/")
+    ? resolveRelativePath(vaultPath, imgRef.slice(1))
+    : resolveRelativePath(docDir, imgRef);
+}
+
+/** 按原引用的书写风格（绝对 / 仓库根相对 / 文档相对）生成新引用，统一为正斜杠 */
+function formatImageRef(imgRef: string, target: string, newDocDir: string, vaultPath: string): string {
+  const forward = (p: string) => p.replace(/\\/g, "/");
+  if (/^[a-zA-Z]:[\\/]/.test(imgRef)) return forward(target);
+  if (imgRef.startsWith("/")) {
+    const rel = forward(computeRelativePath(vaultPath, target));
+    return !rel || rel === "." || rel.startsWith("../") ? forward(target) : `/${rel}`;
+  }
+  return forward(computeRelativePath(newDocDir, target));
+}
+
+interface AffectedImageDoc {
+  path: string;
+  refs: Array<{ from: string; to: string }>;
+  newContent: string;
+}
+
+/**
+ * 改写单文档中会因本次搬迁而失效的图片引用。
+ * 判据：从文档搬迁后的目录重新解析原引用，结果仍等于目标的搬迁后位置则无需改动。
+ * 因此同一子树内的「文档 ↔ 图片」相对引用两边一起搬，不会被计入。
+ */
+function rewriteImageRefsInDoc(
+  docPath: string,
+  content: string,
+  oldFolder: string,
+  newFolder: string,
+  vaultPath: string,
+): AffectedImageDoc | null {
+  const docDir = parentPath(docPath);
+  const newDocDir = relocateUnderDir(docDir, oldFolder, newFolder);
+  const refs: AffectedImageDoc["refs"] = [];
+
+  const applyTo = (source: string, regex: RegExp): string =>
+    source.replace(regex, (fullMatch, imgRef: string) => {
+      if (isExternalOrInline(imgRef)) return fullMatch;
+      const newTarget = relocateUnderDir(resolveImageRef(imgRef, docDir, vaultPath), oldFolder, newFolder);
+      if (pathKey(resolveImageRef(imgRef, newDocDir, vaultPath)) === pathKey(newTarget)) return fullMatch;
+      const idx = fullMatch.indexOf(imgRef);
+      if (idx < 0) return fullMatch;
+      const replacement = formatImageRef(imgRef, newTarget, newDocDir, vaultPath);
+      refs.push({ from: imgRef, to: replacement });
+      return fullMatch.slice(0, idx) + replacement + fullMatch.slice(idx + imgRef.length);
+    });
+
+  let newContent = applyTo(content, MD_IMAGE_REGEX);
+  newContent = applyTo(newContent, HTML_IMG_REGEX);
+  return refs.length > 0 ? { path: docPath, refs, newContent } : null;
+}
+
+/** 子树内是否可能有图片：非 .md/.canvas 的文件一律当作候选。纯目录遍历，不读文件内容 */
+async function subtreeMayHoldImages(dir: string): Promise<boolean> {
+  let entries: Awaited<ReturnType<typeof readDir>>;
+  try {
+    entries = await readDir(dir);
+  } catch {
+    return false;
+  }
+  for (const entry of entries) {
+    if (!entry.name) continue;
+    if (entry.isDirectory) {
+      if (await subtreeMayHoldImages(joinPath(dir, entry.name))) return true;
+    } else {
+      const dot = entry.name.lastIndexOf(".");
+      const ext = dot >= 0 ? entry.name.slice(dot + 1).toLowerCase() : "";
+      if (ext !== "md" && ext !== "canvas") return true;
+    }
+  }
+  return false;
+}
+
+/**
+ * 扫描仓库内 .md，产出真正需要改写图片引用的文档。
+ * 原地改名（父目录不变）时，若子树内没有任何图片类文件，则整轮文档读取可以跳过；
+ * 跨层级移动会让子树内文档指向外部图片的相对引用失效，必须全量判定。
+ */
 async function countImagePathsAffected(
   oldFolderPath: string,
-  _newFolderPath: string,
+  newFolderPath: string,
   vaultPath: string,
-): Promise<{ filesCount: number; pathsCount: number }> {
-  let filesCount = 0;
-  let pathsCount = 0;
+): Promise<{ filesCount: number; pathsCount: number; docs: AffectedImageDoc[] }> {
+  const empty = { filesCount: 0, pathsCount: 0, docs: [] as AffectedImageDoc[] };
+  const sameParent = pathKey(parentPath(oldFolderPath)) === pathKey(parentPath(newFolderPath));
+  if (sameParent && !(await subtreeMayHoldImages(oldFolderPath))) return empty;
 
   const mdFiles = await getAllMdFiles(vaultPath);
-  for (const filePath of mdFiles) {
-    const content = await readTextFile(filePath);
-    const docDir = parentPath(filePath);
-    let fileAffected = false;
-
-    const sep = pathSep();
-    for (const match of content.matchAll(MD_IMAGE_REGEX)) {
-      const imgPath = match[1];
-      if (isExternalOrInline(imgPath)) continue;
-       const resolved = imgPath.startsWith("/")
-       ? resolveRelativePath(vaultPath, imgPath.slice(1))
-       : resolveRelativePath(docDir, imgPath);
-      if (resolved.startsWith(oldFolderPath + sep) || resolved === oldFolderPath) {
-        pathsCount++;
-        fileAffected = true;
+  const docs: AffectedImageDoc[] = [];
+  let pathsCount = 0;
+  const CHUNK_SIZE = 50;
+  for (let i = 0; i < mdFiles.length; i += CHUNK_SIZE) {
+    const chunk = mdFiles.slice(i, i + CHUNK_SIZE);
+    const contents = await Promise.all(chunk.map((p) => readTextFile(p).catch(() => "")));
+    for (let j = 0; j < chunk.length; j++) {
+      if (!contents[j]) continue;
+      const affected = rewriteImageRefsInDoc(chunk[j], contents[j], oldFolderPath, newFolderPath, vaultPath);
+      if (affected) {
+        docs.push(affected);
+        pathsCount += affected.refs.length;
       }
     }
-
-    for (const match of content.matchAll(HTML_IMG_REGEX)) {
-      const imgPath = match[1];
-      if (isExternalOrInline(imgPath)) continue;
-       const resolved = imgPath.startsWith("/")
-       ? resolveRelativePath(vaultPath, imgPath.slice(1))
-       : resolveRelativePath(docDir, imgPath);
-      if (resolved.startsWith(oldFolderPath + sep) || resolved === oldFolderPath) {
-        pathsCount++;
-        fileAffected = true;
-      }
-    }
-
-    if (fileAffected) filesCount++;
   }
-
-  return { filesCount, pathsCount };
+  return { filesCount: docs.length, pathsCount, docs };
 }
 
 /** 更新文件夹改名后所有文档中的图片路径 */
@@ -504,59 +588,22 @@ async function updateImagePathsForFolder(
   newFolderPath: string,
   vaultPath: string,
 ): Promise<{ filesUpdated: number; pathsUpdated: number }> {
+  const { docs } = await countImagePathsAffected(oldFolderPath, newFolderPath, vaultPath);
   let filesUpdated = 0;
   let pathsUpdated = 0;
-
-  const mdFiles = await getAllMdFiles(vaultPath);
-  const sep = pathSep();
-  for (const filePath of mdFiles) {
-    const content = await readTextFile(filePath);
-    const docDir = parentPath(filePath);
-    let newContent = content;
-    let changed = false;
-
-    // 处理 Markdown 图片: ![alt](path)
-    newContent = newContent.replace(MD_IMAGE_REGEX, (fullMatch, imgPath: string) => {
-      if (isExternalOrInline(imgPath)) return fullMatch;
-       const resolved = imgPath.startsWith("/")
-       ? resolveRelativePath(vaultPath, imgPath.slice(1))
-       : resolveRelativePath(docDir, imgPath);
-      if (resolved.startsWith(oldFolderPath + sep) || resolved === oldFolderPath) {
-        const relativePart = resolved.slice(oldFolderPath.length);
-        const newAbsolute = newFolderPath + relativePart;
-        // computeRelativePath 返回平台原生分隔符，Markdown 需要 / 
-        const newRelative = computeRelativePath(docDir, newAbsolute).replace(/\\/g, "/");
-        changed = true;
-        pathsUpdated++;
-        return fullMatch.replace(imgPath, newRelative);
-      }
-      return fullMatch;
-    });
-
-    // 处理 HTML img: <img src="path" ...>
-    newContent = newContent.replace(HTML_IMG_REGEX, (fullMatch, imgPath: string) => {
-      if (isExternalOrInline(imgPath)) return fullMatch;
-       const resolved = imgPath.startsWith("/")
-       ? resolveRelativePath(vaultPath, imgPath.slice(1))
-       : resolveRelativePath(docDir, imgPath);
-      if (resolved.startsWith(oldFolderPath + sep) || resolved === oldFolderPath) {
-        const relativePart = resolved.slice(oldFolderPath.length);
-        const newAbsolute = newFolderPath + relativePart;
-        // computeRelativePath 返回平台原生分隔符，HTML 需要 /
-        const newRelative = computeRelativePath(docDir, newAbsolute).replace(/\\/g, "/");
-        changed = true;
-        pathsUpdated++;
-        return fullMatch.replace(imgPath, newRelative);
-      }
-      return fullMatch;
-    });
-
-    if (changed) {
-      await writeTextFile(filePath, newContent);
+  // 弹窗停留期间文档可能已被编辑，写回前按最新内容重算，避免覆盖改动
+  for (const doc of docs) {
+    try {
+      const content = await readTextFile(doc.path);
+      const fresh = rewriteImageRefsInDoc(doc.path, content, oldFolderPath, newFolderPath, vaultPath);
+      if (!fresh) continue;
+      await writeTextFile(fresh.path, fresh.newContent);
       filesUpdated++;
+      pathsUpdated += fresh.refs.length;
+    } catch (err) {
+      console.error("更新图片路径失败:", doc.path, err);
     }
   }
-
   return { filesUpdated, pathsUpdated };
 }
 

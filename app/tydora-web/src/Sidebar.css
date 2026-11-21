@@ -579,13 +579,19 @@
   color: var(--text-secondary);
 }
 
+/* 前景反转只用于真正铺满色块的态（danger / open）：Editor/theme.css 同名选择器会把这里的
+   background 换成 --bg-hover，配套反转的 color 却没人覆盖，深字压深底只剩 1.1:1。 */
 .context-menu-item:hover {
-  background: var(--accent);
-  color: var(--bg-primary);
+  background: var(--bg-hover, #e8e8e8);
 }
 
 .context-menu-item.danger:hover {
   background: var(--danger);
+  color: var(--bg-primary);
+}
+
+.context-menu-item.danger:hover .context-menu-icon {
+  color: var(--bg-primary);
 }
 
 .context-menu-item.disabled {

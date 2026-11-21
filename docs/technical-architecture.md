@@ -192,12 +192,14 @@ graph LR
     subgraph BuiltinThemes["内置主题"]
         White[white]
         Mint[mint]
-        MintDark[mint-dark]
-        LiquidGlass[liquid-glass]
+        TokyoNight[tokyo-night]
+        ModernDark[modern-dark]
         ClaudeCode[claude-code]
         Purple[purple]
         Hermes[hermes]
         Next[next]
+        Slate[slate]
+        Ocean[ocean]
     end
     
     ThemeManager --> BuiltinThemes

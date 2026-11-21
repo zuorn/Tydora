@@ -367,10 +367,11 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
     document.documentElement.dataset.codeTheme = actualThemeId;
     document.documentElement.dataset.codeThemeDark = isDark ? "true" : "false";
 
-    // 暗色代码主题时，把整个代码块背景也调成暗色
-    // （--bg-code 由应用主题设置，这里在代码主题为暗色时覆盖它）
+    // 暗色代码主题的语法色是给暗底写的，而代码块底色默认取应用主题的 --bg-code。
+    // 只有「亮应用主题 + 暗代码主题」这种错配才需要把底色压成暗色；无脑注入会让这条
+    // 同特异性、源序更靠后的 :root 规则顶掉暗色应用主题自己的 --bg-code。
     const bgStyle = document.getElementById("code-theme-bg") as HTMLStyleElement | null;
-    if (isDark) {
+    if (isDark && !getAppThemeIsDark(theme)) {
       const css = `:root { --bg-code: #1e1e2e; --code-block-text: #cdd6f4; }`;
       if (bgStyle) {
         bgStyle.textContent = css;
@@ -388,7 +389,7 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
     (window as unknown as { __tydoraCustomCodeThemes?: CustomCodeTheme[] }).__tydoraCustomCodeThemes = customCodeThemes;
 
     window.dispatchEvent(new CustomEvent("code-theme-changed"));
-  }, [codeTheme, customCodeThemes, getCodeThemeIsDark]);
+  }, [codeTheme, customCodeThemes, getCodeThemeIsDark, theme, getAppThemeIsDark]);
 
   const injectOrUpdateStyle = useCallback((id: string, css: string, enable: boolean) => {
     let style = styleElementsRef.current.get(id);

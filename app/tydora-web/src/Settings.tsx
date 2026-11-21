@@ -1121,7 +1121,7 @@ function ThemeSettingsContent() {
   const builtinThemes: { value: ThemeName; label: string; colors: string[] }[] = [
     { value: "white", label: t("settings.theme.white"), colors: ["#ffffff", "#2563eb", "#1e293b", "#d1d9e6"] },
     { value: "mint", label: "Mint", colors: ["#ffffff", "#4eb289", "#1e293b", "#a5cfc0"] },
-    { value: "mint-dark", label: "Mint Dark", colors: ["#272729", "#4eb289", "#cccccc", "#39393a"] },
+    { value: "tokyo-night", label: "Tokyo Night", colors: ["#1a1b26", "#7aa2f7", "#a9b1d6", "#292e42"] },
     { value: "modern-dark", label: "Modern Dark", colors: ["#1e222d", "#74a7fe", "#d7dae2", "#3a4152"] },
     { value: "claude-code", label: "Claude Code", colors: ["#faf8f5", "#c47a2a", "#1a1a1a", "#ddd6cc"] },
     { value: "purple", label: "Purple", colors: ["#faf5ff", "#7c3aed", "#1e1b2e", "#ddd6ee"] },

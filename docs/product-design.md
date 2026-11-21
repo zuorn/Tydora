@@ -622,18 +622,20 @@ Tydora 支持 Obsidian 风格的 WikiLink 语法：
 
 ### 10.1 内置主题
 
-8 种精心设计的内置主题：
+10 种精心设计的内置主题：
 
 | 主题 | 风格 |
 |------|------|
-| white | 简洁白净 |
-| mint | 薄荷绿（默认） |
-| mint-dark | 薄荷暗色 |
-| liquid-glass | 液态玻璃 |
+| white | 简洁白净（亮色默认） |
+| mint | 薄荷绿 |
+| tokyo-night | 东京之夜（暗色默认） |
+| modern-dark | 深蓝灰现代暗色 |
 | claude-code | Claude Code 风格 |
 | purple | 紫色系 |
 | hermes | Hermes 风格 |
-| next | 未来感 |
+| next | NexT 博客风格 |
+| slate | 石墨灰简约 |
+| ocean | 海洋冷色调 |
 
 ### 10.2 自定义主题
 

@@ -82,30 +82,61 @@
   --editor-font: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
 }
 
-/* ── Mint Dark 主题（深色） ── */
-/* ── Mint Dark 主题（深色） ── */
-[data-theme="mint-dark"] {
-  --bg-primary: #272729;
-  --bg-secondary: #232325;
-  --bg-surface: #333336;
-  --bg-hover: rgba(255, 255, 255, 0.08);
-  --bg-tertiary: #2e2e31;
-  --bg-code: #2d2d30;
-  --bg-code-inline: rgba(78, 178, 137, 0.12);
-  --bg-input: #272729;
-  --text-primary: #cccccc;
-  --text-secondary: #818286;
-  --text-tertiary: #5c5e63;
-  --text-strong: #bd387d;
-  --text-code: #f5c2e7;
-  --accent: #4eb289;
-  --accent-rgb: 78, 178, 137;
-  --accent-hover: #5fc99e;
-  --border: #39393a;
-  --danger: #e06c75;
+/* ── Tokyo Night 主题（深色，Tokyo Night 经典配色） ── */
+/* 层次自低到高：secondary(侧栏) < primary(主区) < code/surface(卡片) < tertiary */
+[data-theme="tokyo-night"] {
+  --bg-primary: #1a1b26;
+  --bg-secondary: #16161e;
+  --bg-surface: #1f2335;
+  --bg-hover: rgba(169, 177, 214, 0.08);
+  --bg-tertiary: #292e42;
+  --bg-code: #1f2335;
+  --bg-code-inline: rgba(169, 177, 214, 0.12);
+  --bg-input: #1f2335;
+  --text-primary: #a9b1d6;
+  /* Tokyo Night 官方 fg_dark #787c99 / comment #565f89 在暗底上只有 4.18 / 2.76，
+     这里各提一档（5.56 / 4.18），保住蓝灰梯度但不牺牲可读性 */
+  --text-secondary: #8b92b0;
+  --text-tertiary: #787c99;
+  --text-strong: #c0caf5;
+  --text-code: #c0caf5;
+  --accent: #7aa2f7;
+  --accent-rgb: 122, 162, 247;
+  --accent-hover: #89b6ff;
+  --border: rgba(120, 124, 153, 0.32);
+  --danger: #f7768e;
+  --blockquote-border: rgba(122, 162, 247, 0.5);
+  --blockquote-bg: #1f2335;
+  --blockquote-text: #8b92b0;
+  --metadata-bg: #16161e;
+  --metadata-border: rgba(120, 124, 153, 0.28);
+  --table-header-bg: #292e42;
+  --table-cell-bg: #1f2335;
+  --tag-bg: rgba(122, 162, 247, 0.15);
+  --tag-text: #7dcfff;
+  --tag-border: rgba(122, 162, 247, 0.4);
+  --scrollbar-thumb: #787c99;
+  --scrollbar-thumb-hover: #565f89;
+  --scrollbar-track: transparent;
   --font-mono: "Cascadia Code", "JetBrains Mono", "Fira Code", "Consolas", monospace;
   --font-ui: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
   --editor-font: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+  --editor-font-size: 16px;
+  --font-mono-size: 14px;
+  --radius-code-block: 2px;
+  --radius-code-inline: 2px;
+  --padding-code-inline-y: 1px;
+  --padding-code-inline-x: 4px;
+  --radius-metadata: 2px;
+  --blockquote-border-width: 3px;
+  --padding-blockquote-y: 4px;
+  --padding-blockquote-x: 16px;
+  --radius-table: 0px;
+  --radius-tag: 24px;
+  --padding-tag-y: 0px;
+  --padding-tag-x: 3px;
+  --radius-scrollbar: 2px;
+  --scrollbar-size: 6px;
 }
 
 /* ── Modern Dark 主题（深色） ── */

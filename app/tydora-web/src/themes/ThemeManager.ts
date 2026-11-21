@@ -1,7 +1,7 @@
 export const BUILTIN_THEMES = [
   "white",
   "mint",
-  "mint-dark",
+  "tokyo-night",
   "modern-dark",
   "claude-code",
   "purple",

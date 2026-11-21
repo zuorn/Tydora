@@ -150,12 +150,14 @@ Release 由 `release-please` 驱动（见 `release-please-config.json`），变�
 
 主题采用「**外观模式（system / light / dark）+ 明暗主题对**」模型，而非单一切换：
 
-- `ThemeManager.ts` — **10 种内置主题**：`white`、`mint`、`mint-dark`、`modern-dark`、
+- `ThemeManager.ts` — **10 种内置主题**：`white`、`mint`、`tokyo-night`、`modern-dark`、
   `claude-code`、`purple`、`hermes`、`next`、`slate`、`ocean`；
-  仅 `mint-dark` 与 `modern-dark` 是暗色主题（见 `appearance.ts` 的 `BUILTIN_THEME_IS_DARK`）
+  仅 `tokyo-night` 与 `modern-dark` 是暗色主题（见 `appearance.ts` 的 `BUILTIN_THEME_IS_DARK`）
 - `appearance.ts` — 外观核心逻辑：
   - `zmd-appearance-mode`（`system` / `light` / `dark`）
-  - 默认主题对：亮 `white` / 暗 `mint-dark`（`DEFAULT_APP_THEME_PAIR`）
+  - 默认主题对：亮 `white` / 暗 `tokyo-night`（`DEFAULT_APP_THEME_PAIR`）
+  - `RETIRED_APP_THEMES`：下线的内置主题 → 替身；`loadAppearanceState()` 在两条读取路径上改写并回写一次
+    （不迁移会撞上「认不出的 id 一律回落 `white`」的兜底，暗色用户会跳亮色）
   - 默认代码配色对：亮 `github-light` / 暗 `github-dark`
   - 旧键 `zmd-theme` / `zmd-code-theme` 仍作为"已解析的当前主题 id"写入（兼容迁移）
 - `CustomThemeManager.ts` — 自定义主题导入 / 导出 / 管理，存于 Tauri `appDataDir`（id 前缀 `custom-`）

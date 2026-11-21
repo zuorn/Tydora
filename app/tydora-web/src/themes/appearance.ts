@@ -1,5 +1,5 @@
-import { CODE_THEMES } from "./codeThemes";
-import { BUILTIN_THEMES, type BuiltinThemeName } from "./ThemeManager";
+import { CODE_THEMES } from "./codeThemes.ts";
+import { BUILTIN_THEMES, type BuiltinThemeName } from "./ThemeManager.ts";
 
 export type AppearanceMode = "system" | "light" | "dark";
 export type ResolvedAppearance = "light" | "dark";
@@ -17,7 +17,7 @@ export interface AppearanceState {
 
 export const DEFAULT_APP_THEME_PAIR: ThemePair = {
   light: "white",
-  dark: "mint-dark",
+  dark: "tokyo-night",
 };
 
 export const DEFAULT_CODE_THEME_PAIR: ThemePair = {
@@ -25,11 +25,19 @@ export const DEFAULT_CODE_THEME_PAIR: ThemePair = {
   dark: "github-dark",
 };
 
+/**
+ * 已下线的内置主题 → 替身。存量用户的 localStorage 里存的还是旧 id，
+ * 不改写就会撞上 ThemeContext「认不出的 id 一律回落 white」的兜底，暗色用户会跳亮色。
+ */
+export const RETIRED_APP_THEMES: Record<string, string> = {
+  "mint-dark": "tokyo-night",
+};
+
 /** Catalog hint for built-in themes (preview / legacy migration only — not used for selection). */
 export const BUILTIN_THEME_IS_DARK: Record<BuiltinThemeName, boolean> = {
   white: false,
   mint: false,
-  "mint-dark": true,
+  "tokyo-night": true,
   "modern-dark": true,
   "claude-code": false,
   purple: false,
@@ -102,6 +110,17 @@ export function inferCodeThemeIdIsDark(
   return /dark/i.test(id);
 }
 
+/** 把已下线的主题 id 换成替身；其余 id（内置在架 / 自定义 / 未知）原样返回。 */
+function remapRetiredAppTheme(id: string): string {
+  return RETIRED_APP_THEMES[id] ?? id;
+}
+
+function migrateRetiredPair(pair: ThemePair): ThemePair {
+  const light = remapRetiredAppTheme(pair.light);
+  const dark = remapRetiredAppTheme(pair.dark);
+  return light === pair.light && dark === pair.dark ? pair : { ...pair, light, dark };
+}
+
 function parsePair(raw: string | null, fallback: ThemePair): ThemePair {
   if (!raw) return { ...fallback };
   try {
@@ -125,21 +144,28 @@ export function loadAppearanceState(): AppearanceState {
   try {
     const existingMode = parseMode(localStorage.getItem(APPEARANCE_MODE_KEY));
     if (existingMode) {
-      return {
+      const storedAppTheme = parsePair(
+        localStorage.getItem(PREFERRED_APP_THEME_KEY),
+        DEFAULT_APP_THEME_PAIR,
+      );
+      const preferredAppTheme = migrateRetiredPair(storedAppTheme);
+      const state: AppearanceState = {
         appearanceMode: existingMode,
-        preferredAppTheme: parsePair(
-          localStorage.getItem(PREFERRED_APP_THEME_KEY),
-          DEFAULT_APP_THEME_PAIR,
-        ),
+        preferredAppTheme,
         preferredCodeTheme: parsePair(
           localStorage.getItem(PREFERRED_CODE_THEME_KEY),
           DEFAULT_CODE_THEME_PAIR,
         ),
       };
+      // 只有真的替换掉下线主题时才回写，别让每次启动都写一遍 localStorage
+      if (preferredAppTheme !== storedAppTheme) persistAppearanceState(state);
+      return state;
     }
 
     // ── Migrate from legacy keys ──
-    const oldTheme = localStorage.getItem(LEGACY_THEME_KEY) || DEFAULT_APP_THEME_PAIR.light;
+    const oldTheme = remapRetiredAppTheme(
+      localStorage.getItem(LEGACY_THEME_KEY) || DEFAULT_APP_THEME_PAIR.light,
+    );
     const oldCode = localStorage.getItem(LEGACY_CODE_THEME_KEY) || "auto";
     const oldAppDark = inferThemeIdIsDark(oldTheme);
 

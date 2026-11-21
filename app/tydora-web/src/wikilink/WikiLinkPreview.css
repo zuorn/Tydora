@@ -305,7 +305,8 @@
 
 /* 高亮 - 与 IR 模式一致 */
 .wiki-link-preview-content mark {
-  background-image: linear-gradient(var(--bg-highlight, #fff3b0), var(--bg-highlight, #fff3b0));
+  background-color: transparent;
+  background-image: linear-gradient(var(--bg-highlight, #ffd54a), var(--bg-highlight, #ffd54a));
   background-size: 100% calc(100% - 0.35em);
   background-position: center;
   background-repeat: no-repeat;

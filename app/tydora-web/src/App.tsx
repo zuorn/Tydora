@@ -125,6 +125,10 @@ const WINDOW_STATE_KEY = "zmd-window-state";
 // 避免与主窗口互相覆盖位置/尺寸
 const EDITOR_WINDOW_STATE_KEY = "zmd-editor-window-state";
 const RECENT_FILES_KEY = "zmd-recent-files";
+/** 上次关闭时正在查看的文档路径（单窗格 fallback，冷启动恢复用，仅主窗口写入） */
+const LAST_OPENED_FILE_KEY = "zmd-last-opened-file";
+/** 多窗格会话：布局结构 + 文件引用（不含正文，正文从磁盘重读） */
+const EDITOR_SESSION_KEY = "zmd-editor-session";
 const PINNED_ITEMS_KEY = "zmd-pinned-toolbar-items";
 
 // 最近访问文件的最大数量
@@ -182,6 +186,39 @@ interface Pane {
   mode: EditorMode;
 }
 // SplitNode / PaneLeaf / SplitGroup 类型已提取到 src/vim/panes/types.ts
+
+// ── 持久化的多窗格会话 ──
+// 只保存结构（布局树 / 窗格 / 文件引用），正文不写入：恢复时从磁盘重读，
+// 未保存的修改按关闭即丢弃的既有语义处理。
+interface PersistedPane {
+  id: string;
+  mode: EditorMode;
+  /** 该窗格对应的 buffer 在 buffers 数组中的下标；同一 buffer 被多窗格引用即为同步视图 */
+  bufferIndex: number;
+}
+interface PersistedEditorSession {
+  version: 1;
+  layout: SplitNode;      // 布局树（paneId 仍指向原 Pane.id，恢复时原样复用）
+  panes: PersistedPane[]; // 与布局树中的 paneId 对应；终端窗格不恢复
+  buffers: Array<{ fileName: string | null }>;
+  activePaneId: string;
+}
+
+/** 校验 localStorage 里的布局树结构是否合法，避免脏数据导致渲染崩溃。 */
+function isValidSplitNode(n: any): n is SplitNode {
+  if (!n || typeof n !== "object") return false;
+  if (n.type === "leaf") return typeof n.paneId === "string" && typeof n.flex === "number";
+  if (n.type === "group") {
+    return (
+      typeof n.groupId === "string" &&
+      (n.dir === "lr" || n.dir === "tb") &&
+      typeof n.flex === "number" &&
+      Array.isArray(n.children) &&
+      n.children.every(isValidSplitNode)
+    );
+  }
+  return false;
+}
 
 // 生成唯一 id（窗格 / 缓冲 / 分屏组）
 const bid = (): string => (typeof crypto !== "undefined" && "randomUUID" in crypto ? crypto.randomUUID() : `buf-${Date.now()}-${Math.random().toString(36).slice(2)}`);
@@ -304,13 +341,28 @@ function App({ initialFilePath, initialVaultPath }: { initialFilePath?: string |
   );
   // 第一个 effect：等快查结果返回。useLayoutEffect 早于 paint，但 Promise 本身还是异步。
   // 即便如此，由于首渲染时 state=null 也不显示欢迎，用户不会看到欢迎卡片。
+  // 额外：若存在"上次文档"待恢复，也视为有文件，避免恢复前闪一下欢迎卡片；
+  // 恢复失败（文件已删除）时会把状态改回 false 让欢迎卡片正常显示。
   useLayoutEffect(() => {
     if (initialFilePath) return;
+    const settle = (hasExternal: boolean) => {
+      if (hasExternal) {
+        setHasPendingFileResult(true);
+        return;
+      }
+      let saved: string | null = null;
+      try {
+        saved = localStorage.getItem(LAST_OPENED_FILE_KEY);
+      } catch {
+        /* ignore */
+      }
+      setHasPendingFileResult(saved ? true : false);
+    };
     if (!pendingFilesCheckRef.current) {
-      setHasPendingFileResult(false);
+      settle(false);
       return;
     }
-    pendingFilesCheckRef.current.then((v) => setHasPendingFileResult(v));
+    pendingFilesCheckRef.current.then(settle);
   }, [initialFilePath]);
 
   const { theme } = useTheme();
@@ -2039,6 +2091,166 @@ function App({ initialFilePath, initialVaultPath }: { initialFilePath?: string |
       openFile(path);
     }
   }, [openFile]);
+
+  // ── 记住当前文档：主窗口每次显示一个文档就把路径写入 localStorage，
+  // 关闭后再次打开时据此恢复。编辑子窗口的文件由 URL 参数指定，不参与记录，
+  // 避免子窗口覆盖主窗口的"上次文档"。激活 buffer 的 fileName 同时覆盖
+  // md / canvas / 预览（三者都会经 setFileName 落到同一 buffer）。
+  useEffect(() => {
+    if (initialFilePath) return;
+    if (!fileName) return;
+    try {
+      localStorage.setItem(LAST_OPENED_FILE_KEY, fileName);
+    } catch {
+      /* ignore */
+    }
+  }, [fileName, initialFilePath]);
+
+  // ── 记住多窗格会话 ──
+  // 只在"结构"变化时写盘（布局 / 窗格 / 文件引用），编辑正文不触发。
+  // 恢复完成前不写入，避免启动时的空状态覆盖磁盘上已有的会话。
+  const sessionRestoredRef = useRef(false);
+  const lastSavedSessionKeyRef = useRef<string>("");
+  useEffect(() => {
+    if (initialFilePath || !sessionRestoredRef.current) return;
+    const structureKey = JSON.stringify({
+      activePaneId,
+      layout: splitLayout,
+      panes: panes.map((p) => [p.id, p.mode, buffers.find((b) => b.id === p.bufferId)?.fileName ?? null]),
+      buffers: buffers.map((b) => b.fileName),
+    });
+    if (structureKey === lastSavedSessionKeyRef.current) return;
+    lastSavedSessionKeyRef.current = structureKey;
+    const session: PersistedEditorSession = {
+      version: 1,
+      layout: splitLayout,
+      panes: panes.map((p) => ({
+        id: p.id,
+        mode: p.mode,
+        bufferIndex: buffers.findIndex((b) => b.id === p.bufferId),
+      })),
+      buffers: buffers.map((b) => ({ fileName: b.fileName })),
+      activePaneId,
+    };
+    try {
+      localStorage.setItem(EDITOR_SESSION_KEY, JSON.stringify(session));
+    } catch {
+      /* ignore */
+    }
+  }, [splitLayout, panes, buffers, activePaneId, initialFilePath]);
+
+  // ── 冷启动恢复：仅主窗口、无外部文件（双击 .md）时，等外部文件决策结束后恢复 ──
+  // 优先恢复多窗格会话（布局 + 各窗格文档）；无有效会话则回退到单文档恢复。
+  // ref 守卫确保只尝试一次。
+  useEffect(() => {
+    if (sessionRestoredRef.current) return;
+    if (initialFilePath) return;        // 编辑子窗口：文件由 URL 指定，不参与恢复
+    if (!externalLaunchSettled) return; // 等外部文件拉取决策完成，避免与外部文件抢占
+    if (hasExternalFile) return;        // 双击 .md 启动：外部文件优先
+    sessionRestoredRef.current = true;
+
+    (async () => {
+      // 1) 尝试多窗格会话恢复
+      let session: PersistedEditorSession | null = null;
+      try {
+        const raw = localStorage.getItem(EDITOR_SESSION_KEY);
+        if (raw) {
+          const parsed = JSON.parse(raw);
+          if (
+            parsed?.version === 1 &&
+            isValidSplitNode(parsed.layout) &&
+            Array.isArray(parsed.panes) && parsed.panes.length > 0 &&
+            Array.isArray(parsed.buffers) &&
+            typeof parsed.activePaneId === "string"
+          ) {
+            session = parsed as PersistedEditorSession;
+          }
+        }
+      } catch {
+        /* ignore */
+      }
+
+      if (session) {
+        const s = session;
+        const layoutPaneIds = new Set<string>();
+        const collectIds = (n: SplitNode) => {
+          if (n.type === "leaf") layoutPaneIds.add(n.paneId);
+          else n.children.forEach(collectIds);
+        };
+        collectIds(s.layout);
+        const paneIds = new Set(s.panes.map((p) => p.id));
+        const layoutRestorable = [...layoutPaneIds].every((id) => paneIds.has(id));
+        const hasFile = s.buffers.some((b) => !!b.fileName);
+
+        if (s.panes.length > 1 && layoutRestorable && hasFile) {
+          const restoredBuffers: FileBuffer[] = [];
+          for (const b of s.buffers) {
+            let fileName: string | null = b.fileName;
+            let content = "";
+            if (b.fileName) {
+              try {
+                if (await exists(b.fileName)) content = await readTextFile(b.fileName);
+                else fileName = null; // 文件已被删除/移动 → 空缓冲
+              } catch {
+                fileName = null;
+              }
+            }
+            restoredBuffers.push({ id: bid(), fileName, content, savedContent: content, modified: false });
+          }
+          const makeEmpty = (): FileBuffer => {
+            const b: FileBuffer = { id: bid(), fileName: null, content: "", savedContent: "", modified: false };
+            restoredBuffers.push(b);
+            return b;
+          };
+          if (restoredBuffers.length === 0) makeEmpty();
+          const restoredPanes: Pane[] = s.panes.map((p) => {
+            const buf =
+              p.bufferIndex >= 0 && p.bufferIndex < restoredBuffers.length
+                ? restoredBuffers[p.bufferIndex]
+                : makeEmpty();
+            // 终端窗格的 PTY 无法跨进程恢复：降级为空白编辑器窗格，但保留布局
+            return { id: p.id, kind: "editor", bufferId: buf.id, mode: p.mode };
+          });
+          setBuffers(restoredBuffers);
+          setPanes(restoredPanes);
+          setSplitLayout(s.layout);
+          const targetPaneId = paneIds.has(s.activePaneId) ? s.activePaneId : restoredPanes[0].id;
+          setActivePaneId(targetPaneId);
+          setHasPendingFileResult(true);
+          // 恢复激活文档的 canvas / 预览视图状态（fileName 落在外层派生 state）
+          const targetBuf = restoredBuffers.find((b) => b.id === restoredPanes.find((p) => p.id === targetPaneId)?.bufferId);
+          if (targetBuf?.fileName) {
+            if (targetBuf.fileName.endsWith(".canvas")) setCanvasFilePath(targetBuf.fileName);
+            else if (!isEditableFile(targetBuf.fileName)) setPreviewFilePath(targetBuf.fileName);
+          }
+          bootStamp("session_restore_multi_pane");
+          return;
+        }
+      }
+
+      // 2) 回退：单文档恢复（保留对 canvas / 预览的正确处理）
+      let saved: string | null = null;
+      try {
+        saved = localStorage.getItem(LAST_OPENED_FILE_KEY);
+      } catch {
+        /* ignore */
+      }
+      if (!saved) {
+        setHasPendingFileResult(false);
+        return;
+      }
+      try {
+        if (!(await exists(saved!))) {
+          try { localStorage.removeItem(LAST_OPENED_FILE_KEY); } catch { /* ignore */ }
+          setHasPendingFileResult(false);
+          return;
+        }
+        openFileByType(saved!);
+      } catch {
+        setHasPendingFileResult(false);
+      }
+    })();
+  }, [externalLaunchSettled, hasExternalFile, initialFilePath, openFileByType]);
 
   const navigateBack = useCallback(() => {
     if (historyIndex <= 0) return;

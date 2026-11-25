@@ -24,22 +24,11 @@ export default defineConfig({
     outDir: resolve(__dirname, ".build", "web-dist"),
     emptyOutDir: true,
 
-    rollupOptions: {
-      output: {
-        // 将重型 vendor 库拆入独立 chunk，减小 App chunk 体积；
-        // 浏览器可并行下载多个 chunk，且未被首屏需要的 chunk 可延后加载。
-        manualChunks(id) {
-          if (id.includes("node_modules")) {
-            if (id.includes("@tiptap") || id.includes("prosemirror")) return "tiptap-vendor";
-            if (id.includes("lowlight") || id.includes("highlight.js")) return "lowlight-vendor";
-            if (id.includes("@codemirror") || id.includes("@lezer")) return "codemirror-vendor";
-            if (id.includes("@tauri-apps")) return "tauri-vendor";
-            if (id.includes("katex")) return "katex-vendor";
-            if (id.includes("mermaid")) return "mermaid-vendor";
-          }
-        },
-      },
-    },
+    // 不按包名做 manualChunks：
+    // 之前按包名把整个包塞进一个 chunk，入口静态依赖图只要碰到包内任一模块，
+    // 整包就进入首屏，穿透了 lazy() 边界；且 tiptap→katex/codemirror/lowlight
+    // 被串成一条必加载链。交回 Rollup 按真实模块依赖切分，动态 import 边界
+    // 才会真正生效。构建后用 `npm run analyze:bundle` 校验首屏体积。
   },
 
   server: {

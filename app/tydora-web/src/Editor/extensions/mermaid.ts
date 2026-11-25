@@ -1,6 +1,5 @@
 import { Node } from "@tiptap/core";
 import { installMarkdownRuleOnce } from "./markdown-setup";
-import mermaid from "mermaid";
 import hljs from "highlight.js/lib/common";
 import { EditorView as CMView, keymap, lineNumbers } from "@codemirror/view";
 import { EditorState as CMState } from "@codemirror/state";
@@ -15,12 +14,28 @@ import {
 // ── 注册 mermaid 语法高亮 ──
 hljs.registerLanguage("mermaid", mermaidHljsLang);
 
-// ── 模块级初始化 ──
-let mermaidReady = false;
-function initMermaid() {
-  if (mermaidReady) return;
-  try { mermaid.initialize({ startOnLoad: false, theme: "default" }); mermaidReady = true; }
-  catch (e) { console.error("[Mermaid] Init failed:", e); }
+// ── mermaid 渲染库按需加载 ──
+// mermaid 库体积很大（约 3 MB），此前顶层静态 import 使其进入首屏 modulepreload，
+// 拖慢编辑器首帧。改为首次真正渲染 mermaid 图表时才动态 import：
+// - 只 fetch/解析一次（promise 缓存，多个 node view 并发安全）
+// - 加载与初始化失败会重置 promise，允许下次重试（避免一次性失败永久卡死）
+type MermaidApi = typeof import("mermaid")["default"];
+let mermaidPromise: Promise<MermaidApi> | null = null;
+
+function loadMermaid(): Promise<MermaidApi> {
+  if (!mermaidPromise) {
+    mermaidPromise = import("mermaid")
+      .then(({ default: mermaid }) => {
+        mermaid.initialize({ startOnLoad: false, theme: "default" });
+        return mermaid;
+      })
+      .catch((e) => {
+        mermaidPromise = null;
+        console.error("[Mermaid] Load/Init failed:", e);
+        throw e;
+      });
+  }
+  return mermaidPromise;
 }
 
 // ── HTML 转义 ──
@@ -104,17 +119,27 @@ export const Mermaid = Node.create({
       dom.appendChild(previewArea);
 
       // ── Mermaid 渲染 ──
+      let destroyed = false;
+      let renderSeq = 0; // 防止加载/渲染期间文档已切换导致旧结果覆盖新内容
       const render = (text: string) => {
+        const seq = ++renderSeq;
         if (!text.trim()) {
           previewArea.innerHTML = `<div class="mermaid-empty">输入 Mermaid 图表代码</div>`;
           return;
         }
         previewArea.innerHTML = `<div class="mermaid-loading">正在渲染图表...</div>`;
-        initMermaid();
-        const id = `mermaid-svg-${++renderIdCounter}`;
-        mermaid.render(id, text)
-          .then((r: { svg: string }) => { previewArea.innerHTML = r.svg; })
-          .catch((err: Error) => { previewArea.innerHTML = `<div class="mermaid-error"><span>图表渲染失败</span><pre>${escapeHtml(err.message || String(err))}</pre></div>`; });
+        loadMermaid()
+          .then((mermaid) => {
+            if (destroyed || seq !== renderSeq) return;
+            const id = `mermaid-svg-${++renderIdCounter}`;
+            return mermaid.render(id, text).then((r: { svg: string }) => {
+              if (!destroyed && seq === renderSeq) previewArea.innerHTML = r.svg;
+            });
+          })
+          .catch((err: Error) => {
+            if (destroyed || seq !== renderSeq) return;
+            previewArea.innerHTML = `<div class="mermaid-error"><span>图表渲染失败</span><pre>${escapeHtml(err?.message || String(err))}</pre></div>`;
+          });
       };
 
       render(node.textContent);
@@ -313,6 +338,7 @@ export const Mermaid = Node.create({
           return true;
         },
         destroy() {
+          destroyed = true;
           cmView?.destroy();
           cmView = null;
         },
